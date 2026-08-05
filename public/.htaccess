@@ -1,0 +1,9 @@
+RewriteEngine On
+
+# Tema assetleri
+RewriteRule ^themes/([A-Za-z0-9_-]+)/assets/(.*)$ theme-asset.php?theme=$1&path=$2 [L,QSA]
+
+# Mevcut dosya/klasör ise dokunma
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L,QSA]

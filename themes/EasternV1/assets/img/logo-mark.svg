@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 210" fill="none" role="img" aria-label="M2DN">
+  <defs>
+    <radialGradient id="m2dnShieldFav" cx="50%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#c9974a" stop-opacity=".35"/>
+      <stop offset="100%" stop-color="#8f1c29" stop-opacity=".08"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="210" fill="#0b0906"/>
+  <g transform="translate(0,6)">
+    <path d="M72 46 C45 30 15 22 4 4" stroke="#c9974a" stroke-width="2.6" stroke-linecap="round" opacity=".95"/>
+    <path d="M74 55 C50 43 22 37 8 21" stroke="#c9974a" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>
+    <path d="M76 64 C55 57 32 54 20 42" stroke="#c9974a" stroke-width="2.2" stroke-linecap="round" opacity=".65"/>
+    <path d="M79 73 C63 69 47 69 39 61" stroke="#c9974a" stroke-width="2" stroke-linecap="round" opacity=".5"/>
+    <g transform="matrix(-1,0,0,1,200,0)">
+      <path d="M72 46 C45 30 15 22 4 4" stroke="#c9974a" stroke-width="2.6" stroke-linecap="round" opacity=".95"/>
+      <path d="M74 55 C50 43 22 37 8 21" stroke="#c9974a" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>
+      <path d="M76 64 C55 57 32 54 20 42" stroke="#c9974a" stroke-width="2.2" stroke-linecap="round" opacity=".65"/>
+      <path d="M79 73 C63 69 47 69 39 61" stroke="#c9974a" stroke-width="2" stroke-linecap="round" opacity=".5"/>
+    </g>
+    <path d="M70 40 Q100 24 130 40 L130 88 Q130 130 100 162 Q70 130 70 88 Z"
+          fill="url(#m2dnShieldFav)" stroke="#c9974a" stroke-width="2.6"/>
+    <circle cx="100" cy="18" r="5" fill="#eccd8e"/>
+    <line x1="100" y1="23" x2="100" y2="34" stroke="#eccd8e" stroke-width="2.6" stroke-linecap="round"/>
+    <line x1="82" y1="34" x2="118" y2="34" stroke="#c53347" stroke-width="3" stroke-linecap="round"/>
+    <line x1="100" y1="34" x2="100" y2="150" stroke="#eccd8e" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M100 150 L92 138 L108 138 Z" fill="#eccd8e"/>
+    <circle cx="100" cy="82" r="3.4" fill="#c53347"/>
+  </g>
+  <text x="100" y="202" font-family="Cinzel, Georgia, serif" font-weight="700" font-size="18" letter-spacing="3" fill="#eccd8e" text-anchor="middle">M2DN</text>
+</svg>

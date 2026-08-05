@@ -1,0 +1,8 @@
+{
+  "name": "EasternV1",
+  "display_name": "Eastern V1",
+  "version": "1.0.0",
+  "author": "M2DN",
+  "description": "Doğu esintili koyu tema — varsayılan M2DN teması",
+  "supports": ["home", "user.panel", "admin.panel"]
+}

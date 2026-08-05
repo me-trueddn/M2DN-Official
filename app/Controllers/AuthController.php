@@ -1,0 +1,99 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers;
+
+use App\Core\Security;
+use App\Core\Session;
+use App\Services\AccountService;
+use App\Services\AuthService;
+
+final class AuthController
+{
+    public function showRegister(): void
+    {
+        Session::flash('open_register', true);
+        redirect('/');
+    }
+
+    public function showLogin(): void
+    {
+        Session::flash('open_login', true);
+        redirect('/');
+    }
+
+    public function register(): void
+    {
+        Security::requireCsrf('register');
+
+        $login = (string) ($_POST['login'] ?? '');
+        $password = (string) ($_POST['password'] ?? '');
+        $email = (string) ($_POST['email'] ?? '');
+        $securityCode = (string) ($_POST['securitycode'] ?? '');
+
+        $result = AccountService::register($login, $password, $email, $securityCode);
+
+        Session::flash('open_register', true);
+
+        if (!$result['ok']) {
+            Session::flash('register_errors', $result['errors']);
+            Session::flash('register_old', [
+                'login' => $login,
+                'email' => $email,
+            ]);
+            redirect('/');
+        }
+
+        Session::flash('register_success', 'Hesabın oluşturuldu. Artık giriş yapabilirsin.');
+        redirect('/');
+    }
+
+    public function login(): void
+    {
+        Security::requireCsrf('login');
+
+        $login = (string) ($_POST['login'] ?? '');
+        $password = (string) ($_POST['password'] ?? '');
+
+        $result = AuthService::login($login, $password);
+
+        if (!empty($result['needs_2fa'])) {
+            Session::flash('open_2fa', true);
+            redirect('/');
+        }
+
+        if (!$result['ok']) {
+            Session::flash('login_errors', $result['errors']);
+            Session::flash('login_old', ['login' => $login]);
+            Session::flash('open_login', true);
+            redirect('/');
+        }
+
+        // Varsayılan: oyuncu paneli (admin yetkisi panel içinden)
+        redirect('/panel');
+    }
+
+    public function twoFactor(): void
+    {
+        Security::requireCsrf('login');
+
+        $code = (string) ($_POST['code'] ?? '');
+        $result = AuthService::completeTwoFactor($code);
+
+        if (!$result['ok']) {
+            Session::flash('login_errors', $result['errors']);
+            Session::flash('open_2fa', true);
+            redirect('/');
+        }
+
+        redirect('/panel');
+    }
+
+    public function logout(): void
+    {
+        AuthService::logout();
+        Session::flash('login_success', 'Çıkış yapıldı.');
+        redirect('/');
+    }
+}
