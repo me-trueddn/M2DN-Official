@@ -147,6 +147,8 @@ php -S 127.0.0.1:8080 -t public public/router.php
 
 ### 2) Veritabanı — oluşturmanız gerekenler
 
+Önerilen sıra: oyun dump’ı → DNWeb tam şema → `WebPermission` → config.
+
 #### A) Oyun veritabanları (zorunlu)
 
 Metin2 sunucunuzdan gelen (veya sıfırdan kurduğunuz) dört veritabanı:
@@ -160,28 +162,39 @@ Metin2 sunucunuzdan gelen (veya sıfırdan kurduğunuz) dört veritabanı:
 
 İsimler `config.php` → `servers.*.databases` ile değiştirilebilir; varsayılanlar yukarıdakilerdir.
 
-Sadece boş DB iskeleti için (tablo şeması oyun dump’ınızdan gelmelidir):
+1. İsterseniz boş DB iskeleti oluşturun (oyun tabloları **yok**):
 
 ```bash
 mysql -u root -p < database/setup_databases.sql
 ```
 
-Bu script `account`, `common`, `player`, `log` ve `DNWeb` veritabanlarını oluşturur. **Oyun tablolarını oluşturmaz** — onları kendi Metin2 SQL dump’ınızla yükleyin.
+2. Oyun tablolarını kendi Metin2 SQL dump’ınızla yükleyin (`account`, `common`, `player`, `log`).
+
+`setup_databases.sql` yalnızca boş `account` / `common` / `player` / `log` / `DNWeb` veritabanlarını (ve eski bir DNWeb iskeletini) oluşturur. **Oyun tablolarını oluşturmaz.**
 
 #### B) DNWeb (zorunlu — site CMS)
 
-`DNWeb` veritabanı site ayarları, duyuru, ticket, oturum, yetki, captcha, mail log vb. içindir.
+`DNWeb` site ayarları, duyuru, ticket, oturum, yetki, captcha, mail, IP ban sebebi vb. içindir.
 
-- `setup_databases.sql` ile boş `DNWeb` + temel `settings` oluşur.
-- İlk sayfa isteğinde **`Schema::ensure()`** otomatik olarak eksik DNWeb tablolarını ve kolonları oluşturur / günceller (manuel migration gerekmez).
-
-#### C) Hesap yetkisi kolonu
-
-`account.account.WebPermission` paneli açmak için gerekir. Schema bunu da otomatik eklemeye çalışır; elle:
+Tam şemayı (tüm tablolar + kolonlar) SQL ile kurun:
 
 ```bash
-mysql -u root -p < database/migrate_auth.sql
+mysql -u root -p < database/dnweb_full_schema.sql
 ```
+
+Bu dosya `Schema::ensure()` ile aynı nihai DNWeb yapısını oluşturur. Varsayılan içerik (özellik kartları, mail şablonları, ceza şablonları vb.) site ilk açıldığında `Schema::ensure()` tarafından eklenir.
+
+> Alternatif: Sadece boş `DNWeb` bırakıp siteyi açmak da yeterlidir — `Schema::ensure()` eksik tabloları/kolonları otomatik tamamlar. Elle kurulum için `dnweb_full_schema.sql` tercih edilir.
+
+#### C) Hesap yetkisi kolonu (`WebPermission`)
+
+Panel yetkisi için `account.account.WebPermission` gerekir (`0` oyuncu, `1` admin, `2` süper admin). Oyun dump’ı yüklendikten sonra:
+
+```bash
+mysql -u root -p < database/account_web_permission.sql
+```
+
+Schema da ilk istekte kolonu eklemeye çalışır; SQL ile kurmak daha nettir.
 
 Örnek süper admin:
 
@@ -189,6 +202,17 @@ mysql -u root -p < database/migrate_auth.sql
 UPDATE account.account SET WebPermission = 2 WHERE login = 'SENIN_LOGIN';
 ```
 
+#### D) `database/` SQL dosyaları
+
+| Dosya | Ne işe yarar? |
+|-------|----------------|
+| `setup_databases.sql` | Boş 5 DB (+ eski DNWeb iskeleti) |
+| `dnweb_full_schema.sql` | **DNWeb tam CREATE** (önerilen) |
+| `account_web_permission.sql` | `account.WebPermission` kolonu |
+| `migrate_auth.sql` | Eski migrate: WebPermission + `web_sessions` (yeni kurulumda gerekmez) |
+| `migrate_account_security.sql` | Eski migrate: `account_security` (yeni kurulumda gerekmez) |
+| `convert_charset.sql` | Charset dönüşümü |
+| `seed_*.php` / `seed_*.sql` | Test verisi |
 ### 3) Yapılandırma
 
 `config/config.php` içinde doldurun:
@@ -273,7 +297,8 @@ docs/                   → DB referansı
 ## Hızlı kontrol listesi
 
 - [ ] `account` / `common` / `player` / `log` dump yüklü  
-- [ ] `DNWeb` oluşturuldu  
+- [ ] `database/dnweb_full_schema.sql` çalıştırıldı (veya Schema otomatik tamamladı)  
+- [ ] `database/account_web_permission.sql` çalıştırıldı  
 - [ ] `config/config.php` DB ve `app.url` dolu  
 - [ ] En az bir hesapta `WebPermission = 2`  
 - [ ] `php -S … -t public` veya vhost → `public/`  
