@@ -86,6 +86,7 @@ final class AdminPlayerService
 
         $accountIds = array_map(static fn(array $r): int => (int) $r['id'], $rows);
         $firstChars = self::firstCharacters($accountIds, $serverKey);
+        $staffMeta = PermissionService::staffMetaForAccounts($accountIds);
 
         $accounts = [];
         foreach ($rows as $row) {
@@ -104,6 +105,17 @@ final class AdminPlayerService
             }
 
             $email = trim((string) ($row['email'] ?? ''));
+            $webPerm = AuthService::normalizePermission($row['WebPermission'] ?? null);
+            $isStaff = $webPerm === AuthService::PERM_ADMIN || $webPerm === AuthService::PERM_SUPER;
+            $staff = $staffMeta[$id] ?? null;
+            $roleLabel = 'Oyuncu';
+            if (!empty($staff['group_name'])) {
+                $roleLabel = (string) $staff['group_name'];
+            } elseif ($isStaff) {
+                $sysId = PermissionService::systemGroupId($webPerm);
+                $sysName = $sysId ? PermissionService::groupNameById($sysId) : '';
+                $roleLabel = $sysName !== '' ? $sysName : ($webPerm === AuthService::PERM_SUPER ? 'Süper Admin' : 'Yönetici');
+            }
 
             $accounts[] = [
                 'id' => $id,
@@ -119,6 +131,11 @@ final class AdminPlayerService
                 'character_name' => $char['name'] ?? '—',
                 'character_level' => $char['level'] ?? null,
                 'character_count' => $char['count'] ?? 0,
+                'web_permission' => $webPerm,
+                'role_label' => $roleLabel,
+                'role_badge' => $isStaff ? 'pending' : 'closed',
+                'staff_group_id' => $staff['group_id'] ?? null,
+                'staff_group_name' => $staff['group_name'] ?? ($roleLabel !== 'Oyuncu' ? $roleLabel : null),
             ];
         }
 

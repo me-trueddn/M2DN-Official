@@ -9,9 +9,11 @@ use App\Core\Session;
 use App\Core\Theme;
 use App\Services\AccountSecurityService;
 use App\Services\ActivityLogService;
+use App\Services\AnnouncementService;
 use App\Services\AuthService;
 use App\Services\PenaltyService;
 use App\Services\PlayerService;
+use App\Services\TicketService;
 use App\Services\Totp;
 
 final class UserPanelController
@@ -56,7 +58,14 @@ final class UserPanelController
             'searchResults' => $searchResults,
             'panelErrors' => Session::flash('panel_errors') ?? [],
             'panelSuccess' => Session::flash('panel_success'),
-            'panelSection' => Session::flash('panel_section') ?? ($searchQuery !== '' ? 'ozet' : null),
+            'panelSection' => Session::flash('panel_section')
+                ?? ((int) ($_GET['ticket'] ?? 0) > 0 ? 'destek' : null)
+                ?? ($searchQuery !== '' ? 'ozet' : null),
+            'ticketCategories' => TicketService::categories(true),
+            'userTickets' => TicketService::forAccount($accountId, 50),
+            'ticketFileTypes' => TicketService::allowedFileTypes(true),
+            'announcements' => AnnouncementService::list(true, 40),
+            'overviewAnnouncements' => AnnouncementService::list(true, 5),
         ]);
     }
 

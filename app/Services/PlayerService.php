@@ -99,20 +99,7 @@ final class PlayerService
             $totalYang += (int) ($ch['gold'] ?? 0);
         }
 
-        $openTickets = 0;
-        try {
-            $web = Database::web();
-            $login = (string) ($account['login'] ?? '');
-            if ($login !== '') {
-                $st = $web->prepare(
-                    "SELECT COUNT(*) FROM support_tickets WHERE account_login = ? AND status IN ('open','pending')"
-                );
-                $st->execute([$login]);
-                $openTickets = (int) $st->fetchColumn();
-            }
-        } catch (\Throwable) {
-            $openTickets = 0;
-        }
+        $openTickets = TicketService::openCountForAccount($accountId);
 
         return [
             'account' => $account,

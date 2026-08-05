@@ -22,10 +22,25 @@
 /** @var array $siteRates */
 /** @var array $siteChapter */
 /** @var string $appVersion */
+/** @var array<string, bool> $permFlags */
+/** @var array<string, string> $permFlagDefs */
+/** @var list<array> $permissionGroups */
+/** @var list<array> $ticketCategories */
+/** @var list<array> $ticketStatuses */
+/** @var list<array> $ticketFileTypes */
+/** @var list<array> $adminTickets */
+/** @var array|null $activeTicket */
+/** @var string $ticketSearch */
+/** @var array{rows:list<array>,total:int,page:int,pages:int,per_page:int,filter:string} $adminLogs */
+/** @var list<array> $announcementTypes */
+/** @var list<array> $announcementTypesActive */
+/** @var list<array> $announcements */
+/** @var list<array> $overviewAnnouncements */
+/** @var int $openTicketCount */
 
 $appName = $appName ?? 'M2DN';
 $appTagline = $appTagline ?? '';
-$appVersion = (string) ($appVersion ?? '1.10.2');
+$appVersion = (string) ($appVersion ?? '2.0.0');
 $currentServer = is_array($currentServer ?? null) ? $currentServer : [];
 $servers = is_array($servers ?? null) ? $servers : [];
 $csrf = $csrf ?? '';
@@ -62,10 +77,31 @@ $siteSocials = is_array($siteSocials ?? null) ? $siteSocials : [];
 $siteFooter = is_array($siteFooter ?? null) ? $siteFooter : [];
 $siteRates = is_array($siteRates ?? null) ? $siteRates : [];
 $siteChapter = is_array($siteChapter ?? null) ? $siteChapter : [];
-$settingsOpen = in_array($panelSection, [
-    'ceza-ayarlari', 'patch-linkleri', 'ozellikler-ayarlari', 'siniflar-ayarlari',
-    'oranlar-ayarlari', 'siradaki-bolum', 'galeri-ayarlari', 'footer-ayarlari',
-], true);
+$permFlags = is_array($permFlags ?? null) ? $permFlags : [];
+$permFlagDefs = is_array($permFlagDefs ?? null) ? $permFlagDefs : [];
+$permissionGroups = is_array($permissionGroups ?? null) ? $permissionGroups : [];
+$ticketCategories = is_array($ticketCategories ?? null) ? $ticketCategories : [];
+$ticketStatuses = is_array($ticketStatuses ?? null) ? $ticketStatuses : [];
+$ticketFileTypes = is_array($ticketFileTypes ?? null) ? $ticketFileTypes : [];
+$adminTickets = is_array($adminTickets ?? null) ? $adminTickets : [];
+$activeTicket = is_array($activeTicket ?? null) ? $activeTicket : null;
+$ticketSearch = is_string($ticketSearch ?? null) ? $ticketSearch : '';
+$adminLogs = is_array($adminLogs ?? null) ? $adminLogs : ['rows' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 10, 'filter' => ''];
+$adminLogRows = is_array($adminLogs['rows'] ?? null) ? $adminLogs['rows'] : [];
+$adminLogTotal = (int) ($adminLogs['total'] ?? 0);
+$adminLogPage = (int) ($adminLogs['page'] ?? 1);
+$adminLogPages = max(1, (int) ($adminLogs['pages'] ?? 1));
+$adminLogFilter = (string) ($adminLogs['filter'] ?? '');
+$announcementTypes = is_array($announcementTypes ?? null) ? $announcementTypes : [];
+$announcementTypesActive = is_array($announcementTypesActive ?? null) ? $announcementTypesActive : [];
+$announcements = is_array($announcements ?? null) ? $announcements : [];
+$overviewAnnouncements = is_array($overviewAnnouncements ?? null) ? $overviewAnnouncements : [];
+$latestOverviewAnn = $overviewAnnouncements[0] ?? null;
+$pastOverviewAnn = array_slice($overviewAnnouncements, 1);
+$openTicketCount = (int) ($openTicketCount ?? 0);
+$can = static function (string $flag) use ($permFlags): bool {
+    return !empty($permFlags[$flag]);
+};
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -244,6 +280,111 @@ $settingsOpen = in_array($panelSection, [
   .modal .modal-actions{display:flex; gap:12px; justify-content:flex-end;}
   .form-row select{width:100%; background:var(--obsidian); border:1px solid var(--line); padding:12px 14px; color:var(--parchment); font-size:.88rem; outline:none; font-family:inherit;}
   .form-row select:focus{border-color:var(--gold);}
+  .flags-table{width:100%; border-collapse:collapse; margin-top:8px;}
+  .flags-table th, .flags-table td{padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle;}
+  .flags-table th{font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ash); font-weight:600;}
+  .flags-table td{font-size:.85rem; color:var(--parchment);}
+  .flags-table .flag-check{width:44px; text-align:center;}
+  .flags-table input[type="checkbox"]{width:16px; height:16px; margin:0; accent-color:var(--gold); cursor:pointer; flex:none;}
+  .flags-table label.flag-row{display:contents; cursor:pointer;}
+  .flags-table tr:hover td{background:rgba(201,151,74,.04);}
+  .ann-card{
+    border:1px solid var(--line); border-left:3px solid var(--gold);
+    padding:0; margin-bottom:16px; background:linear-gradient(180deg, rgba(201,151,74,.06), rgba(11,9,6,.4));
+    overflow:hidden;
+  }
+  .ann-card .ann-head{
+    padding:14px 18px 12px; border-bottom:1px solid rgba(201,151,74,.12);
+    background:rgba(11,9,6,.25);
+  }
+  .ann-card .ann-meta{
+    display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center;
+    margin-bottom:10px; font-size:.72rem; color:var(--ash); letter-spacing:.02em;
+  }
+  .ann-card .ann-meta .ann-type{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:3px 9px; border:1px solid rgba(201,151,74,.28);
+    background:rgba(201,151,74,.1); color:var(--gold-light);
+    font-size:.68rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em;
+  }
+  .ann-card .ann-title{
+    font-family:var(--font-display); font-size:1.28rem; font-weight:700;
+    line-height:1.3; letter-spacing:.03em; color:var(--gold-light); margin:0;
+  }
+  .ann-card .ann-body{
+    padding:16px 18px 18px; font-size:.9rem; line-height:1.7; color:var(--parchment);
+  }
+  .ann-body p{margin:0 0 .75em;}
+  .ann-body p:last-child{margin-bottom:0;}
+  .ann-body ul,.ann-body ol{margin:0 0 .75em 1.25em;}
+  .ann-body table{width:100%; border-collapse:collapse; margin:.6em 0;}
+  .ann-body th,.ann-body td{border:1px solid var(--line); padding:6px 8px;}
+  .ann-body a{color:var(--gold-light); text-decoration:underline; text-underline-offset:2px;}
+  .ann-body h1,.ann-body h2,.ann-body h3{
+    font-family:var(--font-display); color:var(--gold-light); margin:.5em 0 .35em; font-size:1.05rem;
+  }
+  .ann-past{margin-top:14px; border:1px solid var(--line); background:rgba(11,9,6,.25);}
+  .ann-past-toggle{
+    width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:12px 14px; background:transparent; border:none; color:var(--gold-light);
+    font-size:.84rem; font-weight:600; cursor:pointer; font-family:inherit; text-align:left;
+  }
+  .ann-past-toggle:hover{background:rgba(201,151,74,.06);}
+  .ann-past-toggle .chev{transition:transform .2s; font-size:.75rem; opacity:.8;}
+  .ann-past.open .ann-past-toggle .chev{transform:rotate(180deg);}
+  .ann-past-list{display:none; border-top:1px solid var(--line);}
+  .ann-past.open .ann-past-list{display:block;}
+  .ann-past-item{
+    width:100%; display:flex; align-items:center; gap:12px; padding:12px 14px;
+    background:transparent; border:none; border-bottom:1px solid rgba(201,151,74,.08);
+    color:inherit; cursor:pointer; font-family:inherit; text-align:left;
+  }
+  .ann-past-item:last-child{border-bottom:none;}
+  .ann-past-item:hover{background:rgba(201,151,74,.07);}
+  .ann-past-item .ann-type{
+    flex-shrink:0; padding:3px 8px; border:1px solid rgba(201,151,74,.28);
+    background:rgba(201,151,74,.1); color:var(--gold-light);
+    font-size:.65rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em;
+  }
+  .ann-past-item .ann-past-title{flex:1; font-size:.9rem; color:var(--parchment); font-weight:600;}
+  .ann-past-item .ann-past-date{font-size:.72rem; color:var(--ash); white-space:nowrap;}
+  .ann-past-item .ann-past-go{color:var(--gold-light); opacity:.7; font-size:.8rem;}
+  .modal.modal-ann{width:640px; max-width:96vw;}
+  .modal.modal-ann .ann-modal-meta{display:flex; flex-wrap:wrap; gap:8px 12px; margin-bottom:12px; font-size:.75rem; color:var(--ash);}
+  .modal.modal-ann .ann-modal-meta .ann-type{
+    padding:3px 9px; border:1px solid rgba(201,151,74,.28); background:rgba(201,151,74,.1);
+    color:var(--gold-light); font-size:.68rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em;
+  }
+  .modal.modal-ann .ann-modal-body{font-size:.9rem; line-height:1.7; color:var(--parchment); max-height:50vh; overflow:auto;}
+  .modal.modal-ann .ann-modal-body p{margin:0 0 .7em;}
+  .modal.modal-ann .ann-modal-body a{color:var(--gold-light);}
+  #annEditorWrap{border:1px solid var(--line); background:var(--obsidian);}
+  .ann-toolbar{display:flex; flex-wrap:wrap; gap:6px; padding:10px; background:var(--obsidian-2); border-bottom:1px solid var(--line);}
+  .ann-toolbar button,.ann-toolbar label.ann-tool{
+    display:inline-flex; align-items:center; justify-content:center; gap:4px;
+    min-width:32px; height:32px; padding:0 8px; border:1px solid var(--line);
+    background:var(--obsidian); color:var(--gold-light); font-size:.78rem; cursor:pointer;
+  }
+  .ann-toolbar button:hover,.ann-toolbar label.ann-tool:hover{background:rgba(201,151,74,.14); border-color:rgba(201,151,74,.4);}
+  .ann-toolbar button b{font-weight:800;}
+  .ann-toolbar button > i:not([class]){font-style:italic;}
+  .ann-toolbar button u{text-decoration:underline;}
+  .ann-toolbar button s{text-decoration:line-through;}
+  .ann-toolbar .fa-solid{font-style:normal;}
+  .ann-toolbar input[type="color"]{width:28px; height:28px; padding:0; border:1px solid var(--line); background:transparent; cursor:pointer;}
+  .ann-toolbar .sep{width:1px; align-self:stretch; background:var(--line); margin:0 2px;}
+  #annEditor{
+    min-height:240px; max-height:480px; overflow:auto; padding:14px 16px;
+    color:var(--parchment); font-size:.9rem; line-height:1.65; outline:none; background:var(--obsidian);
+  }
+  #annEditor:empty:before{content:attr(data-placeholder); color:var(--ash);}
+  #annEditor table{width:100%; border-collapse:collapse; margin:.5em 0;}
+  #annEditor th,#annEditor td{border:1px solid var(--line); padding:6px 8px;}
+  #annEditor a{color:var(--gold-light);}
+  #annHtmlPanel{display:none; width:100%; min-height:200px; border:none; border-top:1px solid var(--line);
+    background:#120e08; color:var(--parchment); padding:12px; font-family:ui-monospace,Consolas,monospace; font-size:.8rem; resize:vertical;}
+  #annHtmlPanel.open{display:block;}
+  #annEditor.html-mode{display:none;}
   .nav-parent{display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; user-select:none;}
   .nav-parent .chev{font-size:.65rem; opacity:.7; transition:transform .2s;}
   .nav-parent.open .chev{transform:rotate(90deg);}
@@ -303,40 +444,52 @@ $settingsOpen = in_array($panelSection, [
     <a class="nav-item<?= $panelSection === 'ozet' ? ' active' : '' ?>" data-target="ozet"><i class="fa-solid fa-gauge-high"></i> Genel Bakış</a>
 
     <div class="nav-group-label">Oyuncular</div>
+    <?php if ($can('menu_oyuncular')): ?>
     <a class="nav-item<?= $panelSection === 'oyuncular' ? ' active' : '' ?>" data-target="oyuncular"><i class="fa-solid fa-users"></i> Oyuncu Yönetimi</a>
-    <a class="nav-item" data-target="banlar"><i class="fa-solid fa-gavel"></i> Ban / Mute</a>
+    <?php endif; ?>
+    <?php if ($can('menu_banlar')): ?>
+    <a class="nav-item<?= $panelSection === 'banlar' ? ' active' : '' ?>" data-target="banlar"><i class="fa-solid fa-gavel"></i> Ban / Mute</a>
+    <?php endif; ?>
 
     <div class="nav-group-label">İçerik</div>
-    <a class="nav-item" data-target="duyurular"><i class="fa-solid fa-bullhorn"></i> Duyurular</a>
-    <a class="nav-item" data-target="destekler"><i class="fa-solid fa-headset"></i> Destek Talepleri</a>
+    <?php if ($can('menu_duyurular') || $can('announcements')): ?>
+    <a class="nav-item<?= $panelSection === 'duyurular' ? ' active' : '' ?>" data-target="duyurular"><i class="fa-solid fa-bullhorn"></i> Duyurular</a>
+    <?php endif; ?>
 
-    <div class="nav-group-label">Sistem</div>
+    <?php if ($can('menu_destekler')): ?>
+    <a class="nav-item<?= $panelSection === 'destekler' ? ' active' : '' ?>" data-target="destekler"><i class="fa-solid fa-headset"></i> Destek Talepleri</a>
+    <?php endif; ?>
+
+    <div class="nav-group-label">Sunucu işlemleri</div>
     <a class="nav-item" href="<?= e(url('/panel')) ?>"><i class="fa-solid fa-user"></i> Oyuncu Paneli</a>
-    <a class="nav-item" data-target="sunucu"><i class="fa-solid fa-server"></i> Sunucu Kontrol</a>
-    <a class="nav-item" data-target="loglar"><i class="fa-solid fa-scroll"></i> Loglar</a>
+    <?php if ($can('menu_sunucu')): ?>
+    <a class="nav-item<?= $panelSection === 'sunucu' ? ' active' : '' ?>" data-target="sunucu"><i class="fa-solid fa-server"></i> Sunucu Yönetimi</a>
+    <?php endif; ?>
+    <?php if ($can('menu_loglar')): ?>
+    <a class="nav-item<?= $panelSection === 'loglar' ? ' active' : '' ?>" data-target="loglar"><i class="fa-solid fa-scroll"></i> Loglar</a>
+    <?php endif; ?>
 
+    <?php if ($can('site_settings')): ?>
     <div class="nav-group-label">Ayarlar</div>
-    <div class="nav-item nav-parent<?= $settingsOpen ? ' open active' : '' ?>" id="settingsParent" data-parent="settings">
-      <span><i class="fa-solid fa-sliders"></i> Site Ayarları</span>
-      <i class="fa-solid fa-chevron-right chev"></i>
-    </div>
-    <div class="nav-sub<?= $settingsOpen ? ' open' : '' ?>" id="settingsSub">
-      <a class="nav-item<?= $panelSection === 'patch-linkleri' ? ' active' : '' ?>" data-target="patch-linkleri"><i class="fa-solid fa-download"></i> Patch Linkleri</a>
-      <a class="nav-item<?= $panelSection === 'ozellikler-ayarlari' ? ' active' : '' ?>" data-target="ozellikler-ayarlari"><i class="fa-solid fa-star"></i> Özellikler</a>
-      <a class="nav-item<?= $panelSection === 'siniflar-ayarlari' ? ' active' : '' ?>" data-target="siniflar-ayarlari"><i class="fa-solid fa-khanda"></i> Sınıflar</a>
-      <a class="nav-item<?= $panelSection === 'oranlar-ayarlari' ? ' active' : '' ?>" data-target="oranlar-ayarlari"><i class="fa-solid fa-percent"></i> Sunucu Oranları</a>
-      <a class="nav-item<?= $panelSection === 'siradaki-bolum' ? ' active' : '' ?>" data-target="siradaki-bolum"><i class="fa-solid fa-clock"></i> Sıradaki Bölüm</a>
-      <a class="nav-item<?= $panelSection === 'galeri-ayarlari' ? ' active' : '' ?>" data-target="galeri-ayarlari"><i class="fa-solid fa-images"></i> Galeri</a>
-      <a class="nav-item<?= $panelSection === 'footer-ayarlari' ? ' active' : '' ?>" data-target="footer-ayarlari"><i class="fa-solid fa-shoe-prints"></i> Footer / Border</a>
-      <a class="nav-item<?= $panelSection === 'ceza-ayarlari' ? ' active' : '' ?>" data-target="ceza-ayarlari"><i class="fa-solid fa-scale-balanced"></i> Ceza Ayarları</a>
-    </div>
+    <a class="nav-item<?= $panelSection === 'patch-linkleri' ? ' active' : '' ?>" data-target="patch-linkleri"><i class="fa-solid fa-download"></i> Patch Linkleri</a>
+    <a class="nav-item<?= $panelSection === 'ozellikler-ayarlari' ? ' active' : '' ?>" data-target="ozellikler-ayarlari"><i class="fa-solid fa-star"></i> Özellikler</a>
+    <a class="nav-item<?= $panelSection === 'siniflar-ayarlari' ? ' active' : '' ?>" data-target="siniflar-ayarlari"><i class="fa-solid fa-khanda"></i> Sınıflar</a>
+    <a class="nav-item<?= $panelSection === 'oranlar-ayarlari' ? ' active' : '' ?>" data-target="oranlar-ayarlari"><i class="fa-solid fa-percent"></i> Sunucu Oranları</a>
+    <a class="nav-item<?= $panelSection === 'siradaki-bolum' ? ' active' : '' ?>" data-target="siradaki-bolum"><i class="fa-solid fa-clock"></i> Sıradaki Bölüm</a>
+    <a class="nav-item<?= $panelSection === 'galeri-ayarlari' ? ' active' : '' ?>" data-target="galeri-ayarlari"><i class="fa-solid fa-images"></i> Galeri</a>
+    <a class="nav-item<?= $panelSection === 'footer-ayarlari' ? ' active' : '' ?>" data-target="footer-ayarlari"><i class="fa-solid fa-shoe-prints"></i> Footer / Border</a>
+    <a class="nav-item<?= $panelSection === 'ceza-ayarlari' ? ' active' : '' ?>" data-target="ceza-ayarlari"><i class="fa-solid fa-scale-balanced"></i> Ceza Ayarları</a>
+    <a class="nav-item<?= $panelSection === 'yetki-gruplari' ? ' active' : '' ?>" data-target="yetki-gruplari"><i class="fa-solid fa-shield-halved"></i> Yetki Grupları</a>
+    <a class="nav-item<?= $panelSection === 'ticket-ayarlari' ? ' active' : '' ?>" data-target="ticket-ayarlari"><i class="fa-solid fa-ticket"></i> Ticket Ayarları</a>
+    <a class="nav-item<?= $panelSection === 'duyuru-turleri' ? ' active' : '' ?>" data-target="duyuru-turleri"><i class="fa-solid fa-tags"></i> Duyuru Türleri</a>
+    <?php endif; ?>
 
     <div class="sidebar-foot">
       <div class="sidebar-char">
         <div class="avatar-ring"><i class="fa-solid fa-crown"></i></div>
         <div>
           <div class="who"><?= e((string) ($authUser['login'] ?? 'Admin')) ?></div>
-          <div class="role"><?= ((int)($authUser['permission'] ?? 0) === 2) ? 'Süper Admin' : 'Yönetici' ?> · v<?= e($appVersion) ?></div>
+          <div class="role"><?= e(\App\Services\PermissionService::groupNameForUser($authUser)) ?> · v<?= e($appVersion) ?></div>
         </div>
       </div>
       <a href="<?= e(url('/cikis')) ?>" class="logout-link"><i class="fa-solid fa-right-from-bracket"></i> Çıkış Yap</a>
@@ -406,9 +559,9 @@ $settingsOpen = in_array($panelSection, [
         </div>
         <div class="card stat-card">
           <div class="icon"><i class="fa-solid fa-ticket"></i></div>
-          <strong>—</strong>
+          <strong><?= number_format($openTicketCount, 0, ',', '.') ?></strong>
           <span class="lbl">Açık Destek Talebi</span>
-          <span class="coming-soon">Destek sistemi · yapım aşamasında</span>
+          <span class="delta">Kapalı olmayan ticketler</span>
         </div>
       </div>
 
@@ -450,6 +603,51 @@ $settingsOpen = in_array($panelSection, [
           <?php endif; ?>
         </div>
       </div>
+
+      <div class="card" style="margin-top:22px;">
+        <div class="card-head">
+          <h3>Personel Duyuruları</h3>
+          <?php if ($can('menu_duyurular') || $can('announcements')): ?>
+            <a href="#" data-target="duyurular" data-jump-section="duyurular" style="font-size:.8rem;color:var(--gold-light);">Tümünü yönet</a>
+          <?php endif; ?>
+        </div>
+        <?php if ($latestOverviewAnn === null): ?>
+          <p style="color:var(--ash);font-size:.88rem;">Aktif duyuru yok.</p>
+        <?php else: ?>
+          <?php $ann = $latestOverviewAnn; ?>
+          <article class="ann-card">
+            <div class="ann-head">
+              <div class="ann-meta">
+                <span class="ann-type"><?= e((string) ($ann['type_name'] ?: 'Duyuru')) ?></span>
+                <span><?= e((string) $ann['published_label']) ?></span>
+                <?php if ($ann['author_login'] !== ''): ?>
+                  <span>· <?= e((string) $ann['author_login']) ?></span>
+                <?php endif; ?>
+              </div>
+              <h4 class="ann-title"><?= e((string) $ann['title']) ?></h4>
+            </div>
+            <div class="ann-body"><?= \App\Services\AnnouncementService::sanitizeHtml((string) $ann['body']) ?></div>
+          </article>
+          <?php if ($pastOverviewAnn !== []): ?>
+          <div class="ann-past">
+            <button type="button" class="ann-past-toggle" data-ann-past-toggle>
+              <span>Geçmiş duyurular (<?= count($pastOverviewAnn) ?>)</span>
+              <i class="fa-solid fa-chevron-down chev"></i>
+            </button>
+            <div class="ann-past-list">
+              <?php foreach ($pastOverviewAnn as $ann): ?>
+                <button type="button" class="ann-past-item" data-open-ann="<?= (int) $ann['id'] ?>">
+                  <span class="ann-type"><?= e((string) ($ann['type_name'] ?: 'Duyuru')) ?></span>
+                  <span class="ann-past-title"><?= e((string) $ann['title']) ?></span>
+                  <span class="ann-past-date"><?= e((string) $ann['published_label']) ?></span>
+                  <i class="fa-solid fa-up-right-from-square ann-past-go"></i>
+                </button>
+              <?php endforeach; ?>
+            </div>
+          </div>
+          <?php endif; ?>
+        <?php endif; ?>
+      </div>
     </section>
 
     <!-- ===================== OYUNCU YÖNETİMİ ===================== -->
@@ -475,10 +673,10 @@ $settingsOpen = in_array($panelSection, [
           <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Filtrele</button>
         </form>
         <table>
-          <thead><tr><th>Hesap</th><th>E-posta</th><th>Karakter</th><th>Seviye</th><th>IP</th><th>Durum</th><th>İşlemler</th></tr></thead>
+          <thead><tr><th>Hesap</th><th>E-posta</th><th>Karakter</th><th>Seviye</th><th>IP</th><th>Rol</th><th>Durum</th><th>İşlemler</th></tr></thead>
           <tbody>
             <?php if ($playerAccounts === []): ?>
-              <tr><td colspan="7" style="color:var(--ash);">Kayıt bulunamadı.</td></tr>
+              <tr><td colspan="8" style="color:var(--ash);">Kayıt bulunamadı.</td></tr>
             <?php else: ?>
               <?php foreach ($playerAccounts as $acc): ?>
               <tr>
@@ -494,12 +692,31 @@ $settingsOpen = in_array($panelSection, [
                 <td><?= $acc['character_level'] !== null && (int) $acc['character_level'] > 0 ? (int) $acc['character_level'] : '—' ?></td>
                 <td><?= e((string) $acc['ip']) ?></td>
                 <td>
+                  <span class="badge <?= e((string) ($acc['role_badge'] ?? 'closed')) ?>"><?= e((string) ($acc['role_label'] ?? 'Oyuncu')) ?></span>
+                </td>
+                <td>
                   <span class="badge <?= e((string) $acc['status_badge']) ?>">
                     <?= e((string) $acc['status_label']) ?>
                   </span>
                 </td>
                 <td class="actions-cell">
+                  <?php if ($can('player_detail')): ?>
                   <button type="button" title="Detay" data-detail="<?= (int) $acc['id'] ?>"><i class="fa-solid fa-eye"></i></button>
+                  <?php endif; ?>
+                  <?php if ($can('site_settings')): ?>
+                  <?php
+                    $targetIsSuper = ((int) ($acc['web_permission'] ?? 0) === 2);
+                    $canAssignPerm = !$targetIsSuper || ((int) ($authUser['permission'] ?? 0) === 2);
+                  ?>
+                  <?php if ($canAssignPerm): ?>
+                  <button type="button" title="Yetki grubu"
+                    data-perm-id="<?= (int) $acc['id'] ?>"
+                    data-perm-login="<?= e((string) $acc['login']) ?>"
+                    data-perm-group="<?= (int) ($acc['staff_group_id'] ?? 0) ?>"
+                  ><i class="fa-solid fa-shield-halved"></i></button>
+                  <?php endif; ?>
+                  <?php endif; ?>
+                  <?php if ($can('ban')): ?>
                   <?php if ($acc['status'] === 'BLOCK'): ?>
                     <button type="button" title="Banı kaldır"
                       data-unban-id="<?= (int) $acc['id'] ?>"
@@ -507,6 +724,7 @@ $settingsOpen = in_array($panelSection, [
                       data-unban-section="oyuncular"><i class="fa-solid fa-lock-open"></i></button>
                   <?php else: ?>
                     <button type="button" title="Banla" class="danger" data-ban-id="<?= (int) $acc['id'] ?>" data-ban-login="<?= e((string) $acc['login']) ?>"><i class="fa-solid fa-gavel"></i></button>
+                  <?php endif; ?>
                   <?php endif; ?>
                 </td>
               </tr>
@@ -633,6 +851,193 @@ $settingsOpen = in_array($panelSection, [
               <button type="button" class="btn btn-ghost btn-sm" id="penaltyReset">Temizle</button>
             </div>
           </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== YETKİ GRUPLARI ===================== -->
+    <section class="section<?= $panelSection === 'yetki-gruplari' ? ' active' : '' ?>" id="yetki-gruplari">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-head"><h3>Yetki Grupları</h3><span style="font-size:.8rem;color:var(--ash);">web değeri sistemde sabit</span></div>
+          <table>
+            <thead><tr><th>Yetki Tanımı</th><th>Web</th><th>Tür</th><th></th></tr></thead>
+            <tbody>
+              <?php if ($permissionGroups === []): ?>
+                <tr><td colspan="4" style="color:var(--ash);">Grup yok.</td></tr>
+              <?php else: ?>
+                <?php foreach ($permissionGroups as $g): ?>
+                <tr>
+                  <td><?= e((string) $g['name']) ?></td>
+                  <td><code><?= (int) $g['web_permission'] ?></code></td>
+                  <td><?= !empty($g['is_system']) ? 'Sistem' : 'Özel' ?></td>
+                  <td class="actions-cell">
+                    <?php if ((int) $g['web_permission'] !== 0): ?>
+                    <button type="button" title="Düzenle"
+                      data-edit-group
+                      data-id="<?= (int) $g['id'] ?>"
+                      data-name="<?= e((string) $g['name']) ?>"
+                      data-web="<?= (int) $g['web_permission'] ?>"
+                      data-system="<?= !empty($g['is_system']) ? '1' : '0' ?>"
+                      data-flags="<?= e(json_encode($g['flags'] ?? [], JSON_UNESCAPED_UNICODE)) ?>"
+                    ><i class="fa-solid fa-pen"></i></button>
+                    <?php endif; ?>
+                    <?php if (empty($g['is_system'])): ?>
+                    <form method="post" action="<?= e(url('/admin/yetki/grup/sil')) ?>" style="display:inline;" onsubmit="return confirm('Grup silinsin mi?');">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $g['id'] ?>">
+                      <button type="submit" class="danger" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3 id="groupFormTitle">Yeni Yetki Grubu</h3></div>
+          <form method="post" action="<?= e(url('/admin/yetki/grup')) ?>" id="groupForm">
+            <?= $csrf ?>
+            <input type="hidden" name="id" id="groupId" value="">
+            <div class="form-row"><label>Yetki Tanımı</label><input name="name" id="groupName" required maxlength="120" placeholder="Örn: Destek Ekibi"></div>
+            <div class="form-row"><label>Web İzni</label>
+              <input type="text" id="groupWeb" value="1" disabled>
+              <div style="font-size:.75rem;color:var(--ash);margin-top:6px;">Yeni gruplar her zaman web=1. Default User=0 ve Super Admin=2 değiştirilemez.</div>
+            </div>
+            <div class="form-row" id="groupFlagsWrap">
+              <label>İşlemler</label>
+              <table class="flags-table">
+                <thead>
+                  <tr>
+                    <th class="flag-check">
+                      <input type="checkbox" id="flagsSelectAll" title="Tümünü seç / kaldır">
+                    </th>
+                    <th>Yetki</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($permFlagDefs as $fkey => $flabel): ?>
+                  <tr>
+                    <td class="flag-check">
+                      <input type="checkbox" name="flags[<?= e($fkey) ?>]" value="1" data-flag="<?= e($fkey) ?>" id="flag_<?= e($fkey) ?>">
+                    </td>
+                    <td><label for="flag_<?= e($fkey) ?>" style="cursor:pointer;"><?= e($flabel) ?></label></td>
+                  </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+              <p class="flags-hint">Yeni grupta varsayılan: pasif. Super Admin tüm yetkilere sahiptir. Üstteki kutu ile tümünü seçebilirsin.</p>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="groupReset">Temizle</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== TICKET AYARLARI ===================== -->
+    <section class="section<?= $panelSection === 'ticket-ayarlari' ? ' active' : '' ?>" id="ticket-ayarlari">
+      <div class="grid grid-3">
+        <div class="card">
+          <div class="card-head"><h3>Ticket Kategorileri</h3></div>
+          <table>
+            <thead><tr><th>Ad</th><th>Açıklama</th><th></th></tr></thead>
+            <tbody>
+              <?php foreach ($ticketCategories as $cat): ?>
+              <tr>
+                <td><?= e((string) $cat['name']) ?></td>
+                <td style="color:var(--ash);font-size:.8rem;"><?= e((string) $cat['description']) ?></td>
+                <td class="actions-cell">
+                  <button type="button" title="Düzenle"
+                    data-edit-tcat
+                    data-id="<?= (int) $cat['id'] ?>"
+                    data-name="<?= e((string) $cat['name']) ?>"
+                    data-description="<?= e((string) $cat['description']) ?>"
+                  ><i class="fa-solid fa-pen"></i></button>
+                  <form method="post" action="<?= e(url('/admin/ticket/kategori/sil')) ?>" style="display:inline;" onsubmit="return confirm('Silinsin mi?');">
+                    <?= $csrf ?><input type="hidden" name="id" value="<?= (int) $cat['id'] ?>">
+                    <button type="submit" class="danger"><i class="fa-solid fa-trash"></i></button>
+                  </form>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+          <form method="post" action="<?= e(url('/admin/ticket/kategori')) ?>" id="tcatForm" style="margin-top:14px;">
+            <?= $csrf ?>
+            <input type="hidden" name="id" id="tcatId" value="">
+            <div class="form-row"><label>Kategori</label><input name="name" id="tcatName" required maxlength="120"></div>
+            <div class="form-row"><label>Açıklama</label><textarea name="description" id="tcatDesc" maxlength="500" style="min-height:60px;"></textarea></div>
+            <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+          </form>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Durumlar</h3></div>
+          <table>
+            <thead><tr><th>Kod</th><th>Etiket</th><th></th></tr></thead>
+            <tbody>
+              <?php foreach ($ticketStatuses as $st): ?>
+              <tr>
+                <td><code><?= e((string) $st['code']) ?></code></td>
+                <td><?= e((string) $st['label']) ?></td>
+                <td class="actions-cell">
+                  <button type="button" title="Düzenle"
+                    data-edit-tstat
+                    data-id="<?= (int) $st['id'] ?>"
+                    data-code="<?= e((string) $st['code']) ?>"
+                    data-label="<?= e((string) $st['label']) ?>"
+                    data-system="<?= !empty($st['is_system']) ? '1' : '0' ?>"
+                  ><i class="fa-solid fa-pen"></i></button>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+          <form method="post" action="<?= e(url('/admin/ticket/durum')) ?>" id="tstatForm" style="margin-top:14px;">
+            <?= $csrf ?>
+            <input type="hidden" name="id" id="tstatId" value="">
+            <div class="form-row"><label>Kod</label><input name="code" id="tstatCode" required maxlength="40" placeholder="ornek_durum"></div>
+            <div class="form-row"><label>Etiket</label><input name="label" id="tstatLabel" required maxlength="120"></div>
+            <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+          </form>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>İzinli Dosya Türleri</h3></div>
+          <table>
+            <thead><tr><th>Uzantı</th><th>MIME</th><th>Aktif</th><th></th></tr></thead>
+            <tbody>
+              <?php foreach ($ticketFileTypes as $ft): ?>
+              <tr>
+                <td>.<?= e((string) $ft['extension']) ?></td>
+                <td style="font-size:.75rem;color:var(--ash);"><?= e((string) $ft['mime_type']) ?></td>
+                <td><?= !empty($ft['is_active']) ? 'Evet' : 'Hayır' ?></td>
+                <td class="actions-cell">
+                  <form method="post" action="<?= e(url('/admin/ticket/dosya-turu/toggle')) ?>" style="display:inline;">
+                    <?= $csrf ?>
+                    <input type="hidden" name="id" value="<?= (int) $ft['id'] ?>">
+                    <input type="hidden" name="is_active" value="<?= !empty($ft['is_active']) ? '0' : '1' ?>">
+                    <button type="submit" title="Aktif/Pasif"><?= !empty($ft['is_active']) ? '<i class="fa-solid fa-toggle-on"></i>' : '<i class="fa-solid fa-toggle-off"></i>' ?></button>
+                  </form>
+                  <form method="post" action="<?= e(url('/admin/ticket/dosya-turu/sil')) ?>" style="display:inline;" onsubmit="return confirm('Silinsin mi?');">
+                    <?= $csrf ?><input type="hidden" name="id" value="<?= (int) $ft['id'] ?>">
+                    <button type="submit" class="danger"><i class="fa-solid fa-trash"></i></button>
+                  </form>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+          <form method="post" action="<?= e(url('/admin/ticket/dosya-turu')) ?>" style="margin-top:14px;">
+            <?= $csrf ?>
+            <div class="form-row"><label>Uzantı</label><input name="extension" required maxlength="16" placeholder="png"></div>
+            <div class="form-row"><label>MIME</label><input name="mime_type" required maxlength="100" placeholder="image/png"></div>
+            <button type="submit" class="btn btn-primary btn-sm">Ekle</button>
+          </form>
+          <p style="font-size:.75rem;color:var(--ash);margin-top:12px;line-height:1.5;">Yüklemede uzantı + gerçek MIME kontrol edilir; .exe’yi .png diye yüklemek engellenir.</p>
         </div>
       </div>
     </section>
@@ -940,98 +1345,376 @@ $settingsOpen = in_array($panelSection, [
     </section>
 
     <!-- ===================== DUYURULAR ===================== -->
-
-    <section class="section" id="duyurular">
-      <div class="grid grid-3">
+    <section class="section<?= $panelSection === 'duyurular' ? ' active' : '' ?>" id="duyurular">
+      <?php if (!$can('announcements') && !$can('menu_duyurular')): ?>
+        <div class="card"><p style="color:var(--ash);">Duyuru yetkin yok.</p></div>
+      <?php else: ?>
+      <div class="grid grid-2">
         <div class="card">
           <div class="card-head"><h3>Yayınlanan Duyurular</h3></div>
-          <div class="feed-item"><div class="fi-icon"><i class="fa-solid fa-dragon"></i></div><div><div class="fi-text">Kızıl Tapınak güncellemesi yayında</div><div class="fi-time">2 gün önce · Yayında</div></div></div>
-          <div class="feed-item"><div class="fi-icon"><i class="fa-solid fa-bolt"></i></div><div><div class="fi-text">Hafta sonu x2 EXP etkinliği</div><div class="fi-time">4 gün önce · Yayında</div></div></div>
-          <div class="feed-item"><div class="fi-icon"><i class="fa-solid fa-screwdriver-wrench"></i></div><div><div class="fi-text">Planlı bakım tamamlandı</div><div class="fi-time">6 gün önce · Arşivlendi</div></div></div>
+          <?php if ($announcements === []): ?>
+            <p style="color:var(--ash);font-size:.88rem;">Henüz duyuru yok.</p>
+          <?php else: ?>
+            <?php
+              $annBodiesMap = [];
+              foreach ($announcements as $ann) {
+                  $annBodiesMap[(string) (int) $ann['id']] = (string) $ann['body'];
+              }
+            ?>
+            <script>window.__annBodies = <?= json_encode($annBodiesMap, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
+            <table>
+              <thead><tr><th>Başlık</th><th>Tür</th><th>Durum</th><th>Tarih</th><th></th></tr></thead>
+              <tbody>
+                <?php foreach ($announcements as $ann): ?>
+                <tr>
+                  <td><?= e((string) $ann['title']) ?></td>
+                  <td style="color:var(--ash);"><?= e((string) $ann['type_name']) ?></td>
+                  <td><span class="badge <?= !empty($ann['is_active']) ? 'pending' : 'closed' ?>"><?= !empty($ann['is_active']) ? 'Aktif' : 'Pasif' ?></span></td>
+                  <td style="font-size:.8rem;"><?= e((string) $ann['published_label']) ?></td>
+                  <td class="actions-cell">
+                    <?php if ($can('announcements')): ?>
+                    <button type="button" title="Düzenle"
+                      data-edit-ann
+                      data-id="<?= (int) $ann['id'] ?>"
+                      data-type="<?= (int) $ann['type_id'] ?>"
+                      data-title="<?= e((string) $ann['title']) ?>"
+                      data-active="<?= !empty($ann['is_active']) ? '1' : '0' ?>"
+                    ><i class="fa-solid fa-pen"></i></button>
+                    <form method="post" action="<?= e(url('/admin/duyuru/toggle')) ?>" style="display:inline;">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $ann['id'] ?>">
+                      <input type="hidden" name="is_active" value="<?= !empty($ann['is_active']) ? '0' : '1' ?>">
+                      <button type="submit" title="Aktif/Pasif"><?= !empty($ann['is_active']) ? '<i class="fa-solid fa-toggle-on"></i>' : '<i class="fa-solid fa-toggle-off"></i>' ?></button>
+                    </form>
+                    <form method="post" action="<?= e(url('/admin/duyuru/sil')) ?>" style="display:inline;" onsubmit="return confirm('Duyuru silinsin mi?');">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $ann['id'] ?>">
+                      <button type="submit" class="danger" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          <?php endif; ?>
         </div>
         <div class="card">
-          <div class="card-head"><h3>Yeni Duyuru</h3></div>
-          <div class="form-row"><label>Başlık</label><input placeholder="Duyuru başlığı"></div>
-          <div class="form-row"><label>İçerik</label><textarea placeholder="Duyuru metnini yaz..."></textarea></div>
-          <a class="btn btn-primary" style="width:100%; justify-content:center;">Yayınla</a>
+          <div class="card-head"><h3 id="annFormTitle">Yeni Duyuru</h3></div>
+          <?php if (!$can('announcements')): ?>
+            <p style="color:var(--ash);font-size:.88rem;">Duyuru yazmak için “Duyuru işlemleri” yetkisi gerekir.</p>
+          <?php else: ?>
+          <form method="post" action="<?= e(url('/admin/duyuru/kaydet')) ?>" id="annForm">
+            <?= $csrf ?>
+            <input type="hidden" name="id" id="annId" value="">
+            <input type="hidden" name="body" id="annBody" value="">
+            <div class="form-row">
+              <label>Duyuru türü</label>
+              <select name="type_id" id="annType" required>
+                <option value="">Seç...</option>
+                <?php foreach ($announcementTypesActive as $t): ?>
+                  <option value="<?= (int) $t['id'] ?>"><?= e((string) $t['name']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="form-row"><label>Başlık</label><input name="title" id="annTitle" required maxlength="200" placeholder="Duyuru başlığı"></div>
+            <div class="form-row">
+              <label>İçerik</label>
+              <div id="annEditorWrap">
+                <div class="ann-toolbar" id="annToolbar" role="toolbar" aria-label="Metin araçları">
+                  <button type="button" data-cmd="bold" title="Kalın"><b>B</b></button>
+                  <button type="button" data-cmd="italic" title="İtalik"><i>I</i></button>
+                  <button type="button" data-cmd="underline" title="Altı çizili"><u>U</u></button>
+                  <button type="button" data-cmd="strikeThrough" title="Üstü çizili"><s>S</s></button>
+                  <span class="sep"></span>
+                  <label class="ann-tool" title="Yazı rengi">
+                    <input type="color" id="annForeColor" value="#eccd8e" aria-label="Yazı rengi">
+                  </label>
+                  <label class="ann-tool" title="Arka plan rengi">
+                    <input type="color" id="annHiliteColor" value="#8f1c29" aria-label="Arka plan">
+                  </label>
+                  <span class="sep"></span>
+                  <button type="button" data-cmd="justifyLeft" title="Sola"><i class="fa-solid fa-align-left"></i></button>
+                  <button type="button" data-cmd="justifyCenter" title="Ortala"><i class="fa-solid fa-align-center"></i></button>
+                  <button type="button" data-cmd="justifyRight" title="Sağa"><i class="fa-solid fa-align-right"></i></button>
+                  <span class="sep"></span>
+                  <button type="button" data-cmd="insertUnorderedList" title="Madde listesi"><i class="fa-solid fa-list-ul"></i></button>
+                  <button type="button" data-cmd="insertOrderedList" title="Numaralı liste"><i class="fa-solid fa-list-ol"></i></button>
+                  <span class="sep"></span>
+                  <button type="button" data-cmd="createLink" title="Link"><i class="fa-solid fa-link"></i></button>
+                  <button type="button" data-cmd="unlink" title="Linki kaldır"><i class="fa-solid fa-link-slash"></i></button>
+                  <button type="button" data-cmd="insertTable" title="Tablo ekle"><i class="fa-solid fa-table"></i></button>
+                  <span class="sep"></span>
+                  <button type="button" data-cmd="formatBlock" data-value="h2" title="Başlık">H2</button>
+                  <button type="button" data-cmd="formatBlock" data-value="p" title="Paragraf">P</button>
+                  <button type="button" data-cmd="removeFormat" title="Biçimi temizle"><i class="fa-solid fa-eraser"></i></button>
+                  <button type="button" data-cmd="toggleHtml" title="HTML kaynak" id="annToggleHtml"><i class="fa-solid fa-code"></i></button>
+                </div>
+                <div id="annEditor" contenteditable="true" data-placeholder="Duyuru içeriğini buraya yaz…"></div>
+                <textarea id="annHtmlPanel" spellcheck="false" aria-label="HTML kaynak"></textarea>
+              </div>
+            </div>
+            <div class="form-row">
+              <label style="display:flex;align-items:center;gap:10px;text-transform:none;letter-spacing:0;cursor:pointer;">
+                <input type="checkbox" name="is_active" id="annActive" value="1" checked style="width:auto;">
+                Aktif yayınla
+              </label>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="annReset">Temizle</button>
+            </div>
+          </form>
+          <?php endif; ?>
+        </div>
+      </div>
+      <?php endif; ?>
+    </section>
+
+    <!-- ===================== DUYURU TÜRLERİ ===================== -->
+    <section class="section<?= $panelSection === 'duyuru-turleri' ? ' active' : '' ?>" id="duyuru-turleri">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-head"><h3>Duyuru Türleri</h3></div>
+          <table>
+            <thead><tr><th>Ad</th><th>Durum</th><th></th></tr></thead>
+            <tbody>
+              <?php if ($announcementTypes === []): ?>
+                <tr><td colspan="3" style="color:var(--ash);">Tür yok.</td></tr>
+              <?php else: ?>
+                <?php foreach ($announcementTypes as $t): ?>
+                <tr>
+                  <td><?= e((string) $t['name']) ?></td>
+                  <td><?= !empty($t['is_active']) ? 'Aktif' : 'Pasif' ?></td>
+                  <td class="actions-cell">
+                    <button type="button" title="Düzenle"
+                      data-edit-anntype
+                      data-id="<?= (int) $t['id'] ?>"
+                      data-name="<?= e((string) $t['name']) ?>"
+                    ><i class="fa-solid fa-pen"></i></button>
+                    <form method="post" action="<?= e(url('/admin/duyuru-tur/toggle')) ?>" style="display:inline;">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $t['id'] ?>">
+                      <input type="hidden" name="is_active" value="<?= !empty($t['is_active']) ? '0' : '1' ?>">
+                      <button type="submit"><?= !empty($t['is_active']) ? '<i class="fa-solid fa-toggle-on"></i>' : '<i class="fa-solid fa-toggle-off"></i>' ?></button>
+                    </form>
+                    <form method="post" action="<?= e(url('/admin/duyuru-tur/sil')) ?>" style="display:inline;" onsubmit="return confirm('Tür silinsin / pasife alınsın mı?');">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $t['id'] ?>">
+                      <button type="submit" class="danger"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3 id="annTypeFormTitle">Yeni Tür</h3></div>
+          <form method="post" action="<?= e(url('/admin/duyuru-tur/kaydet')) ?>" id="annTypeForm">
+            <?= $csrf ?>
+            <input type="hidden" name="id" id="annTypeId" value="">
+            <div class="form-row"><label>Tür adı</label><input name="name" id="annTypeName" required maxlength="120" placeholder="Örn: Etkinlik Duyurusu"></div>
+            <div style="display:flex;gap:10px;">
+              <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="annTypeReset">Temizle</button>
+            </div>
+          </form>
         </div>
       </div>
     </section>
 
     <!-- ===================== DESTEK TALEPLERİ ===================== -->
-    <section class="section" id="destekler">
-      <div class="card">
-        <div class="card-head"><h3>Destek Talepleri</h3></div>
-        <table>
-          <thead><tr><th>Oyuncu</th><th>Konu</th><th>Kategori</th><th>Tarih</th><th>Durum</th><th>İşlem</th></tr></thead>
-          <tbody>
-            <tr><td>karakilic92</td><td>Eşya kayboldu (Ejderha Miğferi)</td><td>Eşya Sorunu</td><td>12 Tem</td><td><span class="badge pending">Bekliyor</span></td><td class="actions-cell"><button title="Yanıtla"><i class="fa-solid fa-reply"></i></button></td></tr>
-            <tr><td>demirkol44</td><td>Karakter bağlantı hatası</td><td>Teknik</td><td>11 Tem</td><td><span class="badge pending">Bekliyor</span></td><td class="actions-cell"><button title="Yanıtla"><i class="fa-solid fa-reply"></i></button></td></tr>
-            <tr><td>yesilnefes</td><td>Cash Puan yüklenmedi</td><td>Ödeme</td><td>08 Tem</td><td><span class="badge closed">Çözüldü</span></td><td class="actions-cell"><button title="Görüntüle"><i class="fa-solid fa-eye"></i></button></td></tr>
-          </tbody>
-        </table>
+    <section class="section<?= $panelSection === 'destekler' ? ' active' : '' ?>" id="destekler">
+      <?php if (!$can('tickets')): ?>
+        <div class="card"><p style="color:var(--ash);">Destek talebi işlemleri için yetkin yok.</p></div>
+      <?php else: ?>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-head"><h3>Destek Talepleri</h3></div>
+          <form class="filters" method="get" action="<?= e(url('/admin')) ?>" style="margin-bottom:14px;">
+            <input type="hidden" name="section" value="destekler">
+            <input name="ticket_q" value="<?= e($ticketSearch) ?>" placeholder="Ticket kodu veya hesap adı..." style="flex:1; min-width:200px;">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Ara</button>
+            <?php if ($ticketSearch !== ''): ?>
+              <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?section=destekler')) ?>">Temizle</a>
+            <?php endif; ?>
+          </form>
+          <table>
+            <thead><tr><th>Kod</th><th>Oyuncu</th><th>Konu</th><th>Kategori</th><th>Durum</th><th></th></tr></thead>
+            <tbody>
+              <?php if ($adminTickets === []): ?>
+                <tr><td colspan="6" style="color:var(--ash);"><?= $ticketSearch !== '' ? 'Aramayla eşleşen ticket yok.' : 'Henüz ticket yok.' ?></td></tr>
+              <?php else: ?>
+                <?php foreach ($adminTickets as $t): ?>
+                <tr>
+                  <td><code><?= e((string) $t['public_code']) ?></code></td>
+                  <td><?= e((string) $t['account_login']) ?></td>
+                  <td><?= e((string) $t['subject']) ?></td>
+                  <td style="color:var(--ash);"><?= e((string) $t['category_name']) ?></td>
+                  <td><span class="badge <?= ($t['status_code'] ?? '') === 'closed' ? 'closed' : 'pending' ?>"><?= e((string) $t['status_label']) ?></span></td>
+                  <td class="actions-cell">
+                    <a href="<?= e(url('/admin?section=destekler&ticket=' . (int) $t['id'] . ($ticketSearch !== '' ? '&ticket_q=' . rawurlencode($ticketSearch) : ''))) ?>" title="Aç"><i class="fa-solid fa-eye"></i></a>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <?php if ($activeTicket === null): ?>
+            <div class="card-head"><h3>Ticket Detayı</h3></div>
+            <p style="color:var(--ash);font-size:.88rem;">Listeden bir ticket seç.</p>
+          <?php else: ?>
+            <div class="card-head">
+              <h3><?= e((string) $activeTicket['public_code']) ?></h3>
+              <span class="badge pending"><?= e((string) $activeTicket['status_label']) ?></span>
+            </div>
+            <p style="font-size:.9rem;margin-bottom:8px;"><b><?= e((string) $activeTicket['subject']) ?></b></p>
+            <p style="font-size:.8rem;color:var(--ash);margin-bottom:14px;">
+              Oyuncu: <?= e((string) $activeTicket['account_login']) ?> (#<?= (int) $activeTicket['account_id'] ?>)
+              · <?= e((string) $activeTicket['category_name']) ?>
+              <?php if ($can('player_detail')): ?>
+                · <button type="button" class="linkish" data-detail="<?= (int) $activeTicket['account_id'] ?>" style="background:none;border:none;color:var(--gold-light);padding:0;font:inherit;cursor:pointer;text-decoration:underline;">Hesap detayı</button>
+              <?php endif; ?>
+            </p>
+            <div style="max-height:280px;overflow:auto;margin-bottom:16px;border:1px solid var(--line);padding:12px;">
+              <?php foreach (($activeTicket['messages'] ?? []) as $m): ?>
+                <div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--line);">
+                  <div style="font-size:.75rem;color:var(--ash);margin-bottom:4px;">
+                    <?= !empty($m['is_staff']) ? 'Yetkili' : 'Oyuncu' ?> · <?= e((string) $m['account_login']) ?> · <?= e((string) ($m['created_label'] ?? '')) ?>
+                  </div>
+                  <div style="font-size:.88rem;white-space:pre-wrap;"><?= e((string) $m['body']) ?></div>
+                  <?php if (!empty($m['attachment'])): ?>
+                    <a href="<?= e((string) $m['attachment']['path']) ?>" target="_blank" style="font-size:.78rem;color:var(--gold-light);">
+                      <i class="fa-solid fa-paperclip"></i> <?= e((string) $m['attachment']['name']) ?>
+                    </a>
+                  <?php endif; ?>
+                </div>
+              <?php endforeach; ?>
+            </div>
+            <?php if (($activeTicket['status_code'] ?? '') !== 'closed'): ?>
+            <form method="post" action="<?= e(url('/admin/ticket/yanit')) ?>" enctype="multipart/form-data">
+              <?= $csrf ?>
+              <input type="hidden" name="ticket_id" value="<?= (int) $activeTicket['id'] ?>">
+              <div class="form-row"><label>Yanıt</label><textarea name="body" required style="min-height:90px;"></textarea></div>
+              <div class="form-row"><label>Dosya (opsiyonel)</label><input type="file" name="attachment"></div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button type="submit" class="btn btn-primary btn-sm">Yanıtla</button>
+              </div>
+            </form>
+            <form method="post" action="<?= e(url('/admin/ticket/kapat')) ?>" style="margin-top:10px;" onsubmit="return confirm('Ticket kapatılsın mı?');">
+              <?= $csrf ?>
+              <input type="hidden" name="ticket_id" value="<?= (int) $activeTicket['id'] ?>">
+              <button type="submit" class="btn btn-ghost btn-sm">Kapat / Çözümle</button>
+            </form>
+            <?php endif; ?>
+          <?php endif; ?>
+        </div>
       </div>
+      <?php endif; ?>
     </section>
 
-    <!-- ===================== SUNUCU KONTROL ===================== -->
-    <section class="section" id="sunucu">
-      <div class="grid grid-2" style="margin-bottom:20px;">
-        <div class="channel-card">
-          <div><div class="ch-name">Kanal 1</div><div class="ch-meta">412 oyuncu · Yük %64</div></div>
-          <div class="toggle on" data-toggle></div>
-        </div>
-        <div class="channel-card">
-          <div><div class="ch-name">Kanal 2</div><div class="ch-meta">388 oyuncu · Yük %58</div></div>
-          <div class="toggle on" data-toggle></div>
-        </div>
-        <div class="channel-card">
-          <div><div class="ch-name">Kanal 3</div><div class="ch-meta">301 oyuncu · Yük %41</div></div>
-          <div class="toggle on" data-toggle></div>
-        </div>
-        <div class="channel-card">
-          <div><div class="ch-name">Kanal 4 (Test)</div><div class="ch-meta">Bakımda</div></div>
-          <div class="toggle" data-toggle></div>
-        </div>
-      </div>
-      <div class="grid grid-3">
-        <div class="card">
-          <div class="card-head"><h3>Sunucu Komutları</h3></div>
-          <p style="font-size:.82rem; color:var(--ash); margin-bottom:18px; line-height:1.6;">Toplu işlemler tüm çevrimiçi oyuncuları etkiler. Dikkatli kullan.</p>
-          <div style="display:flex; gap:12px; flex-wrap:wrap;">
-            <a class="btn btn-jade btn-sm"><i class="fa-solid fa-bullhorn"></i> Genel Duyuru Gönder</a>
-            <a class="btn btn-ghost btn-sm"><i class="fa-solid fa-rotate"></i> Kanal Yeniden Başlat</a>
-            <a class="btn btn-primary btn-sm"><i class="fa-solid fa-triangle-exclamation"></i> Bakım Modu Aç</a>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-head"><h3>Bakım Modu</h3></div>
-          <div class="feed-item" style="border:none; padding-top:0;">
-            <div class="fi-icon"><i class="fa-solid fa-power-off"></i></div>
-            <div><div class="fi-text">Bakım modu kapalı</div><div class="fi-time">Sunucu tüm oyunculara açık</div></div>
-          </div>
-          <div class="toggle" data-toggle style="margin-top:14px;"></div>
-        </div>
+    <!-- ===================== SUNUCU YÖNETİMİ ===================== -->
+    <section class="section<?= $panelSection === 'sunucu' ? ' active' : '' ?>" id="sunucu">
+      <div class="card" style="text-align:center; padding:48px 24px;">
+        <div style="font-size:2rem; color:var(--gold); margin-bottom:12px;"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+        <h3 style="color:var(--gold-light); margin-bottom:10px;">Sunucu Yönetimi</h3>
+        <p style="color:var(--ash); font-size:.92rem; line-height:1.6;">Bu bölüm yapım aşamasındadır.</p>
       </div>
     </section>
 
     <!-- ===================== LOGLAR ===================== -->
-    <section class="section" id="loglar">
+    <section class="section<?= $panelSection === 'loglar' ? ' active' : '' ?>" id="loglar">
       <div class="card">
-        <div class="card-head"><h3>Yönetici Logları</h3></div>
+        <div class="card-head">
+          <h3>Yönetici Logları</h3>
+          <span style="font-size:.8rem;color:var(--ash);"><?= number_format($adminLogTotal, 0, ',', '.') ?> kayıt · 10 / sayfa</span>
+        </div>
+        <form class="filters" method="get" action="<?= e(url('/admin')) ?>">
+          <input type="hidden" name="section" value="loglar">
+          <input name="log_q" value="<?= e($adminLogFilter) ?>" placeholder="Hesap adı veya ID (yetkili / hedef)..." style="flex:1; min-width:200px;">
+          <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Filtrele</button>
+          <?php if ($adminLogFilter !== ''): ?>
+            <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?section=loglar')) ?>">Temizle</a>
+          <?php endif; ?>
+        </form>
         <table>
-          <thead><tr><th>Zaman</th><th>Yetkili</th><th>İşlem</th><th>Hedef</th></tr></thead>
+          <thead><tr><th>Zaman</th><th>Yetkili</th><th>İşlem</th><th>Hedef</th><th>Detay</th></tr></thead>
           <tbody>
-            <tr><td>14 Tem, 14:22</td><td>Admin_Orhan</td><td>Ban verdi (3 gün)</td><td>golgeavci</td></tr>
-            <tr><td>14 Tem, 13:58</td><td>GM_Aylin</td><td>Duyuru yayınladı</td><td>—</td></tr>
-            <tr><td>14 Tem, 12:40</td><td>Sistem</td><td>Kanal yeniden başlatıldı</td><td>Kanal 3</td></tr>
-            <tr><td>14 Tem, 11:05</td><td>GM_Baran</td><td>Eşya verdi</td><td>karakilic92</td></tr>
-            <tr><td>13 Tem, 22:14</td><td>Admin_Orhan</td><td>Susturma kaldırdı</td><td>demirkol44</td></tr>
+            <?php if ($adminLogRows === []): ?>
+              <tr><td colspan="5" style="color:var(--ash);"><?= $adminLogFilter !== '' ? 'Filtreyle eşleşen kayıt yok.' : 'Henüz yönetici işlemi yok.' ?></td></tr>
+            <?php else: ?>
+              <?php foreach ($adminLogRows as $log): ?>
+              <tr>
+                <td style="white-space:nowrap;font-size:.8rem;"><?= e((string) $log['created_label']) ?></td>
+                <td>
+                  <?= e((string) $log['actor_login']) ?>
+                  <?php if (!empty($log['actor_account_id'])): ?>
+                    <div style="font-size:.7rem;color:var(--ash);">#<?= (int) $log['actor_account_id'] ?></div>
+                  <?php endif; ?>
+                </td>
+                <td><?= e((string) $log['action']) ?></td>
+                <td>
+                  <?php if (!empty($log['target_login']) || !empty($log['target_account_id'])): ?>
+                    <?= e((string) ($log['target_login'] !== '' ? $log['target_login'] : '—')) ?>
+                    <?php if (!empty($log['target_account_id'])): ?>
+                      <div style="font-size:.7rem;color:var(--ash);">#<?= (int) $log['target_account_id'] ?></div>
+                    <?php endif; ?>
+                  <?php else: ?>
+                    <span style="color:var(--ash);">—</span>
+                  <?php endif; ?>
+                </td>
+                <td style="color:var(--ash);font-size:.82rem;max-width:280px;"><?= e((string) ($log['detail'] !== '' ? $log['detail'] : '—')) ?></td>
+              </tr>
+              <?php endforeach; ?>
+            <?php endif; ?>
           </tbody>
         </table>
+        <?php if ($adminLogPages > 1): ?>
+          <?php
+            $logMk = static function (int $p) use ($adminLogFilter): string {
+                return url('/admin?' . http_build_query(array_filter([
+                    'section' => 'loglar',
+                    'log_q' => $adminLogFilter !== '' ? $adminLogFilter : null,
+                    'log_page' => $p > 1 ? $p : null,
+                ])));
+            };
+          ?>
+          <div class="pager" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:16px;">
+            <a class="btn btn-ghost btn-sm<?= $adminLogPage <= 1 ? ' disabled' : '' ?>" href="<?= $adminLogPage <= 1 ? '#' : e($logMk($adminLogPage - 1)) ?>"<?= $adminLogPage <= 1 ? ' onclick="return false;" style="opacity:.4;pointer-events:none;"' : '' ?>>Önceki</a>
+            <?php
+              $from = max(1, $adminLogPage - 2);
+              $to = min($adminLogPages, $adminLogPage + 2);
+              for ($i = $from; $i <= $to; $i++):
+            ?>
+              <?php if ($i === $adminLogPage): ?>
+                <span class="btn btn-ghost btn-sm" style="border-color:var(--gold);"><?= $i ?></span>
+              <?php else: ?>
+                <a class="btn btn-ghost btn-sm" href="<?= e($logMk($i)) ?>"><?= $i ?></a>
+              <?php endif; ?>
+            <?php endfor; ?>
+            <a class="btn btn-ghost btn-sm" href="<?= $adminLogPage >= $adminLogPages ? '#' : e($logMk($adminLogPage + 1)) ?>"<?= $adminLogPage >= $adminLogPages ? ' onclick="return false;" style="opacity:.4;pointer-events:none;"' : '' ?>>Sonraki</a>
+          </div>
+        <?php endif; ?>
       </div>
     </section>
 
   </main>
+</div>
+
+<!-- ============ DUYURU MODAL ============ -->
+<div class="modal-overlay" id="annModal">
+  <div class="modal modal-ann">
+    <h3 id="annModalTitle">Duyuru</h3>
+    <div class="ann-modal-meta" id="annModalMeta"></div>
+    <div class="ann-modal-body" id="annModalBody"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost btn-sm" id="annModalClose">Kapat</button>
+    </div>
+  </div>
 </div>
 
 <!-- ============ BAN MODAL ============ -->
@@ -1042,6 +1725,7 @@ $settingsOpen = in_array($panelSection, [
     <form method="post" action="<?= e(url('/admin/oyuncu/ban')) ?>" id="banForm">
       <?= $csrf ?>
       <input type="hidden" name="account_id" id="banAccountId" value="">
+      <input type="hidden" name="account_login" id="banAccountLogin" value="">
       <div class="form-row">
         <label>Sabit Ceza</label>
         <select name="penalty_id" id="banPenaltyId" required>
@@ -1065,6 +1749,40 @@ $settingsOpen = in_array($panelSection, [
   </div>
 </div>
 
+<!-- ============ YETKİ ATA MODAL ============ -->
+<div class="modal-overlay" id="permModal">
+  <div class="modal">
+    <h3><i class="fa-solid fa-shield-halved"></i> Yetki Grubu Ata</h3>
+    <p><b id="permTarget">—</b> hesabına yetki grubu seç.</p>
+    <form method="post" action="<?= e(url('/admin/yetki/ata')) ?>" id="permForm">
+      <?= $csrf ?>
+      <input type="hidden" name="account_id" id="permAccountId" value="">
+      <div class="form-row">
+        <label>Yetki grubu</label>
+        <select name="group_id" id="permGroupId" required>
+          <option value="">Seç...</option>
+          <?php
+            $actorIsSuper = ((int) ($authUser['permission'] ?? 0) === 2);
+            foreach ($permissionGroups as $g):
+              $gWeb = (int) $g['web_permission'];
+              if ($gWeb === 2 && !$actorIsSuper) {
+                  continue;
+              }
+          ?>
+            <option value="<?= (int) $g['id'] ?>" data-web="<?= $gWeb ?>">
+              <?= e((string) $g['name']) ?> (web=<?= $gWeb ?>)
+            </option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="permCancel">Vazgeç</button>
+        <button type="submit" class="btn btn-primary btn-sm">Ata</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- ============ UNBAN MODAL ============ -->
 <div class="modal-overlay" id="unbanModal">
   <div class="modal">
@@ -1073,6 +1791,7 @@ $settingsOpen = in_array($panelSection, [
     <form method="post" action="<?= e(url('/admin/oyuncu/unban')) ?>" id="unbanForm">
       <?= $csrf ?>
       <input type="hidden" name="account_id" id="unbanAccountId" value="">
+      <input type="hidden" name="account_login" id="unbanAccountLogin" value="">
       <input type="hidden" name="redirect_section" id="unbanSection" value="oyuncular">
       <div class="form-row">
         <label>Kaldırma sebebi</label>
@@ -1103,22 +1822,23 @@ $settingsOpen = in_array($panelSection, [
   const sections = document.querySelectorAll('.section');
   const initialSection = <?= json_encode($panelSection, JSON_UNESCAPED_UNICODE) ?>;
   const playerJsonUrl = <?= json_encode(url('/admin/oyuncu/json'), JSON_UNESCAPED_UNICODE) ?>;
-  const settingsParent = document.getElementById('settingsParent');
-  const settingsSub = document.getElementById('settingsSub');
+  const annModalMap = <?= json_encode(array_reduce($overviewAnnouncements, static function (array $map, array $ann): array {
+      $map[(string) (int) $ann['id']] = [
+          'id' => (int) $ann['id'],
+          'title' => (string) $ann['title'],
+          'type_name' => (string) ($ann['type_name'] ?: 'Duyuru'),
+          'published_label' => (string) $ann['published_label'],
+          'author_login' => (string) ($ann['author_login'] ?? ''),
+          'body' => \App\Services\AnnouncementService::sanitizeHtml((string) $ann['body']),
+      ];
+      return $map;
+  }, []), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 
   function showSection(target) {
     if (!target) return;
     document.querySelectorAll('.nav-item').forEach(n => {
       if (n.dataset.target) n.classList.toggle('active', n.dataset.target === target);
     });
-    if (settingsParent) {
-      const isSettings = ['ceza-ayarlari','patch-linkleri','ozellikler-ayarlari','siniflar-ayarlari','oranlar-ayarlari','siradaki-bolum','galeri-ayarlari','footer-ayarlari'].includes(target);
-      settingsParent.classList.toggle('active', isSettings);
-      if (isSettings) {
-        settingsParent.classList.add('open');
-        settingsSub?.classList.add('open');
-      }
-    }
     sections.forEach(s => s.classList.toggle('active', s.id === target));
     document.getElementById('sidebar').classList.remove('open');
   }
@@ -1134,9 +1854,181 @@ $settingsOpen = in_array($panelSection, [
     });
   });
 
-  settingsParent?.addEventListener('click', () => {
-    settingsParent.classList.toggle('open');
-    settingsSub?.classList.toggle('open');
+  document.querySelectorAll('[data-jump-section]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      showSection(el.dataset.jumpSection || el.dataset.target);
+    });
+  });
+
+  document.querySelectorAll('[data-ann-past-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => btn.closest('.ann-past')?.classList.toggle('open'));
+  });
+  (function annHistoryModal() {
+    const overlay = document.getElementById('annModal');
+    const titleEl = document.getElementById('annModalTitle');
+    const metaEl = document.getElementById('annModalMeta');
+    const bodyEl = document.getElementById('annModalBody');
+    const closeBtn = document.getElementById('annModalClose');
+    const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const openAnn = (id) => {
+      const row = annModalMap[String(id)];
+      if (!row || !overlay) return;
+      titleEl.textContent = row.title || 'Duyuru';
+      let meta = '<span class="ann-type">' + escHtml(row.type_name || 'Duyuru') + '</span>';
+      meta += '<span>' + escHtml(row.published_label || '') + '</span>';
+      if (row.author_login) meta += '<span>· ' + escHtml(row.author_login) + '</span>';
+      metaEl.innerHTML = meta;
+      bodyEl.innerHTML = row.body || '';
+      overlay.classList.add('open');
+    };
+    const closeAnn = () => overlay?.classList.remove('open');
+    document.querySelectorAll('[data-open-ann]').forEach(btn => {
+      btn.addEventListener('click', () => openAnn(btn.dataset.openAnn));
+    });
+    closeBtn?.addEventListener('click', closeAnn);
+    overlay?.addEventListener('click', (e) => { if (e.target === overlay) closeAnn(); });
+  })();
+
+  // Duyuru editörü — yerel araç çubuğu (CDN yok)
+  const annEditor = document.getElementById('annEditor');
+  const annHtmlPanel = document.getElementById('annHtmlPanel');
+  let annHtmlMode = false;
+
+  function syncHtmlFromEditor() {
+    if (annHtmlPanel && annEditor) annHtmlPanel.value = annEditor.innerHTML;
+  }
+  function syncEditorFromHtml() {
+    if (annHtmlPanel && annEditor) annEditor.innerHTML = annHtmlPanel.value;
+  }
+  function getAnnHtml() {
+    if (annHtmlMode && annHtmlPanel) return annHtmlPanel.value || '';
+    return annEditor ? (annEditor.innerHTML || '') : '';
+  }
+  function setAnnHtml(html) {
+    const safe = html || '';
+    if (annEditor) annEditor.innerHTML = safe;
+    if (annHtmlPanel) annHtmlPanel.value = safe;
+    if (annHtmlMode) {
+      annHtmlMode = false;
+      annEditor?.classList.remove('html-mode');
+      annHtmlPanel?.classList.remove('open');
+    }
+  }
+  function annExec(cmd, value) {
+    if (!annEditor) return;
+    if (annHtmlMode) return;
+    annEditor.focus();
+    if (cmd === 'createLink') {
+      const url = window.prompt('Link URL', 'https://');
+      if (!url) return;
+      document.execCommand('createLink', false, url);
+      return;
+    }
+    if (cmd === 'insertTable') {
+      const rows = Math.min(10, Math.max(1, parseInt(window.prompt('Satır sayısı', '3') || '3', 10) || 3));
+      const cols = Math.min(10, Math.max(1, parseInt(window.prompt('Sütun sayısı', '3') || '3', 10) || 3));
+      let html = '<table><tbody>';
+      for (let r = 0; r < rows; r++) {
+        html += '<tr>';
+        for (let c = 0; c < cols; c++) html += '<td>&nbsp;</td>';
+        html += '</tr>';
+      }
+      html += '</tbody></table><p><br></p>';
+      document.execCommand('insertHTML', false, html);
+      return;
+    }
+    if (cmd === 'formatBlock') {
+      document.execCommand('formatBlock', false, value || 'p');
+      return;
+    }
+    if (cmd === 'toggleHtml') {
+      if (!annHtmlMode) {
+        syncHtmlFromEditor();
+        annHtmlMode = true;
+        annEditor.classList.add('html-mode');
+        annHtmlPanel?.classList.add('open');
+        annHtmlPanel?.focus();
+      } else {
+        syncEditorFromHtml();
+        annHtmlMode = false;
+        annEditor.classList.remove('html-mode');
+        annHtmlPanel?.classList.remove('open');
+        annEditor.focus();
+      }
+      return;
+    }
+    document.execCommand(cmd, false, value || null);
+  }
+  document.getElementById('annToolbar')?.addEventListener('mousedown', (e) => {
+    // Odak kaybını önle
+    if (e.target.closest('button,[data-cmd],.ann-tool')) e.preventDefault();
+  });
+  document.getElementById('annToolbar')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-cmd]');
+    if (!btn) return;
+    e.preventDefault();
+    annExec(btn.dataset.cmd, btn.dataset.value);
+  });
+  document.getElementById('annForeColor')?.addEventListener('input', (e) => {
+    annExec('foreColor', e.target.value);
+  });
+  document.getElementById('annHiliteColor')?.addEventListener('input', (e) => {
+    // Chrome: hiliteColor; Firefox: backColor
+    if (!document.execCommand('hiliteColor', false, e.target.value)) {
+      document.execCommand('backColor', false, e.target.value);
+    }
+  });
+  function resetAnnForm() {
+    const title = document.getElementById('annFormTitle');
+    if (title) title.textContent = 'Yeni Duyuru';
+    const id = document.getElementById('annId');
+    if (id) id.value = '';
+    const t = document.getElementById('annTitle');
+    if (t) t.value = '';
+    const type = document.getElementById('annType');
+    if (type) type.value = '';
+    const active = document.getElementById('annActive');
+    if (active) active.checked = true;
+    setAnnHtml('');
+    const body = document.getElementById('annBody');
+    if (body) body.value = '';
+  }
+  document.getElementById('annForm')?.addEventListener('submit', (e) => {
+    if (annHtmlMode) syncEditorFromHtml();
+    const body = document.getElementById('annBody');
+    const html = getAnnHtml().trim();
+    if (body) body.value = html;
+    if (!html || html === '<br>' || html === '<div><br></div>') {
+      e.preventDefault();
+      alert('İçerik zorunlu.');
+    }
+  });
+  document.getElementById('annReset')?.addEventListener('click', resetAnnForm);
+  document.querySelectorAll('[data-edit-ann]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('annFormTitle').textContent = 'Duyuru Düzenle';
+      document.getElementById('annId').value = btn.dataset.id || '';
+      document.getElementById('annTitle').value = btn.dataset.title || '';
+      document.getElementById('annType').value = btn.dataset.type || '';
+      document.getElementById('annActive').checked = btn.dataset.active === '1';
+      showSection('duyurular');
+      const bodies = window.__annBodies || {};
+      setTimeout(() => setAnnHtml(bodies[btn.dataset.id] || ''), 60);
+    });
+  });
+  document.querySelectorAll('[data-edit-anntype]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('annTypeFormTitle').textContent = 'Tür Düzenle';
+      document.getElementById('annTypeId').value = btn.dataset.id || '';
+      document.getElementById('annTypeName').value = btn.dataset.name || '';
+      showSection('duyuru-turleri');
+    });
+  });
+  document.getElementById('annTypeReset')?.addEventListener('click', () => {
+    document.getElementById('annTypeFormTitle').textContent = 'Yeni Tür';
+    document.getElementById('annTypeId').value = '';
+    document.getElementById('annTypeName').value = '';
   });
 
   document.querySelectorAll('[data-toggle]').forEach(t => {
@@ -1155,6 +2047,8 @@ $settingsOpen = in_array($panelSection, [
     btn.addEventListener('click', () => {
       banTarget.textContent = btn.dataset.banLogin || '—';
       banAccountId.value = btn.dataset.banId || '';
+      const banLogin = document.getElementById('banAccountLogin');
+      if (banLogin) banLogin.value = btn.dataset.banLogin || '';
       document.getElementById('banPenaltyId').value = '';
       document.getElementById('banEvidence').value = '';
       banModal.classList.add('open');
@@ -1162,6 +2056,23 @@ $settingsOpen = in_array($panelSection, [
   });
   document.getElementById('banCancel').addEventListener('click', () => banModal.classList.remove('open'));
   banModal.addEventListener('click', (e) => { if (e.target === banModal) banModal.classList.remove('open'); });
+
+  // Yetki ata modal
+  const permModal = document.getElementById('permModal');
+  const permTarget = document.getElementById('permTarget');
+  const permAccountId = document.getElementById('permAccountId');
+  const permGroupId = document.getElementById('permGroupId');
+  document.querySelectorAll('[data-perm-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      permTarget.textContent = btn.dataset.permLogin || '—';
+      permAccountId.value = btn.dataset.permId || '';
+      const gid = btn.dataset.permGroup || '';
+      permGroupId.value = gid && [...permGroupId.options].some(o => o.value === gid) ? gid : '';
+      permModal.classList.add('open');
+    });
+  });
+  document.getElementById('permCancel')?.addEventListener('click', () => permModal?.classList.remove('open'));
+  permModal?.addEventListener('click', (e) => { if (e.target === permModal) permModal.classList.remove('open'); });
 
   // Unban modal
   const unbanModal = document.getElementById('unbanModal');
@@ -1173,6 +2084,8 @@ $settingsOpen = in_array($panelSection, [
     btn.addEventListener('click', () => {
       unbanTarget.textContent = btn.dataset.unbanLogin || '—';
       unbanAccountId.value = btn.dataset.unbanId || '';
+      const unbanLogin = document.getElementById('unbanAccountLogin');
+      if (unbanLogin) unbanLogin.value = btn.dataset.unbanLogin || '';
       unbanSection.value = btn.dataset.unbanSection || 'oyuncular';
       unbanReason.value = '';
       unbanModal.classList.add('open');
@@ -1288,6 +2201,78 @@ $settingsOpen = in_array($panelSection, [
     });
   });
   document.getElementById('penaltyReset')?.addEventListener('click', resetPenaltyForm);
+
+  // Yetki grupları
+  const groupFormTitle = document.getElementById('groupFormTitle');
+  const groupId = document.getElementById('groupId');
+  const groupName = document.getElementById('groupName');
+  const groupWeb = document.getElementById('groupWeb');
+  function resetGroupForm() {
+    if (groupFormTitle) groupFormTitle.textContent = 'Yeni Yetki Grubu';
+    if (groupId) groupId.value = '';
+    if (groupName) groupName.value = '';
+    if (groupWeb) groupWeb.value = '1';
+    document.querySelectorAll('#groupFlagsWrap input[data-flag]').forEach(cb => { cb.checked = false; cb.disabled = false; });
+    const all = document.getElementById('flagsSelectAll');
+    if (all) { all.checked = false; all.disabled = false; }
+  }
+  function syncFlagsSelectAll() {
+    const all = document.getElementById('flagsSelectAll');
+    const boxes = [...document.querySelectorAll('#groupFlagsWrap input[data-flag]')].filter(cb => !cb.disabled);
+    if (!all || boxes.length === 0) return;
+    all.checked = boxes.every(cb => cb.checked);
+    all.indeterminate = !all.checked && boxes.some(cb => cb.checked);
+  }
+  document.getElementById('flagsSelectAll')?.addEventListener('change', (e) => {
+    const on = !!e.target.checked;
+    document.querySelectorAll('#groupFlagsWrap input[data-flag]').forEach(cb => {
+      if (!cb.disabled) cb.checked = on;
+    });
+  });
+  document.querySelectorAll('#groupFlagsWrap input[data-flag]').forEach(cb => {
+    cb.addEventListener('change', syncFlagsSelectAll);
+  });
+  document.querySelectorAll('[data-edit-group]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (groupFormTitle) groupFormTitle.textContent = 'Yetki Grubu Düzenle';
+      if (groupId) groupId.value = btn.dataset.id || '';
+      if (groupName) groupName.value = btn.dataset.name || '';
+      if (groupWeb) groupWeb.value = btn.dataset.web || '1';
+      let flags = {};
+      try { flags = JSON.parse(btn.dataset.flags || '{}'); } catch (e) { flags = {}; }
+      const web = parseInt(btn.dataset.web || '1', 10);
+      document.querySelectorAll('#groupFlagsWrap input[data-flag]').forEach(cb => {
+        const k = cb.dataset.flag;
+        cb.checked = !!flags[k];
+        cb.disabled = web === 2;
+      });
+      const all = document.getElementById('flagsSelectAll');
+      if (all) all.disabled = web === 2;
+      syncFlagsSelectAll();
+      showSection('yetki-gruplari');
+      groupName?.focus();
+    });
+  });
+  document.getElementById('groupReset')?.addEventListener('click', resetGroupForm);
+
+  document.querySelectorAll('[data-edit-tcat]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('tcatId').value = btn.dataset.id || '';
+      document.getElementById('tcatName').value = btn.dataset.name || '';
+      document.getElementById('tcatDesc').value = btn.dataset.description || '';
+      showSection('ticket-ayarlari');
+    });
+  });
+  document.querySelectorAll('[data-edit-tstat]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('tstatId').value = btn.dataset.id || '';
+      const code = document.getElementById('tstatCode');
+      code.value = btn.dataset.code || '';
+      code.readOnly = btn.dataset.system === '1';
+      document.getElementById('tstatLabel').value = btn.dataset.label || '';
+      showSection('ticket-ayarlari');
+    });
+  });
 
   document.querySelectorAll('[data-edit-feature]').forEach(btn => {
     btn.addEventListener('click', () => {

@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Core\Session;
 use App\Core\Theme;
+use App\Services\AnnouncementService;
 use App\Services\AuthService;
 use App\Services\SiteContentService;
 
@@ -42,6 +43,7 @@ final class HomeController
             'siteFooterLinks' => $groupedFooter,
             'siteFooter' => SiteContentService::footerMeta(),
             'nextChapter' => SiteContentService::nextChapter(),
+            'homeAnnouncement' => AnnouncementService::list(true, 1)[0] ?? null,
         ]);
     }
 }

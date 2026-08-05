@@ -213,6 +213,10 @@ final class Schema
         self::seedPenaltyTemplates($pdo);
         self::ensureSiteContentTables($pdo);
         self::seedSiteContent($pdo);
+        self::ensurePermissionAndTicketTables($pdo);
+        self::seedPermissionAndTickets($pdo);
+        self::ensureAdminActionLogs($pdo);
+        self::ensureAnnouncementTables($pdo);
 
         $seed = $pdo->prepare(
             "INSERT INTO `settings` (`group_key`, `setting_key`, `setting_value`) VALUES
@@ -419,6 +423,339 @@ final class Schema
                 $stmt->execute($s);
             }
         }
+    }
+
+    private static function ensurePermissionAndTicketTables(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `permission_groups` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `name` VARCHAR(120) NOT NULL,
+              `web_permission` TINYINT NOT NULL DEFAULT 1,
+              `is_system` TINYINT(1) NOT NULL DEFAULT 0,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_pg_web` (`web_permission`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `permission_group_flags` (
+              `group_id` INT UNSIGNED NOT NULL,
+              `flag_key` VARCHAR(64) NOT NULL,
+              `is_enabled` TINYINT(1) NOT NULL DEFAULT 0,
+              PRIMARY KEY (`group_id`, `flag_key`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `account_staff_groups` (
+              `account_id` INT UNSIGNED NOT NULL,
+              `group_id` INT UNSIGNED NOT NULL,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`account_id`),
+              KEY `idx_asg_group` (`group_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `ticket_categories` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `name` VARCHAR(120) NOT NULL,
+              `description` VARCHAR(500) NOT NULL DEFAULT '',
+              `sort_order` INT NOT NULL DEFAULT 0,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `ticket_statuses` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `code` VARCHAR(40) NOT NULL,
+              `label` VARCHAR(120) NOT NULL,
+              `is_system` TINYINT(1) NOT NULL DEFAULT 0,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `sort_order` INT NOT NULL DEFAULT 0,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `uq_ticket_status_code` (`code`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `ticket_file_types` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `extension` VARCHAR(16) NOT NULL,
+              `mime_type` VARCHAR(100) NOT NULL,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `uq_ticket_ext` (`extension`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `tickets` (
+              `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `public_code` CHAR(11) NOT NULL,
+              `account_id` INT UNSIGNED NOT NULL,
+              `account_login` VARCHAR(30) NOT NULL DEFAULT '',
+              `server_key` VARCHAR(32) NOT NULL DEFAULT 'main',
+              `category_id` INT UNSIGNED NOT NULL,
+              `status_id` INT UNSIGNED NOT NULL,
+              `subject` VARCHAR(200) NOT NULL,
+              `body` MEDIUMTEXT NOT NULL,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              `closed_at` DATETIME NULL DEFAULT NULL,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `uq_ticket_code` (`public_code`),
+              KEY `idx_tickets_account` (`account_id`),
+              KEY `idx_tickets_status` (`status_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `ticket_messages` (
+              `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `ticket_id` BIGINT UNSIGNED NOT NULL,
+              `account_id` INT UNSIGNED NOT NULL,
+              `account_login` VARCHAR(30) NOT NULL DEFAULT '',
+              `is_staff` TINYINT(1) NOT NULL DEFAULT 0,
+              `body` MEDIUMTEXT NOT NULL,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_tm_ticket` (`ticket_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `ticket_attachments` (
+              `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `ticket_id` BIGINT UNSIGNED NOT NULL,
+              `message_id` BIGINT UNSIGNED NULL DEFAULT NULL,
+              `original_name` VARCHAR(200) NOT NULL DEFAULT '',
+              `stored_path` VARCHAR(500) NOT NULL,
+              `mime_detected` VARCHAR(100) NOT NULL DEFAULT '',
+              `size_bytes` INT UNSIGNED NOT NULL DEFAULT 0,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_ta_ticket` (`ticket_id`),
+              KEY `idx_ta_message` (`message_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+    }
+
+    private static function seedPermissionAndTickets(PDO $pdo): void
+    {
+        if (!(int) $pdo->query('SELECT COUNT(*) FROM permission_groups')->fetchColumn()) {
+            $pdo->exec(
+                "INSERT INTO permission_groups (name, web_permission, is_system, created_at, updated_at) VALUES
+                  ('Default User', 0, 1, NOW(), NOW()),
+                  ('Admin', 1, 1, NOW(), NOW()),
+                  ('Super Admin', 2, 1, NOW(), NOW())"
+            );
+            $adminId = (int) $pdo->query('SELECT id FROM permission_groups WHERE web_permission = 1 AND is_system = 1 LIMIT 1')->fetchColumn();
+            $superId = (int) $pdo->query('SELECT id FROM permission_groups WHERE web_permission = 2 AND is_system = 1 LIMIT 1')->fetchColumn();
+            $flags = [
+                'ban', 'player_detail', 'announcements', 'tickets', 'site_settings',
+                'menu_oyuncular', 'menu_banlar', 'menu_duyurular', 'menu_destekler', 'menu_sunucu', 'menu_loglar',
+            ];
+            $stmt = $pdo->prepare(
+                'INSERT INTO permission_group_flags (group_id, flag_key, is_enabled) VALUES (?,?,1)'
+            );
+            foreach ($flags as $f) {
+                if ($adminId > 0) {
+                    $stmt->execute([$adminId, $f]);
+                }
+                if ($superId > 0) {
+                    $stmt->execute([$superId, $f]);
+                }
+            }
+        }
+
+        if (!(int) $pdo->query('SELECT COUNT(*) FROM ticket_statuses')->fetchColumn()) {
+            $pdo->exec(
+                "INSERT INTO ticket_statuses (code, label, is_system, is_active, sort_order, created_at, updated_at) VALUES
+                  ('new', 'Yeni', 1, 1, 1, NOW(), NOW()),
+                  ('waiting_player', 'Oyuncudan bilgi bekleniyor', 1, 1, 2, NOW(), NOW()),
+                  ('waiting_staff', 'Cevaplandı — dönüş bekleniyor', 1, 1, 3, NOW(), NOW()),
+                  ('closed', 'Kapandı / Çözümlendi', 1, 1, 4, NOW(), NOW())"
+            );
+        }
+
+        if (!(int) $pdo->query('SELECT COUNT(*) FROM ticket_categories')->fetchColumn()) {
+            $pdo->exec(
+                "INSERT INTO ticket_categories (name, description, sort_order, is_active, created_at, updated_at) VALUES
+                  ('Genel', 'Genel sorular ve talepler', 1, 1, NOW(), NOW()),
+                  ('Teknik', 'Bağlantı, istemci ve teknik sorunlar', 2, 1, NOW(), NOW()),
+                  ('Eşya / Hesap', 'Eşya kaybı, hesap sorunları', 3, 1, NOW(), NOW()),
+                  ('Ödeme', 'Cash / bağış / ödeme bildirimleri', 4, 1, NOW(), NOW())"
+            );
+        }
+
+        if (!(int) $pdo->query('SELECT COUNT(*) FROM ticket_file_types')->fetchColumn()) {
+            $pdo->exec(
+                "INSERT INTO ticket_file_types (extension, mime_type, is_active, created_at) VALUES
+                  ('png', 'image/png', 1, NOW()),
+                  ('jpg', 'image/jpeg', 1, NOW()),
+                  ('jpeg', 'image/jpeg', 1, NOW()),
+                  ('webp', 'image/webp', 1, NOW()),
+                  ('gif', 'image/gif', 1, NOW()),
+                  ('pdf', 'application/pdf', 1, NOW()),
+                  ('txt', 'text/plain', 1, NOW())"
+            );
+        }
+    }
+
+    private static function ensureAnnouncementTables(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `announcement_types` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `name` VARCHAR(120) NOT NULL,
+              `sort_order` INT NOT NULL DEFAULT 0,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `announcements` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `type_id` INT UNSIGNED NOT NULL,
+              `title` VARCHAR(200) NOT NULL,
+              `body` MEDIUMTEXT NOT NULL,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `author_account_id` INT UNSIGNED NOT NULL DEFAULT 0,
+              `author_login` VARCHAR(30) NOT NULL DEFAULT '',
+              `published_at` DATETIME NULL DEFAULT NULL,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_ann_type` (`type_id`),
+              KEY `idx_ann_active` (`is_active`),
+              KEY `idx_ann_published` (`published_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+
+        // Eski şema (title/content/is_published) → yeni şema
+        self::migrateLegacyAnnouncements($pdo);
+
+        if (!(int) $pdo->query('SELECT COUNT(*) FROM announcement_types')->fetchColumn()) {
+            $pdo->exec(
+                "INSERT INTO announcement_types (name, sort_order, is_active, created_at, updated_at) VALUES
+                  ('Planlı Bakım Çalışması', 1, 1, NOW(), NOW()),
+                  ('Plansız Kesinti Duyurusu', 2, 1, NOW(), NOW()),
+                  ('Genel Duyurular', 3, 1, NOW(), NOW()),
+                  ('Atama Duyuruları', 4, 1, NOW(), NOW())"
+            );
+        }
+    }
+
+    private static function migrateLegacyAnnouncements(PDO $pdo): void
+    {
+        if (!self::tableHasColumn($pdo, 'announcements', 'type_id')) {
+            $pdo->exec(
+                "ALTER TABLE `announcements`
+                  ADD COLUMN `type_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`,
+                  ADD COLUMN `body` MEDIUMTEXT NULL AFTER `title`,
+                  ADD COLUMN `is_active` TINYINT(1) NOT NULL DEFAULT 1 AFTER `body`,
+                  ADD COLUMN `author_account_id` INT UNSIGNED NOT NULL DEFAULT 0 AFTER `is_active`,
+                  ADD COLUMN `author_login` VARCHAR(30) NOT NULL DEFAULT '' AFTER `author_account_id`,
+                  ADD COLUMN `published_at` DATETIME NULL DEFAULT NULL AFTER `author_login`"
+            );
+        }
+
+        if (self::tableHasColumn($pdo, 'announcements', 'content')) {
+            $pdo->exec('UPDATE `announcements` SET `body` = `content` WHERE `body` IS NULL OR `body` = \'\'');
+            $pdo->exec('ALTER TABLE `announcements` DROP COLUMN `content`');
+        }
+
+        if (self::tableHasColumn($pdo, 'announcements', 'is_published')) {
+            $pdo->exec('UPDATE `announcements` SET `is_active` = `is_published`');
+            $pdo->exec(
+                'UPDATE `announcements` SET `published_at` = `created_at`
+                 WHERE `is_active` = 1 AND `published_at` IS NULL'
+            );
+            $pdo->exec('ALTER TABLE `announcements` DROP COLUMN `is_published`');
+        }
+
+        // body NOT NULL garantisi
+        if (self::tableHasColumn($pdo, 'announcements', 'body')) {
+            $pdo->exec("UPDATE `announcements` SET `body` = '' WHERE `body` IS NULL");
+            try {
+                $pdo->exec('ALTER TABLE `announcements` MODIFY `body` MEDIUMTEXT NOT NULL');
+            } catch (\Throwable) {
+                // ignore if already NOT NULL
+            }
+        }
+
+        // İndeksler
+        self::ensureIndex($pdo, 'announcements', 'idx_ann_type', '(`type_id`)');
+        self::ensureIndex($pdo, 'announcements', 'idx_ann_active', '(`is_active`)');
+        self::ensureIndex($pdo, 'announcements', 'idx_ann_published', '(`published_at`)');
+    }
+
+    private static function tableHasColumn(PDO $pdo, string $table, string $column): bool
+    {
+        $webDb = (string) (Config::get('web_database.database') ?? 'DNWeb');
+        if ($webDb === '' || !preg_match('/^[A-Za-z0-9_]+$/', $webDb)) {
+            $webDb = 'DNWeb';
+        }
+        if (!preg_match('/^[A-Za-z0-9_]+$/', $table) || !preg_match('/^[A-Za-z0-9_]+$/', $column)) {
+            return false;
+        }
+        $colCheck = $pdo->query(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = " . $pdo->quote($webDb) . "
+               AND TABLE_NAME = " . $pdo->quote($table) . "
+               AND COLUMN_NAME = " . $pdo->quote($column)
+        )->fetchColumn();
+
+        return (int) $colCheck > 0;
+    }
+
+    private static function ensureIndex(PDO $pdo, string $table, string $index, string $columnsSql): void
+    {
+        $webDb = (string) (Config::get('web_database.database') ?? 'DNWeb');
+        if ($webDb === '' || !preg_match('/^[A-Za-z0-9_]+$/', $webDb)) {
+            $webDb = 'DNWeb';
+        }
+        if (!preg_match('/^[A-Za-z0-9_]+$/', $table) || !preg_match('/^[A-Za-z0-9_]+$/', $index)) {
+            return;
+        }
+        $exists = $pdo->query(
+            "SELECT COUNT(*) FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = " . $pdo->quote($webDb) . "
+               AND TABLE_NAME = " . $pdo->quote($table) . "
+               AND INDEX_NAME = " . $pdo->quote($index)
+        )->fetchColumn();
+        if (!(int) $exists) {
+            $pdo->exec("ALTER TABLE `{$webDb}`.`{$table}` ADD INDEX `{$index}` {$columnsSql}");
+        }
+    }
+
+    private static function ensureAdminActionLogs(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `admin_action_logs` (
+              `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `actor_account_id` INT UNSIGNED NOT NULL DEFAULT 0,
+              `actor_login` VARCHAR(30) NOT NULL DEFAULT '',
+              `target_account_id` INT UNSIGNED NULL DEFAULT NULL,
+              `target_login` VARCHAR(30) NOT NULL DEFAULT '',
+              `action` VARCHAR(80) NOT NULL,
+              `detail` VARCHAR(1000) NOT NULL DEFAULT '',
+              `ip` VARCHAR(45) NOT NULL DEFAULT '',
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_aal_actor` (`actor_account_id`),
+              KEY `idx_aal_target` (`target_account_id`),
+              KEY `idx_aal_actor_login` (`actor_login`),
+              KEY `idx_aal_target_login` (`target_login`),
+              KEY `idx_aal_created` (`created_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
     }
 
     private static function ensureAccountWebPermission(PDO $pdo): void

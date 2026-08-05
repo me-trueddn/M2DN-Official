@@ -21,6 +21,11 @@
 /** @var string|null $panelSection */
 /** @var list<array> $activityLogs */
 /** @var array|null $activeBan */
+/** @var list<array> $ticketCategories */
+/** @var list<array> $userTickets */
+/** @var list<array> $ticketFileTypes */
+/** @var list<array> $announcements */
+/** @var list<array> $overviewAnnouncements */
 
 $appName = $appName ?? 'M2DN';
 $appTagline = $appTagline ?? '';
@@ -44,6 +49,15 @@ $panelSuccess = is_string($panelSuccess ?? null) ? $panelSuccess : null;
 $panelSection = is_string($panelSection ?? null) && $panelSection !== '' ? $panelSection : 'ozet';
 $activityLogs = is_array($activityLogs ?? null) ? $activityLogs : [];
 $activeBan = is_array($activeBan ?? null) ? $activeBan : null;
+$ticketCategories = is_array($ticketCategories ?? null) ? $ticketCategories : [];
+$userTickets = is_array($userTickets ?? null) ? $userTickets : [];
+$ticketFileTypes = is_array($ticketFileTypes ?? null) ? $ticketFileTypes : [];
+$announcements = is_array($announcements ?? null) ? $announcements : [];
+$overviewAnnouncements = is_array($overviewAnnouncements ?? null) ? $overviewAnnouncements : [];
+$latestAnnouncement = $announcements[0] ?? null;
+$pastAnnouncements = array_slice($announcements, 1);
+$latestOverviewAnn = $overviewAnnouncements[0] ?? null;
+$pastOverviewAnn = array_slice($overviewAnnouncements, 1);
 $totpOn = !empty($security['totp_enabled']);
 $ipLockOn = !empty($security['ip_lock_enabled']);
 $notifyOn = !empty($security['login_notify']);
@@ -118,9 +132,10 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
     padding:26px 18px; display:flex; flex-direction:column; gap:6px;
     position:sticky; top:0; height:100vh; overflow-y:auto;
   }
-  .sidebar-brand{display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:800; font-size:1.15rem; letter-spacing:.06em; color:var(--gold-light); padding:0 10px 26px; margin-bottom:10px; border-bottom:1px solid var(--line); text-decoration:none;}
+  .sidebar-brand{display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:800; font-size:1.15rem; letter-spacing:.06em; color:var(--gold-light); padding:0 10px 10px; margin-bottom:6px; border-bottom:1px solid var(--line); text-decoration:none;}
   .sidebar-brand img{width:36px; height:36px; flex-shrink:0; display:block;}
   .sidebar-brand span{color:var(--blood-light);}
+  .sidebar-brand small{display:block; font-family:var(--font-body); font-weight:600; font-size:.6rem; letter-spacing:.16em; color:var(--blood-light); text-transform:uppercase; margin-top:2px;}
   .sidebar-brand:hover{opacity:.92;}
 
   .nav-group-label{font-size:.68rem; text-transform:uppercase; letter-spacing:.12em; color:var(--ash); padding:18px 12px 8px;}
@@ -217,6 +232,9 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   thead th{text-align:left; padding:10px 14px; color:var(--ash); font-size:.7rem; text-transform:uppercase; letter-spacing:.08em; border-bottom:1px solid var(--line); font-weight:600;}
   tbody td{padding:14px; border-bottom:1px solid rgba(201,151,74,.08); color:var(--parchment);}
   tbody tr:hover{background:rgba(201,151,74,.04);}
+  .actions-cell{white-space:nowrap;}
+  .actions-cell button{background:none;border:1px solid var(--line);color:var(--gold-light);width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-right:4px;}
+  .actions-cell button:hover{background:rgba(201,151,74,.08);}
   .row-class{display:flex; align-items:center; gap:10px;}
   .row-class i{width:26px; height:26px; display:flex; align-items:center; justify-content:center; background:rgba(201,151,74,.1); color:var(--gold-light); font-size:.75rem;}
 
@@ -273,8 +291,33 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   /* forms */
   .form-row{margin-bottom:18px;}
   .form-row label{display:block; font-size:.78rem; color:var(--ash); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;}
-  .form-row input{width:100%; background:var(--obsidian); border:1px solid var(--line); padding:12px 14px; color:var(--parchment); font-size:.88rem; outline:none; transition:border-color .2s;}
-  .form-row input:focus{border-color:var(--gold);}
+  .form-row input,
+  .form-row select,
+  .form-row textarea{width:100%; background:var(--obsidian); border:1px solid var(--line); padding:12px 14px; color:var(--parchment); font-size:.88rem; outline:none; transition:border-color .2s; font-family:inherit; border-radius:0; appearance:none; -webkit-appearance:none;}
+  .form-row select{
+    background-image:linear-gradient(45deg,transparent 50%,var(--gold) 50%),linear-gradient(135deg,var(--gold) 50%,transparent 50%);
+    background-position:calc(100% - 18px) calc(50% - 3px),calc(100% - 12px) calc(50% - 3px);
+    background-size:6px 6px,6px 6px;
+    background-repeat:no-repeat;
+    padding-right:36px;
+  }
+  .form-row textarea{resize:vertical; min-height:100px;}
+  .form-row input:focus,
+  .form-row select:focus,
+  .form-row textarea:focus{border-color:var(--gold);}
+  .form-row input[type="file"]{padding:10px 12px; color:var(--ash); cursor:pointer;}
+  .form-row input[type="file"]::file-selector-button{
+    background:var(--obsidian-3, #1f160d); border:1px solid var(--line); color:var(--gold-light);
+    padding:8px 12px; margin-right:12px; cursor:pointer; font-family:inherit; font-size:.78rem;
+  }
+  .ticket-msg{border-bottom:1px solid var(--line); padding:12px 0;}
+  .ticket-msg:last-child{border-bottom:none;}
+  .ticket-msg .who{font-size:.75rem; color:var(--ash); margin-bottom:4px;}
+  .ticket-msg .who.staff{color:var(--gold-light);}
+  .ticket-msg .body{white-space:pre-wrap; font-size:.9rem; line-height:1.5;}
+  .ticket-modal-meta{font-size:.82rem; color:var(--ash); margin-bottom:14px; line-height:1.5;}
+  .ticket-modal-msgs{max-height:280px; overflow:auto; border:1px solid var(--line); padding:12px 14px; margin-bottom:14px; background:var(--obsidian);}
+  .modal.modal-ticket{width:720px;}
   .security-row{display:flex; align-items:center; justify-content:space-between; padding:16px 0; border-bottom:1px solid rgba(201,151,74,.08);}
   .security-row:last-child{border-bottom:none;}
   .security-row .t{font-size:.9rem; color:var(--parchment); font-weight:600;}
@@ -283,6 +326,77 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   .panel-alert.ok{background:rgba(51,89,74,.18); color:var(--jade-light); border-color:rgba(79,138,113,.35);}
   .panel-alert.err{background:rgba(143,28,41,.18); color:#e8a0a8; border-color:rgba(197,51,71,.35);}
   .panel-alert ul{margin:6px 0 0 18px; list-style:disc;}
+  .ann-card{
+    border:1px solid var(--line); border-left:3px solid var(--gold);
+    padding:0; margin-bottom:16px; background:linear-gradient(180deg, rgba(201,151,74,.06), rgba(11,9,6,.4));
+    overflow:hidden;
+  }
+  .ann-card .ann-head{
+    padding:14px 18px 12px; border-bottom:1px solid rgba(201,151,74,.12);
+    background:rgba(11,9,6,.25);
+  }
+  .ann-card .ann-meta{
+    display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center;
+    margin-bottom:10px; font-size:.72rem; color:var(--ash); letter-spacing:.02em;
+  }
+  .ann-card .ann-meta .ann-type{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:3px 9px; border:1px solid rgba(201,151,74,.28);
+    background:rgba(201,151,74,.1); color:var(--gold-light);
+    font-size:.68rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em;
+  }
+  .ann-card .ann-title{
+    font-family:var(--font-display); font-size:1.28rem; font-weight:700;
+    line-height:1.3; letter-spacing:.03em; color:var(--gold-light); margin:0;
+  }
+  .ann-card .ann-body{
+    padding:16px 18px 18px; font-size:.9rem; line-height:1.7; color:var(--parchment);
+  }
+  .ann-body p{margin:0 0 .75em;}
+  .ann-body p:last-child{margin-bottom:0;}
+  .ann-body ul,.ann-body ol{margin:0 0 .75em 1.25em; list-style:disc;}
+  .ann-body ol{list-style:decimal;}
+  .ann-body table{width:100%; border-collapse:collapse; margin:.6em 0;}
+  .ann-body th,.ann-body td{border:1px solid var(--line); padding:6px 8px;}
+  .ann-body a{color:var(--gold-light); text-decoration:underline; text-underline-offset:2px;}
+  .ann-body h1,.ann-body h2,.ann-body h3{
+    font-family:var(--font-display); color:var(--gold-light); margin:.5em 0 .35em; font-size:1.05rem;
+  }
+  .ann-past{margin-top:14px; border:1px solid var(--line); background:rgba(11,9,6,.25);}
+  .ann-past-toggle{
+    width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:12px 14px; background:transparent; border:none; color:var(--gold-light);
+    font-size:.84rem; font-weight:600; cursor:pointer; font-family:inherit; text-align:left;
+  }
+  .ann-past-toggle:hover{background:rgba(201,151,74,.06);}
+  .ann-past-toggle .chev{transition:transform .2s; font-size:.75rem; opacity:.8;}
+  .ann-past.open .ann-past-toggle .chev{transform:rotate(180deg);}
+  .ann-past-list{display:none; border-top:1px solid var(--line);}
+  .ann-past.open .ann-past-list{display:block;}
+  .ann-past-item{
+    width:100%; display:flex; align-items:center; gap:12px; padding:12px 14px;
+    background:transparent; border:none; border-bottom:1px solid rgba(201,151,74,.08);
+    color:inherit; cursor:pointer; font-family:inherit; text-align:left;
+  }
+  .ann-past-item:last-child{border-bottom:none;}
+  .ann-past-item:hover{background:rgba(201,151,74,.07);}
+  .ann-past-item .ann-type{
+    flex-shrink:0; padding:3px 8px; border:1px solid rgba(201,151,74,.28);
+    background:rgba(201,151,74,.1); color:var(--gold-light);
+    font-size:.65rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em;
+  }
+  .ann-past-item .ann-past-title{flex:1; font-size:.9rem; color:var(--parchment); font-weight:600;}
+  .ann-past-item .ann-past-date{font-size:.72rem; color:var(--ash); white-space:nowrap;}
+  .ann-past-item .ann-past-go{color:var(--gold-light); opacity:.7; font-size:.8rem;}
+  .modal.modal-ann{width:640px;}
+  .modal.modal-ann .ann-modal-meta{display:flex; flex-wrap:wrap; gap:8px 12px; margin-bottom:12px; font-size:.75rem; color:var(--ash);}
+  .modal.modal-ann .ann-modal-meta .ann-type{
+    padding:3px 9px; border:1px solid rgba(201,151,74,.28); background:rgba(201,151,74,.1);
+    color:var(--gold-light); font-size:.68rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em;
+  }
+  .modal.modal-ann .ann-modal-body{font-size:.9rem; line-height:1.7; color:var(--parchment); max-height:50vh; overflow:auto;}
+  .modal.modal-ann .ann-modal-body p{margin:0 0 .7em;}
+  .modal.modal-ann .ann-modal-body a{color:var(--gold-light);}
   .search-wrap{position:relative; min-width:220px;}
   .search-box{width:100%;}
   .search-drop{position:absolute; top:calc(100% + 6px); left:0; right:0; background:var(--obsidian-2); border:1px solid var(--line); z-index:40; max-height:260px; overflow:auto;}
@@ -325,7 +439,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   <aside class="sidebar" id="sidebar">
     <a href="<?= e(url('/')) ?>" class="sidebar-brand" aria-label="<?= e($appName) ?> Anasayfa">
       <img src="<?= e(asset('img/logo-mark.svg')) ?>" alt="<?= e($appName) ?>">
-      M2<span>DN</span>
+      <div>M2<span>DN</span><small>Kullanıcı Otomasyonu</small></div>
     </a>
 
     <?php if (!empty($servers) && count($servers) > 1): ?>
@@ -343,6 +457,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
 
     <div class="nav-group-label">Genel</div>
     <a class="nav-item<?= $panelSection === 'ozet' ? ' active' : '' ?>" data-target="ozet"><i class="fa-solid fa-gauge-high"></i> Genel Bakış</a>
+    <a class="nav-item<?= $panelSection === 'duyurular' ? ' active' : '' ?>" data-target="duyurular"><i class="fa-solid fa-bullhorn"></i> Duyurular</a>
     <a class="nav-item<?= $panelSection === 'karakterler' ? ' active' : '' ?>" data-target="karakterler"><i class="fa-solid fa-khanda"></i> Karakterlerim</a>
     <a class="nav-item<?= $panelSection === 'kayitlar' ? ' active' : '' ?>" data-target="kayitlar"><i class="fa-solid fa-clock-rotate-left"></i> Hesap Kayıtları</a>
 
@@ -365,10 +480,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
         <div>
           <div class="who"><?= e((string) ($authUser['login'] ?? 'Oyuncu')) ?></div>
           <div class="role">
-            <?php
-              $p = (int) ($authUser['permission'] ?? 0);
-              echo $p === 2 ? 'Süper Admin' : ($p === 1 ? 'Yönetici' : 'Oyuncu');
-            ?> · v<?= e((string) ($appVersion ?? '1.10.2')) ?>
+            <?= e(\App\Services\PermissionService::groupNameForUser($authUser)) ?> · v<?= e((string) ($appVersion ?? '1.10.2')) ?>
           </div>
         </div>
       </div>
@@ -552,6 +664,92 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
           <?php endif; ?>
         </div>
       </div>
+
+      <div class="card" style="margin-top:22px;">
+        <div class="card-head">
+          <h3>Duyurular</h3>
+          <a href="#duyurular" data-jump="duyurular">Tümü</a>
+        </div>
+        <?php if ($latestOverviewAnn === null): ?>
+          <p style="color:var(--ash);font-size:.88rem;">Aktif duyuru yok.</p>
+        <?php else: ?>
+          <?php $ann = $latestOverviewAnn; ?>
+          <article class="ann-card">
+            <div class="ann-head">
+              <div class="ann-meta">
+                <span class="ann-type"><?= e((string) ($ann['type_name'] ?: 'Duyuru')) ?></span>
+                <span><?= e((string) $ann['published_label']) ?></span>
+              </div>
+              <h4 class="ann-title"><?= e((string) $ann['title']) ?></h4>
+            </div>
+            <div class="ann-body"><?= \App\Services\AnnouncementService::sanitizeHtml((string) $ann['body']) ?></div>
+          </article>
+          <?php if ($pastOverviewAnn !== []): ?>
+          <div class="ann-past">
+            <button type="button" class="ann-past-toggle" data-ann-past-toggle>
+              <span>Geçmiş duyurular (<?= count($pastOverviewAnn) ?>)</span>
+              <i class="fa-solid fa-chevron-down chev"></i>
+            </button>
+            <div class="ann-past-list">
+              <?php foreach ($pastOverviewAnn as $ann): ?>
+                <button type="button" class="ann-past-item" data-open-ann="<?= (int) $ann['id'] ?>">
+                  <span class="ann-type"><?= e((string) ($ann['type_name'] ?: 'Duyuru')) ?></span>
+                  <span class="ann-past-title"><?= e((string) $ann['title']) ?></span>
+                  <span class="ann-past-date"><?= e((string) $ann['published_label']) ?></span>
+                  <i class="fa-solid fa-up-right-from-square ann-past-go"></i>
+                </button>
+              <?php endforeach; ?>
+            </div>
+          </div>
+          <?php endif; ?>
+        <?php endif; ?>
+      </div>
+    </section>
+
+    <!-- ===================== DUYURULAR ===================== -->
+    <section class="section<?= $panelSection === 'duyurular' ? ' active' : '' ?>" id="duyurular">
+      <div class="card">
+        <div class="card-head">
+          <h3>Sunucu Duyuruları</h3>
+          <span style="font-size:.8rem;color:var(--ash);"><?= count($announcements) ?> aktif</span>
+        </div>
+        <?php if ($latestAnnouncement === null): ?>
+          <p style="color:var(--ash);font-size:.9rem;">Henüz yayınlanmış duyuru yok.</p>
+        <?php else: ?>
+          <?php $ann = $latestAnnouncement; ?>
+          <article class="ann-card">
+            <div class="ann-head">
+              <div class="ann-meta">
+                <span class="ann-type"><?= e((string) ($ann['type_name'] ?: 'Duyuru')) ?></span>
+                <span><?= e((string) $ann['published_label']) ?></span>
+                <?php if (!empty($ann['author_login'])): ?>
+                  <span>· <?= e((string) $ann['author_login']) ?></span>
+                <?php endif; ?>
+              </div>
+              <h4 class="ann-title"><?= e((string) $ann['title']) ?></h4>
+            </div>
+            <div class="ann-body"><?= \App\Services\AnnouncementService::sanitizeHtml((string) $ann['body']) ?></div>
+          </article>
+          <?php if ($pastAnnouncements !== []): ?>
+          <div class="ann-past open">
+            <button type="button" class="ann-past-toggle" data-ann-past-toggle>
+              <span>Geçmiş duyurular (<?= count($pastAnnouncements) ?>)</span>
+              <i class="fa-solid fa-chevron-down chev"></i>
+            </button>
+            <div class="ann-past-list">
+              <?php foreach ($pastAnnouncements as $ann): ?>
+                <button type="button" class="ann-past-item" data-open-ann="<?= (int) $ann['id'] ?>">
+                  <span class="ann-type"><?= e((string) ($ann['type_name'] ?: 'Duyuru')) ?></span>
+                  <span class="ann-past-title"><?= e((string) $ann['title']) ?></span>
+                  <span class="ann-past-date"><?= e((string) $ann['published_label']) ?></span>
+                  <i class="fa-solid fa-up-right-from-square ann-past-go"></i>
+                </button>
+              <?php endforeach; ?>
+            </div>
+          </div>
+          <?php endif; ?>
+        <?php endif; ?>
+      </div>
     </section>
 
     <!-- ===================== KARAKTERLER ===================== -->
@@ -652,24 +850,61 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
     </section>
 
     <!-- ===================== DESTEK ===================== -->
-    <section class="section" id="destek">
+    <section class="section<?= ($panelSection ?? '') === 'destek' ? ' active' : '' ?>" id="destek">
+      <?php
+        $acceptExt = implode(',', array_map(static fn($t) => '.' . $t['extension'], $ticketFileTypes));
+      ?>
       <div class="grid grid-3">
         <div class="card">
           <div class="card-head"><h3>Destek Taleplerim</h3></div>
           <table>
-            <thead><tr><th>Konu</th><th>Kategori</th><th>Tarih</th><th>Durum</th></tr></thead>
+            <thead><tr><th>Kod</th><th>Konu</th><th>Kategori</th><th>Tarih</th><th>Durum</th><th></th></tr></thead>
             <tbody>
-              <tr><td>Eşya kayboldu (Ejderha Miğferi)</td><td>Eşya Sorunu</td><td>12 Tem</td><td><span class="badge pending">Yanıt Bekliyor</span></td></tr>
-              <tr><td>Karakter bağlantı hatası</td><td>Teknik</td><td>08 Tem</td><td><span class="badge closed">Çözüldü</span></td></tr>
-              <tr><td>Cash Puan yüklenmedi</td><td>Ödeme</td><td>02 Tem</td><td><span class="badge closed">Çözüldü</span></td></tr>
+              <?php if ($userTickets === []): ?>
+                <tr><td colspan="6" style="color:var(--ash);">Henüz ticket yok.</td></tr>
+              <?php else: ?>
+                <?php foreach ($userTickets as $t): ?>
+                <tr>
+                  <td><code><?= e((string) $t['public_code']) ?></code></td>
+                  <td><?= e((string) $t['subject']) ?></td>
+                  <td><?= e((string) $t['category_name']) ?></td>
+                  <td><?= e((string) $t['created_label']) ?></td>
+                  <td><span class="badge <?= ($t['status_code'] ?? '') === 'closed' ? 'closed' : 'pending' ?>"><?= e((string) $t['status_label']) ?></span></td>
+                  <td class="actions-cell">
+                    <button type="button" title="Görüntüle" data-ticket-view="<?= (int) $t['id'] ?>"><i class="fa-solid fa-eye"></i></button>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
             </tbody>
           </table>
         </div>
         <div class="card">
-          <div class="card-head"><h3>Yeni Talep Oluştur</h3></div>
-          <div class="form-row"><label>Konu</label><input placeholder="Kısaca sorunu özetle"></div>
-          <div class="form-row"><label>Kategori</label><input placeholder="Eşya / Teknik / Ödeme"></div>
-          <a class="btn btn-primary" style="width:100%; justify-content:center;">Talep Gönder</a>
+          <div class="card-head"><h3>Ticket Oluştur</h3></div>
+          <form method="post" action="<?= e(url('/panel/ticket')) ?>" enctype="multipart/form-data">
+            <?= $csrf ?>
+            <div class="form-row">
+              <label>Kategori</label>
+              <select name="category_id" required>
+                <option value="">Seç...</option>
+                <?php foreach ($ticketCategories as $cat): ?>
+                  <option value="<?= (int) $cat['id'] ?>"><?= e((string) $cat['name']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="form-row"><label>Konu başlığı</label><input name="subject" required maxlength="200" placeholder="Kısaca sorunu özetle"></div>
+            <div class="form-row"><label>Açıklama</label><textarea name="body" required style="min-height:100px;" placeholder="Detaylı anlat..."></textarea></div>
+            <div class="form-row">
+              <label>Dosya (opsiyonel)</label>
+              <input type="file" name="attachment"<?= $acceptExt !== '' ? ' accept="' . e($acceptExt) . '"' : '' ?>>
+              <?php if ($ticketFileTypes !== []): ?>
+                <div style="font-size:.72rem;color:var(--ash);margin-top:6px;">
+                  İzinli: <?= e(implode(', ', array_map(static fn($t) => '.' . $t['extension'], $ticketFileTypes))) ?> · max 5MB
+                </div>
+              <?php endif; ?>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Oluştur</button>
+          </form>
         </div>
       </div>
     </section>
@@ -799,7 +1034,30 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
       'characters' => $modalChars,
       'max_level' => (int) $maxLevel,
   ];
+  $annModalMap = [];
+  foreach ($announcements as $annRow) {
+      $aid = (string) (int) $annRow['id'];
+      $annModalMap[$aid] = [
+          'id' => (int) $annRow['id'],
+          'title' => (string) $annRow['title'],
+          'type_name' => (string) ($annRow['type_name'] ?: 'Duyuru'),
+          'published_label' => (string) $annRow['published_label'],
+          'author_login' => (string) ($annRow['author_login'] ?? ''),
+          'body' => \App\Services\AnnouncementService::sanitizeHtml((string) $annRow['body']),
+      ];
+  }
 ?>
+
+<div class="modal-overlay" id="annModal">
+  <div class="modal modal-ann">
+    <h3 id="annModalTitle">Duyuru</h3>
+    <div class="ann-modal-meta" id="annModalMeta"></div>
+    <div class="ann-modal-body" id="annModalBody"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost btn-sm" id="annModalClose">Kapat</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="accountModal">
   <div class="modal">
@@ -811,12 +1069,38 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   </div>
 </div>
 
+<div class="modal-overlay" id="ticketModal">
+  <div class="modal modal-ticket">
+    <h3 id="ticketModalTitle">Ticket</h3>
+    <div class="ticket-modal-meta" id="ticketModalMeta"></div>
+    <div class="ticket-modal-msgs" id="ticketModalMessages"></div>
+    <div id="ticketModalNote" class="ticket-modal-meta" style="display:none;"></div>
+    <div id="ticketModalReplyWrap" style="display:none;">
+      <form method="post" action="<?= e(url('/panel/ticket/yanit')) ?>" enctype="multipart/form-data" id="ticketReplyForm">
+        <?= $csrf ?>
+        <input type="hidden" name="ticket_id" id="ticketReplyId" value="">
+        <div class="form-row"><label>Yeni yanıt</label><textarea name="body" id="ticketReplyBody" required placeholder="Yanıtını yaz..."></textarea></div>
+        <div class="form-row">
+          <label>Dosya (opsiyonel)</label>
+          <input type="file" name="attachment" id="ticketReplyFile"<?= !empty($acceptExt) ? ' accept="' . e($acceptExt) . '"' : '' ?>>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Yanıt Gönder</button>
+      </form>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost btn-sm" id="ticketModalClose">Kapat</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const navItems = document.querySelectorAll('.nav-item');
   const sections = document.querySelectorAll('.section');
   const initialSection = <?= json_encode($panelSection, JSON_UNESCAPED_UNICODE) ?>;
   const modalData = <?= json_encode($modalPayload, JSON_UNESCAPED_UNICODE) ?>;
-
+  const annModalMap = <?= json_encode($annModalMap, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+  const ticketJsonUrl = <?= json_encode(url('/panel/ticket'), JSON_UNESCAPED_UNICODE) ?>;
+  const openTicketId = <?= (int) ($_GET['ticket'] ?? 0) ?>;
   function showSection(target) {
     if (!target) return;
     navItems.forEach(n => n.classList.toggle('active', n.dataset.target === target));
@@ -841,6 +1125,35 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
       showSection(el.dataset.jump);
     });
   });
+
+  document.querySelectorAll('[data-ann-past-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => btn.closest('.ann-past')?.classList.toggle('open'));
+  });
+  (function annHistoryModal() {
+    const overlay = document.getElementById('annModal');
+    const titleEl = document.getElementById('annModalTitle');
+    const metaEl = document.getElementById('annModalMeta');
+    const bodyEl = document.getElementById('annModalBody');
+    const closeBtn = document.getElementById('annModalClose');
+    const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const openAnn = (id) => {
+      const row = annModalMap[String(id)];
+      if (!row || !overlay) return;
+      titleEl.textContent = row.title || 'Duyuru';
+      let meta = '<span class="ann-type">' + escHtml(row.type_name || 'Duyuru') + '</span>';
+      meta += '<span>' + escHtml(row.published_label || '') + '</span>';
+      if (row.author_login) meta += '<span>· ' + escHtml(row.author_login) + '</span>';
+      metaEl.innerHTML = meta;
+      bodyEl.innerHTML = row.body || '';
+      overlay.classList.add('open');
+    };
+    const closeAnn = () => overlay?.classList.remove('open');
+    document.querySelectorAll('[data-open-ann]').forEach(btn => {
+      btn.addEventListener('click', () => openAnn(btn.dataset.openAnn));
+    });
+    closeBtn?.addEventListener('click', closeAnn);
+    overlay?.addEventListener('click', (e) => { if (e.target === overlay) closeAnn(); });
+  })();
 
   document.getElementById('mobileToggle').addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('open');
@@ -967,6 +1280,88 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
     });
     closeBtn?.addEventListener('click', () => overlay.classList.remove('open'));
     overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
+  })();
+
+  (function ticketModal() {
+    const overlay = document.getElementById('ticketModal');
+    const titleEl = document.getElementById('ticketModalTitle');
+    const metaEl = document.getElementById('ticketModalMeta');
+    const msgsEl = document.getElementById('ticketModalMessages');
+    const noteEl = document.getElementById('ticketModalNote');
+    const replyWrap = document.getElementById('ticketModalReplyWrap');
+    const replyId = document.getElementById('ticketReplyId');
+    const replyBody = document.getElementById('ticketReplyBody');
+    const closeBtn = document.getElementById('ticketModalClose');
+    if (!overlay) return;
+
+    function esc(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function openTicket(id) {
+      if (!id) return;
+      titleEl.textContent = 'Yükleniyor…';
+      metaEl.textContent = '';
+      msgsEl.innerHTML = '';
+      noteEl.style.display = 'none';
+      replyWrap.style.display = 'none';
+      overlay.classList.add('open');
+      showSection('destek');
+
+      fetch(ticketJsonUrl + '?id=' + encodeURIComponent(id), { credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(res => {
+          if (!res.ok || !res.ticket) {
+            titleEl.textContent = 'Ticket';
+            msgsEl.innerHTML = '<div style="color:var(--blood-light);">' + esc(res.error || 'Yüklenemedi') + '</div>';
+            return;
+          }
+          const t = res.ticket;
+          titleEl.innerHTML = '<i class="fa-solid fa-headset"></i> ' + esc(t.public_code || 'Ticket');
+          metaEl.innerHTML = esc(t.subject || '') + ' · ' + esc(t.category_name || '')
+            + ' · <span class="badge ' + (t.status_code === 'closed' ? 'closed' : 'pending') + '">' + esc(t.status_label || '') + '</span>';
+
+          let html = '';
+          (t.messages || []).forEach(m => {
+            html += '<div class="ticket-msg">';
+            html += '<div class="who' + (m.is_staff ? ' staff' : '') + '">';
+            html += (m.is_staff ? 'Yetkili' : 'Sen') + ' · ' + esc(m.account_login) + ' · ' + esc(m.created_label || '');
+            html += '</div><div class="body">' + esc(m.body || '') + '</div>';
+            if (m.attachment) {
+              html += '<a href="' + esc(m.attachment.path) + '" target="_blank" style="color:var(--gold-light);font-size:.8rem;"><i class="fa-solid fa-paperclip"></i> ' + esc(m.attachment.name) + '</a>';
+            }
+            html += '</div>';
+          });
+          msgsEl.innerHTML = html || '<div style="color:var(--ash);">Mesaj yok.</div>';
+
+          if (res.closed) {
+            noteEl.style.display = 'block';
+            noteEl.textContent = 'Bu ticket kapatıldı. Yeni yanıt yazılamaz.';
+            replyWrap.style.display = 'none';
+          } else if (res.can_reply) {
+            noteEl.style.display = 'none';
+            replyWrap.style.display = 'block';
+            replyId.value = String(t.id || '');
+            if (replyBody) replyBody.value = '';
+          } else {
+            noteEl.style.display = 'block';
+            noteEl.textContent = 'Mevcut ticket içeriği değiştirilemez. Yetkili cevapladıktan sonra buradan yeni yanıt yazabilirsin.';
+            replyWrap.style.display = 'none';
+          }
+        })
+        .catch(() => {
+          titleEl.textContent = 'Ticket';
+          msgsEl.innerHTML = '<div style="color:var(--blood-light);">Bağlantı hatası.</div>';
+        });
+    }
+
+    document.querySelectorAll('[data-ticket-view]').forEach(btn => {
+      btn.addEventListener('click', () => openTicket(btn.getAttribute('data-ticket-view')));
+    });
+    closeBtn?.addEventListener('click', () => overlay.classList.remove('open'));
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
+
+    if (openTicketId > 0) openTicket(openTicketId);
   })();
 
   (function sessionCountdown() {

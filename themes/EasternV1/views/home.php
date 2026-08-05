@@ -23,6 +23,7 @@
 /** @var array $siteFooterLinks */
 /** @var array $siteFooter */
 /** @var array $nextChapter */
+/** @var array|null $homeAnnouncement */
 
 $registerErrors = is_array($registerErrors ?? null) ? $registerErrors : [];
 $registerOld = is_array($registerOld ?? null) ? $registerOld : [];
@@ -44,6 +45,7 @@ $siteSocials = is_array($siteSocials ?? null) ? $siteSocials : [];
 $siteFooterLinks = is_array($siteFooterLinks ?? null) ? $siteFooterLinks : [];
 $siteFooter = is_array($siteFooter ?? null) ? $siteFooter : [];
 $nextChapter = is_array($nextChapter ?? null) ? $nextChapter : [];
+$homeAnnouncement = is_array($homeAnnouncement ?? null) ? $homeAnnouncement : null;
 $isLoggedIn = $authUser !== null;
 $canAdmin = $isLoggedIn && \App\Services\AuthService::canAccessAdmin($authUser);
 
@@ -250,6 +252,35 @@ $mediaUrl = static function (string $path): string {
   .modal-alert.success{background:rgba(51,89,74,.2); border-color:rgba(79,138,113,.35); color:#4f8a71;}
   .modal-alert ul{margin:4px 0 0 16px;}
   body.modal-open{overflow:hidden;}
+  .modal-card.modal-ann{
+    max-width:560px;
+  }
+  .modal-card.modal-ann h2{
+    font-family:var(--font-display); font-size:1.35rem; color:var(--gold-light);
+    line-height:1.3; margin:8px 0 14px;
+  }
+  .modal-ann-meta{
+    display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center;
+    margin-bottom:6px; font-size:.72rem; color:var(--ash);
+  }
+  .modal-ann-meta .ann-type{
+    padding:3px 9px; border:1px solid rgba(201,151,74,.28); background:rgba(201,151,74,.1);
+    color:var(--gold-light); font-size:.68rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em;
+  }
+  .modal-ann-body{
+    font-size:.9rem; line-height:1.7; color:var(--parchment);
+    max-height:min(48vh, 360px); overflow:auto; margin-bottom:18px;
+    padding-top:12px; border-top:1px solid rgba(201,151,74,.12);
+  }
+  .modal-ann-body p{margin:0 0 .7em;}
+  .modal-ann-body p:last-child{margin-bottom:0;}
+  .modal-ann-body a{color:var(--gold-light);}
+  .modal-ann-body ul,.modal-ann-body ol{margin:0 0 .7em 1.2em; list-style:disc;}
+  .modal-ann-body ol{list-style:decimal;}
+  .modal-ann-body table{width:100%; border-collapse:collapse; margin:.5em 0;}
+  .modal-ann-body th,.modal-ann-body td{border:1px solid rgba(201,151,74,.2); padding:6px 8px;}
+  .modal-ann-actions{display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;}
+  .modal-ann-actions .btn{min-width:110px; justify-content:center;}
 
   /* ---------- HERO ---------- */
   .hero{
@@ -829,6 +860,25 @@ $mediaUrl = static function (string $path): string {
 </footer>
 
 <!-- ================= LOGIN MODAL ================= -->
+<?php if ($homeAnnouncement): ?>
+<div class="modal-overlay" id="homeAnnModal" role="dialog" aria-modal="true" aria-labelledby="homeAnnTitle">
+  <div class="modal-card modal-ann">
+    <button type="button" class="modal-close" id="closeHomeAnnModal" aria-label="Kapat"><i class="fa-solid fa-xmark"></i></button>
+    <div class="eyebrow">Sunucu Duyurusu</div>
+    <div class="modal-ann-meta">
+      <span class="ann-type"><?= e((string) ($homeAnnouncement['type_name'] ?: 'Duyuru')) ?></span>
+      <span><?= e((string) $homeAnnouncement['published_label']) ?></span>
+    </div>
+    <h2 id="homeAnnTitle"><?= e((string) $homeAnnouncement['title']) ?></h2>
+    <div class="modal-ann-body"><?= \App\Services\AnnouncementService::sanitizeHtml((string) $homeAnnouncement['body']) ?></div>
+    <div class="modal-ann-actions">
+      <button type="button" class="btn btn-ghost" id="homeAnnDismissClose">Kapat</button>
+      <button type="button" class="btn btn-primary" id="homeAnnDismissRead">Okudum</button>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
 <div class="modal-overlay<?= $openLogin ? ' open' : '' ?>" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
   <div class="modal-card">
     <button type="button" class="modal-close" id="closeLoginModal" aria-label="Kapat"><i class="fa-solid fa-xmark"></i></button>
@@ -962,6 +1012,9 @@ $mediaUrl = static function (string $path): string {
   const loginModal = document.getElementById('loginModal');
   const registerModal = document.getElementById('registerModal');
   const twoFaModal = document.getElementById('twoFaModal');
+  const homeAnnModal = document.getElementById('homeAnnModal');
+  const homeAnnId = <?= json_encode($homeAnnouncement ? (int) $homeAnnouncement['id'] : 0) ?>;
+  const homeAnnStorageKey = 'm2dn_home_ann_read';
   const openLoginBtn = document.getElementById('openLoginModal');
   const openLoginHero = document.getElementById('openLoginModalHero');
   const closeLoginBtn = document.getElementById('closeLoginModal');
@@ -969,11 +1022,30 @@ $mediaUrl = static function (string $path): string {
   const closeRegisterBtn = document.getElementById('closeRegisterModal');
   const closeTwoFaBtn = document.getElementById('closeTwoFaModal');
 
+  function anyAuthModalOpen() {
+    return !!(loginModal?.classList.contains('open') || registerModal?.classList.contains('open') || twoFaModal?.classList.contains('open'));
+  }
   function hideAllModals() {
     loginModal?.classList.remove('open');
     registerModal?.classList.remove('open');
     twoFaModal?.classList.remove('open');
+    homeAnnModal?.classList.remove('open');
     document.body.classList.remove('modal-open');
+  }
+  function dismissHomeAnn() {
+    if (homeAnnId > 0) {
+      try { localStorage.setItem(homeAnnStorageKey, String(homeAnnId)); } catch (e) {}
+    }
+    homeAnnModal?.classList.remove('open');
+    if (!anyAuthModalOpen()) document.body.classList.remove('modal-open');
+  }
+  function showHomeAnnIfNeeded() {
+    if (!homeAnnModal || homeAnnId <= 0 || anyAuthModalOpen()) return;
+    let readId = '';
+    try { readId = localStorage.getItem(homeAnnStorageKey) || ''; } catch (e) {}
+    if (String(homeAnnId) === String(readId)) return;
+    homeAnnModal.classList.add('open');
+    document.body.classList.add('modal-open');
   }
   function showLoginModal() {
     if (!loginModal) return;
@@ -1006,12 +1078,21 @@ $mediaUrl = static function (string $path): string {
   openRegisterBtn?.addEventListener('click', showRegisterModal);
   closeRegisterBtn?.addEventListener('click', hideAllModals);
   closeTwoFaBtn?.addEventListener('click', hideAllModals);
+  document.getElementById('closeHomeAnnModal')?.addEventListener('click', dismissHomeAnn);
+  document.getElementById('homeAnnDismissClose')?.addEventListener('click', dismissHomeAnn);
+  document.getElementById('homeAnnDismissRead')?.addEventListener('click', dismissHomeAnn);
 
   loginModal?.addEventListener('click', (e) => { if (e.target === loginModal) hideAllModals(); });
   registerModal?.addEventListener('click', (e) => { if (e.target === registerModal) hideAllModals(); });
   twoFaModal?.addEventListener('click', (e) => { if (e.target === twoFaModal) hideAllModals(); });
+  homeAnnModal?.addEventListener('click', (e) => { if (e.target === homeAnnModal) dismissHomeAnn(); });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') hideAllModals();
+    if (e.key !== 'Escape') return;
+    if (homeAnnModal?.classList.contains('open') && !anyAuthModalOpen()) {
+      dismissHomeAnn();
+      return;
+    }
+    hideAllModals();
   });
 
   const navUserBtn = document.getElementById('navUserBtn');
@@ -1046,6 +1127,8 @@ $mediaUrl = static function (string $path): string {
   showLoginModal();
   <?php elseif ($openRegister): ?>
   showRegisterModal();
+  <?php else: ?>
+  showHomeAnnIfNeeded();
   <?php endif; ?>
 
   // Ember particles

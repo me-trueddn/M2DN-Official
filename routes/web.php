@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Controllers\AdminAccessController;
+use App\Controllers\AdminAnnouncementController;
 use App\Controllers\AdminPanelController;
 use App\Controllers\AdminSiteController;
 use App\Controllers\AuthController;
 use App\Controllers\HomeController;
+use App\Controllers\TicketController;
 use App\Controllers\UserPanelController;
 use App\Core\Router;
 use App\Core\Security;
@@ -45,6 +48,30 @@ $router->post('/admin/ayarlar/footer-link', [AdminSiteController::class, 'saveFo
 $router->post('/admin/ayarlar/footer-link/sil', [AdminSiteController::class, 'deleteFooterLink']);
 $router->post('/admin/ayarlar/sosyal', [AdminSiteController::class, 'saveSocial']);
 $router->post('/admin/ayarlar/sosyal/sil', [AdminSiteController::class, 'deleteSocial']);
+
+$router->post('/admin/yetki/grup', [AdminAccessController::class, 'saveGroup']);
+$router->post('/admin/yetki/grup/sil', [AdminAccessController::class, 'deleteGroup']);
+$router->post('/admin/yetki/ata', [AdminAccessController::class, 'assignGroup']);
+$router->post('/admin/ticket/kategori', [AdminAccessController::class, 'saveTicketCategory']);
+$router->post('/admin/ticket/kategori/sil', [AdminAccessController::class, 'deleteTicketCategory']);
+$router->post('/admin/ticket/durum', [AdminAccessController::class, 'saveTicketStatus']);
+$router->post('/admin/ticket/dosya-turu', [AdminAccessController::class, 'saveTicketFileType']);
+$router->post('/admin/ticket/dosya-turu/sil', [AdminAccessController::class, 'deleteTicketFileType']);
+$router->post('/admin/ticket/dosya-turu/toggle', [AdminAccessController::class, 'toggleTicketFileType']);
+
+$router->post('/admin/duyuru/kaydet', [AdminAnnouncementController::class, 'save']);
+$router->post('/admin/duyuru/toggle', [AdminAnnouncementController::class, 'toggle']);
+$router->post('/admin/duyuru/sil', [AdminAnnouncementController::class, 'delete']);
+$router->post('/admin/duyuru-tur/kaydet', [AdminAnnouncementController::class, 'saveType']);
+$router->post('/admin/duyuru-tur/sil', [AdminAnnouncementController::class, 'deleteType']);
+$router->post('/admin/duyuru-tur/toggle', [AdminAnnouncementController::class, 'toggleType']);
+
+$router->post('/panel/ticket', [TicketController::class, 'create']);
+$router->post('/panel/ticket/yanit', [TicketController::class, 'replyUser']);
+$router->get('/panel/ticket', [TicketController::class, 'viewUser']);
+$router->post('/admin/ticket/yanit', [TicketController::class, 'replyAdmin']);
+$router->post('/admin/ticket/kapat', [TicketController::class, 'closeAdmin']);
+$router->get('/admin/ticket/json', [TicketController::class, 'adminDetailJson']);
 
 $router->get('/kayit', [AuthController::class, 'showRegister']);
 $router->post('/kayit', [AuthController::class, 'register']);

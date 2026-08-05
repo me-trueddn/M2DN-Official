@@ -6,15 +6,22 @@ namespace App\Controllers;
 
 use App\Core\Security;
 use App\Core\Session;
+use App\Services\AdminLogService;
 use App\Services\AuthService;
+use App\Services\PermissionService;
 use App\Services\SiteContentService;
 
 final class AdminSiteController
 {
+    private function gate(): void
+    {
+        PermissionService::requireFlag(PermissionService::FLAG_SITE_SETTINGS);
+        Security::requireCsrf('login');
+    }
+
     public function saveRates(): void
     {
-        AuthService::requireAdmin();
-        Security::requireCsrf('login');
+        $this->gate();
         SiteContentService::set('rates', 'exp', (string) max(0, (int) ($_POST['exp'] ?? 0)));
         SiteContentService::set('rates', 'drop', (string) max(0, (int) ($_POST['drop'] ?? 0)));
         SiteContentService::set('rates', 'yang', (string) max(0, (int) ($_POST['yang'] ?? 0)));
@@ -25,8 +32,7 @@ final class AdminSiteController
 
     public function saveChapter(): void
     {
-        AuthService::requireAdmin();
-        Security::requireCsrf('login');
+        $this->gate();
         $title = trim((string) ($_POST['title'] ?? ''));
         $date = trim((string) ($_POST['date'] ?? ''));
         $time = trim((string) ($_POST['time'] ?? '20:00'));
@@ -41,8 +47,7 @@ final class AdminSiteController
 
     public function saveFooterMeta(): void
     {
-        AuthService::requireAdmin();
-        Security::requireCsrf('login');
+        $this->gate();
         SiteContentService::set('footer', 'copyright', trim((string) ($_POST['copyright'] ?? '')));
         SiteContentService::set('footer', 'brand_text', trim((string) ($_POST['brand_text'] ?? '')));
         $this->ok('Footer metinleri kaydedildi.', 'footer-ayarlari');
@@ -50,8 +55,7 @@ final class AdminSiteController
 
     public function saveDownload(): void
     {
-        AuthService::requireAdmin();
-        Security::requireCsrf('login');
+        $this->gate();
         $id = (int) ($_POST['id'] ?? 0);
         $result = SiteContentService::saveDownload(
             $id > 0 ? $id : null,
@@ -65,16 +69,14 @@ final class AdminSiteController
 
     public function deleteDownload(): void
     {
-        AuthService::requireAdmin();
-        Security::requireCsrf('login');
+        $this->gate();
         SiteContentService::deleteDownload((int) ($_POST['id'] ?? 0));
         $this->ok('İndirme linki silindi.', 'patch-linkleri');
     }
 
     public function saveFeature(): void
     {
-        AuthService::requireAdmin();
-        Security::requireCsrf('login');
+        $this->gate();
         $id = (int) ($_POST['id'] ?? 0);
         $result = SiteContentService::saveFeature(
             $id > 0 ? $id : null,
@@ -87,16 +89,14 @@ final class AdminSiteController
 
     public function saveClass(): void
     {
-        AuthService::requireAdmin();
-        Security::requireCsrf('login');
+        $this->gate();
         $result = SiteContentService::saveClass((int) ($_POST['id'] ?? 0), $_POST);
         $this->fromResult($result, 'Sınıf kaydedildi.', 'siniflar-ayarlari');
     }
 
     public function saveGallery(): void
     {
-        AuthService::requireAdmin();
-        Security::requireCsrf('login');
+        $this->gate();
 
         $title = (string) ($_POST['title'] ?? '');
         $path = trim((string) ($_POST['image_path'] ?? ''));
@@ -116,16 +116,14 @@ final class AdminSiteController
 
     public function deleteGallery(): void
     {
-        AuthService::requireAdmin();
-        Security::requireCsrf('login');
+        $this->gate();
         SiteContentService::deleteGallery((int) ($_POST['id'] ?? 0));
         $this->ok('Galeri kaydı silindi.', 'galeri-ayarlari');
     }
 
     public function saveFooterLink(): void
     {
-        AuthService::requireAdmin();
-        Security::requireCsrf('login');
+        $this->gate();
         $id = (int) ($_POST['id'] ?? 0);
         $result = SiteContentService::saveFooterLink(
             $id > 0 ? $id : null,
@@ -138,16 +136,14 @@ final class AdminSiteController
 
     public function deleteFooterLink(): void
     {
-        AuthService::requireAdmin();
-        Security::requireCsrf('login');
+        $this->gate();
         SiteContentService::deleteFooterLink((int) ($_POST['id'] ?? 0));
         $this->ok('Footer linki silindi.', 'footer-ayarlari');
     }
 
     public function saveSocial(): void
     {
-        AuthService::requireAdmin();
-        Security::requireCsrf('login');
+        $this->gate();
         $id = (int) ($_POST['id'] ?? 0);
         $result = SiteContentService::saveSocial(
             $id > 0 ? $id : null,
@@ -161,8 +157,7 @@ final class AdminSiteController
 
     public function deleteSocial(): void
     {
-        AuthService::requireAdmin();
-        Security::requireCsrf('login');
+        $this->gate();
         SiteContentService::deleteSocial((int) ($_POST['id'] ?? 0));
         $this->ok('Sosyal medya silindi.', 'footer-ayarlari');
     }
@@ -178,6 +173,16 @@ final class AdminSiteController
 
     private function ok(string $msg, string $section): void
     {
+        $labels = [
+            'oranlar-ayarlari' => 'Sunucu oranları güncellendi',
+            'siradaki-bolum' => 'Sıradaki bölüm güncellendi',
+            'footer-ayarlari' => 'Footer / sosyal ayar değişti',
+            'patch-linkleri' => 'Patch linki kaydedildi',
+            'ozellikler-ayarlari' => 'Özellik kaydedildi',
+            'siniflar-ayarlari' => 'Sınıf kaydedildi',
+            'galeri-ayarlari' => 'Galeri güncellendi',
+        ];
+        AdminLogService::write(AuthService::user(), $labels[$section] ?? ('Ayar: ' . $section), $msg);
         Session::flash('panel_success', $msg);
         Session::flash('panel_section', $section);
         redirect('/admin?section=' . $section);

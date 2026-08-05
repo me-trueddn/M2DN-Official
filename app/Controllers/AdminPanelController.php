@@ -7,11 +7,15 @@ namespace App\Controllers;
 use App\Core\Security;
 use App\Core\Session;
 use App\Core\Theme;
+use App\Services\AdminLogService;
 use App\Services\AdminPlayerService;
 use App\Services\AdminStatsService;
+use App\Services\AnnouncementService;
 use App\Services\AuthService;
 use App\Services\PenaltyService;
+use App\Services\PermissionService;
 use App\Services\SiteContentService;
+use App\Services\TicketService;
 
 final class AdminPanelController
 {
@@ -27,15 +31,25 @@ final class AdminPanelController
         $page = (int) ($_GET['page'] ?? 1);
         $per = (int) ($_GET['per'] ?? 10);
         $players = AdminPlayerService::listAccounts($q, $status, $page, $per);
+        $ticketQ = trim((string) ($_GET['ticket_q'] ?? ''));
+        $logQ = trim((string) ($_GET['log_q'] ?? ''));
+        $logPage = (int) ($_GET['log_page'] ?? 1);
 
         $section = (string) ($_GET['section'] ?? 'ozet');
-        if ($q !== '' || $status !== '' || isset($_GET['page']) || isset($_GET['per'])) {
+        if ($ticketQ !== '' || isset($_GET['ticket'])) {
+            $section = 'destekler';
+        } elseif ($logQ !== '' || isset($_GET['log_page']) || $section === 'loglar') {
+            if (isset($_GET['log_q']) || isset($_GET['log_page'])) {
+                $section = 'loglar';
+            }
+        } elseif ($q !== '' || $status !== '' || isset($_GET['page']) || isset($_GET['per'])) {
             $section = 'oyuncular';
         }
         $allowed = [
             'ozet', 'oyuncular', 'banlar', 'duyurular', 'destekler', 'sunucu', 'loglar',
             'ceza-ayarlari', 'patch-linkleri', 'ozellikler-ayarlari', 'siniflar-ayarlari',
             'oranlar-ayarlari', 'siradaki-bolum', 'galeri-ayarlari', 'footer-ayarlari',
+            'yetki-gruplari', 'ticket-ayarlari', 'duyuru-turleri',
         ];
         if (!in_array($section, $allowed, true)) {
             $section = 'ozet';
@@ -46,8 +60,53 @@ final class AdminPanelController
             $section = $flashSection;
         }
 
+        $permFlags = [];
+        foreach (array_keys(PermissionService::flagDefinitions()) as $flag) {
+            $permFlags[$flag] = PermissionService::userHasFlag($user, $flag);
+        }
+
+        $settingsSections = [
+            'ceza-ayarlari', 'patch-linkleri', 'ozellikler-ayarlari', 'siniflar-ayarlari',
+            'oranlar-ayarlari', 'siradaki-bolum', 'galeri-ayarlari', 'footer-ayarlari',
+            'yetki-gruplari', 'ticket-ayarlari', 'duyuru-turleri',
+        ];
+        if (in_array($section, $settingsSections, true) && empty($permFlags[PermissionService::FLAG_SITE_SETTINGS])) {
+            Session::flash('panel_errors', ['Ayarlara erişim yetkin yok.']);
+            $section = 'ozet';
+        }
+
+        $menuGate = [
+            'oyuncular' => PermissionService::FLAG_MENU_OYUNCULAR,
+            'banlar' => PermissionService::FLAG_MENU_BANLAR,
+            'duyurular' => PermissionService::FLAG_MENU_DUYURULAR,
+            'destekler' => PermissionService::FLAG_MENU_DESTEKLER,
+            'sunucu' => PermissionService::FLAG_MENU_SUNUCU,
+            'loglar' => PermissionService::FLAG_MENU_LOGLAR,
+        ];
+        if ($section === 'duyurular'
+            && empty($permFlags[PermissionService::FLAG_MENU_DUYURULAR])
+            && empty($permFlags[PermissionService::FLAG_ANNOUNCEMENTS])
+        ) {
+            Session::flash('panel_errors', ['Duyuru yetkin yok.']);
+            $section = 'ozet';
+        } elseif (isset($menuGate[$section]) && $section !== 'duyurular' && empty($permFlags[$menuGate[$section]])) {
+            Session::flash('panel_errors', ['Bu menüye erişim yetkin yok.']);
+            $section = 'ozet';
+        }
+
         $chapter = SiteContentService::nextChapter();
         $chapterDt = $chapter['target_at'] !== '' ? strtotime($chapter['target_at']) : false;
+
+        $ticketId = (int) ($_GET['ticket'] ?? 0);
+        $activeTicket = null;
+        if ($ticketId > 0 && !empty($permFlags[PermissionService::FLAG_TICKETS])) {
+            $activeTicket = TicketService::getTicket($ticketId);
+        }
+
+        $adminLogs = ['rows' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 10, 'filter' => ''];
+        if (!empty($permFlags[PermissionService::FLAG_MENU_LOGLAR])) {
+            $adminLogs = AdminLogService::list($logQ, $logPage, AdminLogService::PER_PAGE);
+        }
 
         Theme::render('admin/panel', [
             'authUser' => $user,
@@ -71,12 +130,29 @@ final class AdminPanelController
                 'date' => $chapterDt ? date('Y-m-d', $chapterDt) : '',
                 'time' => $chapterDt ? date('H:i', $chapterDt) : '20:00',
             ],
+            'permFlags' => $permFlags,
+            'permFlagDefs' => PermissionService::flagDefinitions(),
+            'permissionGroups' => PermissionService::listGroups(),
+            'ticketCategories' => TicketService::categories(false),
+            'ticketStatuses' => TicketService::statuses(false),
+            'ticketFileTypes' => TicketService::allowedFileTypes(false),
+            'adminTickets' => !empty($permFlags[PermissionService::FLAG_TICKETS])
+                ? TicketService::listAll(100, $ticketQ)
+                : [],
+            'ticketSearch' => $ticketQ,
+            'activeTicket' => $activeTicket,
+            'adminLogs' => $adminLogs,
+            'announcementTypes' => AnnouncementService::types(false),
+            'announcementTypesActive' => AnnouncementService::types(true),
+            'announcements' => AnnouncementService::list(false, 80),
+            'overviewAnnouncements' => AnnouncementService::list(true, 8),
+            'openTicketCount' => TicketService::openCountAll(),
         ]);
     }
 
     public function player(): void
     {
-        $user = AuthService::requireAdmin();
+        $user = PermissionService::requireFlag(PermissionService::FLAG_PLAYER_DETAIL);
         $id = (int) ($_GET['id'] ?? 0);
         $detail = AdminPlayerService::accountDetail($id);
         if ($detail === null) {
@@ -98,7 +174,7 @@ final class AdminPanelController
 
     public function playerJson(): void
     {
-        AuthService::requireAdmin();
+        PermissionService::requireFlag(PermissionService::FLAG_PLAYER_DETAIL);
         $id = (int) ($_GET['id'] ?? 0);
         $detail = AdminPlayerService::accountDetail($id);
         header('Content-Type: application/json; charset=utf-8');
@@ -112,7 +188,7 @@ final class AdminPanelController
 
     public function ban(): void
     {
-        $user = AuthService::requireAdmin();
+        $user = PermissionService::requireFlag(PermissionService::FLAG_BAN);
         Security::requireCsrf('login');
 
         $accountId = (int) ($_POST['account_id'] ?? 0);
@@ -126,13 +202,18 @@ final class AdminPanelController
             ['account_id' => (int) $user['account_id'], 'login' => (string) $user['login']]
         );
 
+        if (!empty($result['ok'])) {
+            $login = (string) ($_POST['account_login'] ?? '');
+            AdminLogService::write($user, 'Ban', 'Ceza #' . $penaltyId . ($evidence !== '' ? ' · Kanıt: ' . $evidence : ''), $accountId, $login !== '' ? $login : null);
+        }
+
         $this->flashResult($result, 'Oyuncu banlandı. Oyuna giriş engellendi; panele girebilir.', 'oyuncular');
         redirect('/admin?section=oyuncular');
     }
 
     public function unban(): void
     {
-        $user = AuthService::requireAdmin();
+        $user = PermissionService::requireFlag(PermissionService::FLAG_BAN);
         Security::requireCsrf('login');
 
         $accountId = (int) ($_POST['account_id'] ?? 0);
@@ -142,6 +223,11 @@ final class AdminPanelController
             $reason,
             ['account_id' => (int) $user['account_id'], 'login' => (string) $user['login']]
         );
+
+        if (!empty($result['ok'])) {
+            $login = (string) ($_POST['account_login'] ?? '');
+            AdminLogService::write($user, 'Ban kaldırma', $reason, $accountId, $login !== '' ? $login : null);
+        }
 
         $back = (string) ($_POST['redirect_section'] ?? 'oyuncular');
         if (!in_array($back, ['oyuncular', 'banlar'], true)) {
@@ -154,7 +240,7 @@ final class AdminPanelController
 
     public function savePenalty(): void
     {
-        AuthService::requireAdmin();
+        $user = PermissionService::requireFlag(PermissionService::FLAG_SITE_SETTINGS);
         Security::requireCsrf('login');
 
         $idRaw = (string) ($_POST['id'] ?? '');
@@ -163,12 +249,17 @@ final class AdminPanelController
             $id = null;
         }
 
+        $name = (string) ($_POST['name'] ?? '');
         $result = PenaltyService::saveTemplate(
             $id,
-            (string) ($_POST['name'] ?? ''),
+            $name,
             (string) ($_POST['reason'] ?? ''),
             (int) ($_POST['days'] ?? 0)
         );
+
+        if (!empty($result['ok'])) {
+            AdminLogService::write($user, $id ? 'Ceza şablonu güncellendi' : 'Ceza şablonu eklendi', $name);
+        }
 
         $this->flashResult($result, 'Ceza şablonu kaydedildi.', 'ceza-ayarlari');
         redirect('/admin?section=ceza-ayarlari');
@@ -176,10 +267,14 @@ final class AdminPanelController
 
     public function deletePenalty(): void
     {
-        AuthService::requireAdmin();
+        $user = PermissionService::requireFlag(PermissionService::FLAG_SITE_SETTINGS);
         Security::requireCsrf('login');
 
-        $result = PenaltyService::deleteTemplate((int) ($_POST['id'] ?? 0));
+        $id = (int) ($_POST['id'] ?? 0);
+        $result = PenaltyService::deleteTemplate($id);
+        if (!empty($result['ok'])) {
+            AdminLogService::write($user, 'Ceza şablonu silindi', 'ID #' . $id);
+        }
         $this->flashResult($result, 'Ceza şablonu silindi.', 'ceza-ayarlari');
         redirect('/admin?section=ceza-ayarlari');
     }
