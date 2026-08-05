@@ -1,16 +1,28 @@
 ---
-description: After completing feature work, ask how to bump the app version (build / minor / patch).
+description: After finishing a change set, ask version bump as multiple-choice and WAIT for the user's pick before any further work.
 alwaysApply: true
 ---
 
 # Version bump after changes
 
-When you finish a set of user-requested changes (feature, content, or fix), **ask before ending**:
+When you finish a set of user-requested changes (feature, content, or fix):
 
-1. Bu bir **build** mi? (büyük sürüm — `x.0.0`)
-2. **Minor** değişiklik mi? (yeni özellik — `x.Y.0`)
-3. **Patch / fix / yama** mı? (`x.y.Z`)
+## How to ask
 
-Then bump `config/config.php` → `app.version` accordingly and ensure the version is shown in footer, user panel, and admin panel (`$appVersion` from Theme).
+Present the version question as a **multiple-choice** prompt (prefer Cursor’s interactive AskQuestion / choice UI when available). Options:
 
-Current baseline at ship of this rule: **1.10.2**.
+1. **Build** — major (`x.0.0`)
+2. **Minor** — new feature (`x.Y.0`)
+3. **Patch / fix / yama** — small fix (`x.y.Z`)
+
+If interactive choice UI is not available, still list exactly those three options and ask the user to reply with `1`, `2`, or `3` (or Build / Minor / Patch).
+
+## Hard stop
+
+- **Do not** start the next user request, follow-up task, or unrelated work until they select an option.
+- **Do not** bump the version yourself without their answer.
+- After they choose: update `config/config.php` → `app.version`, confirm the new version in the reply, then continue.
+
+Version is shown in footer, user panel, and admin panel via Theme `$appVersion`.
+
+Current baseline: check `config/config.php` `app.version` (was **1.10.2** at rule creation).

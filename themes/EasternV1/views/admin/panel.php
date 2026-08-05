@@ -651,7 +651,14 @@ $settingsOpen = in_array($panelSection, [
                 <td><?= e((string) $dl['pack_type']) ?></td>
                 <td style="font-size:.75rem;word-break:break-all;color:var(--ash);"><?= e((string) $dl['url']) ?></td>
                 <td class="actions-cell">
-                  <form method="post" action="<?= e(url('/admin/ayarlar/patch/sil')) ?>" onsubmit="return confirm('Silinsin mi?');"><?= $csrf ?><input type="hidden" name="id" value="<?= (int)$dl['id'] ?>"><button type="submit" class="danger"><i class="fa-solid fa-trash"></i></button></form>
+                  <button type="button" title="Düzenle"
+                    data-edit-download
+                    data-id="<?= (int) $dl['id'] ?>"
+                    data-title="<?= e((string) $dl['title']) ?>"
+                    data-url="<?= e((string) $dl['url']) ?>"
+                    data-description="<?= e((string) $dl['description']) ?>"
+                    data-pack="<?= e((string) $dl['pack_type']) ?>"><i class="fa-solid fa-pen"></i></button>
+                  <form method="post" action="<?= e(url('/admin/ayarlar/patch/sil')) ?>" style="display:inline;" onsubmit="return confirm('Silinsin mi?');"><?= $csrf ?><input type="hidden" name="id" value="<?= (int)$dl['id'] ?>"><button type="submit" class="danger"><i class="fa-solid fa-trash"></i></button></form>
                 </td>
               </tr>
               <?php endforeach; ?>
@@ -659,21 +666,25 @@ $settingsOpen = in_array($panelSection, [
           </table>
         </div>
         <div class="card">
-          <div class="card-head"><h3>Yeni Link</h3></div>
-          <form method="post" action="<?= e(url('/admin/ayarlar/patch')) ?>">
+          <div class="card-head"><h3 id="downloadFormTitle">Yeni Link</h3></div>
+          <form method="post" action="<?= e(url('/admin/ayarlar/patch')) ?>" id="downloadForm">
             <?= $csrf ?>
-            <div class="form-row"><label>Link adı</label><input name="title" required placeholder="Mega Otopack"></div>
-            <div class="form-row"><label>URL</label><input name="url" required placeholder="https://..."></div>
-            <div class="form-row"><label>Açıklama</label><input name="description" placeholder="Dosya upload / kısa not"></div>
+            <input type="hidden" name="id" id="downloadId" value="">
+            <div class="form-row"><label>Link adı</label><input name="title" id="downloadTitle" required placeholder="Mega Otopack"></div>
+            <div class="form-row"><label>URL</label><input name="url" id="downloadUrl" required placeholder="https://..."></div>
+            <div class="form-row"><label>Açıklama</label><input name="description" id="downloadDescription" placeholder="Dosya upload / kısa not"></div>
             <div class="form-row"><label>Paket türü</label>
-              <select name="pack_type">
+              <select name="pack_type" id="downloadPack">
                 <option value="normal">Normal Pack</option>
                 <option value="otopack">Otopack</option>
                 <option value="lite">Lite</option>
                 <option value="full">Full</option>
               </select>
             </div>
-            <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="downloadReset">Temizle</button>
+            </div>
           </form>
         </div>
       </div>
@@ -843,22 +854,36 @@ $settingsOpen = in_array($panelSection, [
               <tr>
                 <td><?= e((string)$fl['column_key']) ?></td>
                 <td><?= e((string)$fl['label']) ?></td>
-                <td style="font-size:.75rem;"><?= e((string)$fl['url']) ?></td>
+                <td style="font-size:.75rem;word-break:break-all;"><?= e((string)$fl['url']) ?></td>
                 <td class="actions-cell">
-                  <form method="post" action="<?= e(url('/admin/ayarlar/footer-link/sil')) ?>" onsubmit="return confirm('Silinsin mi?');"><?= $csrf ?><input type="hidden" name="id" value="<?= (int)$fl['id'] ?>"><button type="submit" class="danger"><i class="fa-solid fa-trash"></i></button></form>
+                  <button type="button" title="Düzenle"
+                    data-edit-footer-link
+                    data-id="<?= (int)$fl['id'] ?>"
+                    data-column="<?= e((string)$fl['column_key']) ?>"
+                    data-label="<?= e((string)$fl['label']) ?>"
+                    data-url="<?= e((string)$fl['url']) ?>"><i class="fa-solid fa-pen"></i></button>
+                  <form method="post" action="<?= e(url('/admin/ayarlar/footer-link/sil')) ?>" style="display:inline;" onsubmit="return confirm('Silinsin mi?');"><?= $csrf ?><input type="hidden" name="id" value="<?= (int)$fl['id'] ?>"><button type="submit" class="danger"><i class="fa-solid fa-trash"></i></button></form>
                 </td>
               </tr>
               <?php endforeach; ?>
             </tbody>
           </table>
-          <form method="post" action="<?= e(url('/admin/ayarlar/footer-link')) ?>" style="margin-top:14px;">
+          <form method="post" action="<?= e(url('/admin/ayarlar/footer-link')) ?>" id="footerLinkForm" style="margin-top:14px;">
             <?= $csrf ?>
+            <input type="hidden" name="id" id="footerLinkId" value="">
+            <div class="card-head" style="margin-bottom:12px;padding:0;"><h3 id="footerLinkFormTitle" style="font-size:.95rem;">Yeni Link</h3></div>
             <div class="form-row"><label>Kolon</label>
-              <select name="column_key"><option value="server">Sunucu</option><option value="community">Topluluk</option></select>
+              <select name="column_key" id="footerLinkColumn">
+                <option value="server">Sunucu</option>
+                <option value="community">Topluluk</option>
+              </select>
             </div>
-            <div class="form-row"><label>Etiket</label><input name="label" required></div>
-            <div class="form-row"><label>URL</label><input name="url" required></div>
-            <button type="submit" class="btn btn-primary btn-sm">Link Ekle</button>
+            <div class="form-row"><label>Etiket</label><input name="label" id="footerLinkLabel" required></div>
+            <div class="form-row"><label>URL</label><input name="url" id="footerLinkUrl" required></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="footerLinkReset">Temizle</button>
+            </div>
           </form>
         </div>
         <div class="card">
@@ -868,9 +893,16 @@ $settingsOpen = in_array($panelSection, [
             <tbody>
               <?php foreach ($siteSocials as $soc): ?>
               <tr>
-                <td><i class="<?= e((string)$soc['icon']) ?>"></i> <?= e((string)$soc['name']) ?><div style="font-size:.72rem;color:var(--ash);"><?= e((string)$soc['url']) ?></div></td>
+                <td><i class="<?= e((string)$soc['icon']) ?>"></i> <?= e((string)$soc['name']) ?><div style="font-size:.72rem;color:var(--ash);word-break:break-all;"><?= e((string)$soc['url']) ?></div></td>
                 <td><?= !empty($soc['is_active']) ? 'Aktif' : 'Pasif' ?></td>
                 <td class="actions-cell">
+                  <button type="button" title="Düzenle"
+                    data-edit-social
+                    data-id="<?= (int)$soc['id'] ?>"
+                    data-name="<?= e((string)$soc['name']) ?>"
+                    data-icon="<?= e((string)$soc['icon']) ?>"
+                    data-url="<?= e((string)$soc['url']) ?>"
+                    data-active="<?= !empty($soc['is_active']) ? '1' : '0' ?>"><i class="fa-solid fa-pen"></i></button>
                   <form method="post" action="<?= e(url('/admin/ayarlar/sosyal')) ?>" style="display:inline;"><?= $csrf ?>
                     <input type="hidden" name="id" value="<?= (int)$soc['id'] ?>">
                     <input type="hidden" name="name" value="<?= e((string)$soc['name']) ?>">
@@ -879,19 +911,29 @@ $settingsOpen = in_array($panelSection, [
                     <input type="hidden" name="is_active" value="<?= !empty($soc['is_active']) ? '0' : '1' ?>">
                     <button type="submit" title="Aktif/Pasif"><?= !empty($soc['is_active']) ? '<i class="fa-solid fa-toggle-on"></i>' : '<i class="fa-solid fa-toggle-off"></i>' ?></button>
                   </form>
-                  <form method="post" action="<?= e(url('/admin/ayarlar/sosyal/sil')) ?>" onsubmit="return confirm('Silinsin mi?');"><?= $csrf ?><input type="hidden" name="id" value="<?= (int)$soc['id'] ?>"><button type="submit" class="danger"><i class="fa-solid fa-trash"></i></button></form>
+                  <form method="post" action="<?= e(url('/admin/ayarlar/sosyal/sil')) ?>" style="display:inline;" onsubmit="return confirm('Silinsin mi?');"><?= $csrf ?><input type="hidden" name="id" value="<?= (int)$soc['id'] ?>"><button type="submit" class="danger"><i class="fa-solid fa-trash"></i></button></form>
                 </td>
               </tr>
               <?php endforeach; ?>
             </tbody>
           </table>
-          <form method="post" action="<?= e(url('/admin/ayarlar/sosyal')) ?>" style="margin-top:14px;">
+          <form method="post" action="<?= e(url('/admin/ayarlar/sosyal')) ?>" id="socialForm" style="margin-top:14px;">
             <?= $csrf ?>
-            <input type="hidden" name="is_active" value="1">
-            <div class="form-row"><label>Ad</label><input name="name" required placeholder="Discord"></div>
-            <div class="form-row"><label>İkon</label><input name="icon" value="fa-brands fa-discord"></div>
-            <div class="form-row"><label>URL</label><input name="url" required placeholder="https://..."></div>
-            <button type="submit" class="btn btn-primary btn-sm">Sosyal Ekle</button>
+            <input type="hidden" name="id" id="socialId" value="">
+            <div class="card-head" style="margin-bottom:12px;padding:0;"><h3 id="socialFormTitle" style="font-size:.95rem;">Yeni Sosyal</h3></div>
+            <div class="form-row"><label>Ad</label><input name="name" id="socialName" required placeholder="Discord"></div>
+            <div class="form-row"><label>İkon (FA class)</label><input name="icon" id="socialIcon" value="fa-brands fa-discord"></div>
+            <div class="form-row"><label>URL</label><input name="url" id="socialUrl" required placeholder="https://..."></div>
+            <div class="form-row"><label>Durum</label>
+              <select name="is_active" id="socialActive">
+                <option value="1">Aktif</option>
+                <option value="0">Pasif</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="socialReset">Temizle</button>
+            </div>
           </form>
         </div>
       </div>
@@ -1257,6 +1299,74 @@ $settingsOpen = in_array($panelSection, [
       showSection('ozellikler-ayarlari');
     });
   });
+
+  function resetDownloadForm() {
+    const t = document.getElementById('downloadFormTitle');
+    if (t) t.textContent = 'Yeni Link';
+    const id = document.getElementById('downloadId');
+    if (id) id.value = '';
+    document.getElementById('downloadTitle').value = '';
+    document.getElementById('downloadUrl').value = '';
+    document.getElementById('downloadDescription').value = '';
+    document.getElementById('downloadPack').value = 'normal';
+  }
+  document.querySelectorAll('[data-edit-download]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('downloadFormTitle').textContent = 'Linki Düzenle';
+      document.getElementById('downloadId').value = btn.dataset.id || '';
+      document.getElementById('downloadTitle').value = btn.dataset.title || '';
+      document.getElementById('downloadUrl').value = btn.dataset.url || '';
+      document.getElementById('downloadDescription').value = btn.dataset.description || '';
+      document.getElementById('downloadPack').value = btn.dataset.pack || 'normal';
+      showSection('patch-linkleri');
+      document.getElementById('downloadTitle').focus();
+    });
+  });
+  document.getElementById('downloadReset')?.addEventListener('click', resetDownloadForm);
+
+  function resetFooterLinkForm() {
+    const t = document.getElementById('footerLinkFormTitle');
+    if (t) t.textContent = 'Yeni Link';
+    document.getElementById('footerLinkId').value = '';
+    document.getElementById('footerLinkColumn').value = 'server';
+    document.getElementById('footerLinkLabel').value = '';
+    document.getElementById('footerLinkUrl').value = '';
+  }
+  document.querySelectorAll('[data-edit-footer-link]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('footerLinkFormTitle').textContent = 'Linki Düzenle';
+      document.getElementById('footerLinkId').value = btn.dataset.id || '';
+      document.getElementById('footerLinkColumn').value = btn.dataset.column || 'server';
+      document.getElementById('footerLinkLabel').value = btn.dataset.label || '';
+      document.getElementById('footerLinkUrl').value = btn.dataset.url || '';
+      showSection('footer-ayarlari');
+      document.getElementById('footerLinkLabel').focus();
+    });
+  });
+  document.getElementById('footerLinkReset')?.addEventListener('click', resetFooterLinkForm);
+
+  function resetSocialForm() {
+    const t = document.getElementById('socialFormTitle');
+    if (t) t.textContent = 'Yeni Sosyal';
+    document.getElementById('socialId').value = '';
+    document.getElementById('socialName').value = '';
+    document.getElementById('socialIcon').value = 'fa-brands fa-discord';
+    document.getElementById('socialUrl').value = '';
+    document.getElementById('socialActive').value = '1';
+  }
+  document.querySelectorAll('[data-edit-social]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('socialFormTitle').textContent = 'Sosyal Düzenle';
+      document.getElementById('socialId').value = btn.dataset.id || '';
+      document.getElementById('socialName').value = btn.dataset.name || '';
+      document.getElementById('socialIcon').value = btn.dataset.icon || '';
+      document.getElementById('socialUrl').value = btn.dataset.url || '';
+      document.getElementById('socialActive').value = btn.dataset.active || '1';
+      showSection('footer-ayarlari');
+      document.getElementById('socialName').focus();
+    });
+  });
+  document.getElementById('socialReset')?.addEventListener('click', resetSocialForm);
 
   (function sessionCountdown() {
     const el = document.getElementById('sessionTimer');
