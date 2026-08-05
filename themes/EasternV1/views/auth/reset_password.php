@@ -42,7 +42,7 @@ $captchaScripts = isset($captchaScripts) && is_string($captchaScripts) ? $captch
     .err ul{margin:0;padding-left:18px;}
     a{color:var(--gold-light);text-decoration:none;}
     .foot{text-align:center;margin-top:16px;font-size:.85rem;color:var(--ash);}
-    .captcha-wrap{margin:4px 0 16px;display:flex;justify-content:center;}
+    .captcha-wrap{margin:4px 0 16px;display:flex;justify-content:center;min-height:78px;}
   </style>
   <?php if ($captchaEnabled && $captchaScripts !== ''): ?><?= $captchaScripts ?><?php endif; ?>
 </head>
@@ -75,5 +75,12 @@ $captchaScripts = isset($captchaScripts) && is_string($captchaScripts) ? $captch
       <p class="foot"><a href="<?= e(url('/giris')) ?>">Giriş sayfasına dön</a></p>
     <?php endif; ?>
   </div>
+  <?php if ($captchaEnabled): ?>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      if (typeof window.m2dnCaptchaRefresh === 'function') window.m2dnCaptchaRefresh(document);
+    });
+  </script>
+  <?php endif; ?>
 </body>
 </html>

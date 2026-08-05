@@ -1138,6 +1138,7 @@ $footerHref = static function (string $url): string {
     hideAllModals();
     loginModal.classList.add('open');
     document.body.classList.add('modal-open');
+    if (typeof window.m2dnCaptchaRefresh === 'function') window.m2dnCaptchaRefresh(loginModal);
     const first = document.getElementById('login-user');
     if (first) setTimeout(() => first.focus(), 50);
   }
@@ -1146,6 +1147,7 @@ $footerHref = static function (string $url): string {
     hideAllModals();
     registerModal.classList.add('open');
     document.body.classList.add('modal-open');
+    if (typeof window.m2dnCaptchaRefresh === 'function') window.m2dnCaptchaRefresh(registerModal);
     const first = document.getElementById('reg-login');
     if (first) setTimeout(() => first.focus(), 50);
   }
@@ -1162,6 +1164,7 @@ $footerHref = static function (string $url): string {
     hideAllModals();
     forgotModal.classList.add('open');
     document.body.classList.add('modal-open');
+    if (typeof window.m2dnCaptchaRefresh === 'function') window.m2dnCaptchaRefresh(forgotModal);
     const first = document.getElementById('forgot-login');
     if (first) setTimeout(() => first.focus(), 50);
   }

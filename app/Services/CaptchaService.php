@@ -96,10 +96,98 @@ final class CaptchaService
             return '';
         }
         $cfg = self::config();
-        $script = $cfg['provider'] === self::PROVIDER_CLOUDFLARE ? self::CF_SCRIPT : self::GOOGLE_SCRIPT;
-        $async = $cfg['provider'] === self::PROVIDER_CLOUDFLARE ? ' async defer' : ' async defer';
+        $siteKeyJson = json_encode($cfg['site_key'], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS);
+        $providerJson = json_encode($cfg['provider'], JSON_UNESCAPED_UNICODE);
 
-        return '<script src="' . htmlspecialchars($script, ENT_QUOTES, 'UTF-8') . '"' . $async . '></script>';
+        if ($cfg['provider'] === self::PROVIDER_CLOUDFLARE) {
+            // explicit: gizli (display:none) modallarda otomatik render çalışmaz
+            $script = self::CF_SCRIPT . '?render=explicit';
+            $boot = <<<JS
+<script>
+window.M2DN_CAPTCHA = { provider: {$providerJson}, siteKey: {$siteKeyJson} };
+(function () {
+  function isVisible(el) {
+    if (!el || !el.isConnected) return false;
+    var overlay = el.closest('.modal-overlay');
+    if (overlay && !overlay.classList.contains('open')) return false;
+    return true;
+  }
+  function mountEl(el) {
+    if (!el || !window.turnstile || !window.M2DN_CAPTCHA || !window.M2DN_CAPTCHA.siteKey) return;
+    if (!isVisible(el)) return;
+    if (el.getAttribute('data-widget-id')) {
+      try { window.turnstile.reset(el.getAttribute('data-widget-id')); } catch (e) {}
+      return;
+    }
+    try {
+      var id = window.turnstile.render(el, {
+        sitekey: window.M2DN_CAPTCHA.siteKey,
+        theme: 'dark',
+        appearance: 'always'
+      });
+      if (id) el.setAttribute('data-widget-id', id);
+    } catch (e) {}
+  }
+  function refresh(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    scope.querySelectorAll('[data-captcha-mount]').forEach(mountEl);
+  }
+  window.m2dnCaptchaRefresh = refresh;
+  function onReady() {
+    refresh(document);
+    document.querySelectorAll('.modal-overlay').forEach(function (modal) {
+      if (typeof MutationObserver === 'undefined') return;
+      new MutationObserver(function () {
+        if (modal.classList.contains('open')) {
+          setTimeout(function () { refresh(modal); }, 30);
+        }
+      }).observe(modal, { attributes: true, attributeFilter: ['class'] });
+    });
+  }
+  function waitTurnstile(n) {
+    if (window.turnstile && typeof window.turnstile.render === 'function') {
+      onReady();
+      return;
+    }
+    if ((n || 0) > 80) return;
+    setTimeout(function () { waitTurnstile((n || 0) + 1); }, 50);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { waitTurnstile(0); });
+  } else {
+    waitTurnstile(0);
+  }
+})();
+</script>
+JS;
+            return '<script src="' . htmlspecialchars($script, ENT_QUOTES, 'UTF-8') . '" async defer></script>' . "\n" . $boot;
+        }
+
+        $script = self::GOOGLE_SCRIPT;
+        $boot = <<<JS
+<script>
+window.M2DN_CAPTCHA = { provider: {$providerJson}, siteKey: {$siteKeyJson} };
+window.m2dnCaptchaRefresh = function (root) {
+  if (!window.grecaptcha || !window.M2DN_CAPTCHA) return;
+  var scope = root && root.querySelectorAll ? root : document;
+  scope.querySelectorAll('.g-recaptcha').forEach(function (el) {
+    var overlay = el.closest('.modal-overlay');
+    if (overlay && !overlay.classList.contains('open')) return;
+    try {
+      if (el.getAttribute('data-widget-id')) {
+        window.grecaptcha.reset(Number(el.getAttribute('data-widget-id')));
+        return;
+      }
+      if (el.innerHTML.trim() !== '') return;
+      var id = window.grecaptcha.render(el, { sitekey: window.M2DN_CAPTCHA.siteKey, theme: 'dark' });
+      el.setAttribute('data-widget-id', String(id));
+    } catch (e) {}
+  });
+};
+</script>
+JS;
+
+        return '<script src="' . htmlspecialchars($script, ENT_QUOTES, 'UTF-8') . '" async defer></script>' . "\n" . $boot;
     }
 
     public static function widgetHtml(): string
@@ -108,10 +196,11 @@ final class CaptchaService
             return '';
         }
         $cfg = self::config();
-        $siteKey = htmlspecialchars($cfg['site_key'], ENT_QUOTES, 'UTF-8');
         if ($cfg['provider'] === self::PROVIDER_CLOUDFLARE) {
-            return '<div class="captcha-wrap"><div class="cf-turnstile" data-sitekey="' . $siteKey . '" data-theme="dark"></div></div>';
+            // Mount noktası — render JS ile (gizli modal uyumlu)
+            return '<div class="captcha-wrap"><div data-captcha-mount></div></div>';
         }
+        $siteKey = htmlspecialchars($cfg['site_key'], ENT_QUOTES, 'UTF-8');
 
         return '<div class="captcha-wrap"><div class="g-recaptcha" data-sitekey="' . $siteKey . '" data-theme="dark"></div></div>';
     }

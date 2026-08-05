@@ -17,10 +17,15 @@ final class PermissionService
     public const FLAG_TICKETS = 'tickets';
     public const FLAG_SITE_SETTINGS = 'site_settings';
     public const FLAG_MENU_OYUNCULAR = 'menu_oyuncular';
+    public const FLAG_MENU_BINEK = 'menu_binek';
+    public const FLAG_MENU_GM = 'menu_gm';
+    public const FLAG_MENU_LONCALAR = 'menu_loncalar';
+    public const FLAG_MENU_LONCA_SAVASLARI = 'menu_lonca_savaslari';
     public const FLAG_MENU_BANLAR = 'menu_banlar';
     public const FLAG_MENU_DUYURULAR = 'menu_duyurular';
     public const FLAG_MENU_DESTEKLER = 'menu_destekler';
     public const FLAG_MENU_SUNUCU = 'menu_sunucu';
+    public const FLAG_MENU_YASAKLI_KELIMELER = 'menu_yasakli_kelimeler';
     public const FLAG_MENU_LOGLAR = 'menu_loglar';
 
     /** @return array<string, string> */
@@ -33,10 +38,15 @@ final class PermissionService
             self::FLAG_TICKETS => 'Destek talebi işlemleri',
             self::FLAG_SITE_SETTINGS => 'Ayarlara erişim',
             self::FLAG_MENU_OYUNCULAR => 'Menü: Oyuncu Yönetimi',
+            self::FLAG_MENU_BINEK => 'Menü: Binek Yönetimi',
+            self::FLAG_MENU_GM => 'Menü: GM Yönetimi',
+            self::FLAG_MENU_LONCALAR => 'Menü: Loncalar',
+            self::FLAG_MENU_LONCA_SAVASLARI => 'Menü: Lonca Savaşı',
             self::FLAG_MENU_BANLAR => 'Menü: Ban / Mute',
             self::FLAG_MENU_DUYURULAR => 'Menü: Duyurular',
             self::FLAG_MENU_DESTEKLER => 'Menü: Destek Talepleri',
             self::FLAG_MENU_SUNUCU => 'Menü: Sunucu Yönetimi',
+            self::FLAG_MENU_YASAKLI_KELIMELER => 'Menü: Yasaklı Kelimeler',
             self::FLAG_MENU_LOGLAR => 'Menü: Loglar',
         ];
     }

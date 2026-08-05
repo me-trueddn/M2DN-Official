@@ -84,24 +84,63 @@ final class ActivityLogService
     /** @return list<array> */
     public static function forAccount(int $accountId, int $limit = 50): array
     {
+        $page = self::forAccountPaged($accountId, 1, $limit);
+        return $page['rows'];
+    }
+
+    /**
+     * @return array{
+     *   rows: list<array>,
+     *   total: int,
+     *   page: int,
+     *   pages: int,
+     *   per_page: int
+     * }
+     */
+    public static function forAccountPaged(int $accountId, int $page = 1, int $perPage = 10): array
+    {
+        $perPage = max(1, min(50, $perPage));
+        $page = max(1, $page);
+        $empty = [
+            'rows' => [],
+            'total' => 0,
+            'page' => 1,
+            'pages' => 1,
+            'per_page' => $perPage,
+        ];
         if ($accountId <= 0) {
-            return [];
+            return $empty;
         }
-        $limit = max(1, min(200, $limit));
 
         try {
             $web = Database::web();
+            $countStmt = $web->prepare('SELECT COUNT(*) FROM account_activity_log WHERE account_id = ?');
+            $countStmt->execute([$accountId]);
+            $total = (int) $countStmt->fetchColumn();
+            $pages = max(1, (int) ceil($total / $perPage));
+            if ($page > $pages) {
+                $page = $pages;
+            }
+            $offset = ($page - 1) * $perPage;
+
             $stmt = $web->prepare(
                 "SELECT id, action, detail, evidence, actor_login, ip, created_at
                  FROM account_activity_log
                  WHERE account_id = ?
                  ORDER BY id DESC
-                 LIMIT {$limit}"
+                 LIMIT {$perPage} OFFSET {$offset}"
             );
             $stmt->execute([$accountId]);
-            return self::mapRows($stmt->fetchAll() ?: []);
+
+            return [
+                'rows' => self::mapRows($stmt->fetchAll() ?: []),
+                'total' => $total,
+                'page' => $page,
+                'pages' => $pages,
+                'per_page' => $perPage,
+            ];
         } catch (\Throwable) {
-            return [];
+            return $empty;
         }
     }
 

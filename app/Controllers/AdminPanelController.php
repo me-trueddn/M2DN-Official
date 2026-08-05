@@ -7,10 +7,16 @@ namespace App\Controllers;
 use App\Core\Security;
 use App\Core\Session;
 use App\Core\Theme;
+use App\Services\AdminBanwordService;
+use App\Services\AdminGmService;
+use App\Services\AdminGuildService;
+use App\Services\AdminHorseService;
+use App\Services\GuildWarService;
 use App\Services\AdminLogService;
 use App\Services\AdminPlayerService;
 use App\Services\AdminStatsService;
 use App\Services\AnnouncementService;
+use App\Services\AccountSecurityService;
 use App\Services\AuthService;
 use App\Services\CaptchaService;
 use App\Services\CommunityRulesService;
@@ -38,6 +44,18 @@ final class AdminPanelController
         $status = (string) ($_GET['status'] ?? '');
         $page = (int) ($_GET['page'] ?? 1);
         $per = (int) ($_GET['per'] ?? 10);
+        $guildQ = trim((string) ($_GET['guild_q'] ?? ''));
+        $guildPage = (int) ($_GET['guild_page'] ?? 1);
+        $guildPer = (int) ($_GET['guild_per'] ?? 10);
+        $horseQ = trim((string) ($_GET['horse_q'] ?? ''));
+        $horsePage = (int) ($_GET['horse_page'] ?? 1);
+        $horsePer = (int) ($_GET['horse_per'] ?? 10);
+        $banwordQ = trim((string) ($_GET['banword_q'] ?? ''));
+        $banwordPage = (int) ($_GET['banword_page'] ?? 1);
+        $banwordPer = (int) ($_GET['banword_per'] ?? 20);
+        $gmQ = trim((string) ($_GET['gm_q'] ?? ''));
+        $gmPage = (int) ($_GET['gm_page'] ?? 1);
+        $gmPer = (int) ($_GET['gm_per'] ?? 20);
         $players = AdminPlayerService::listAccounts($q, $status, $page, $per);
         $ticketQ = trim((string) ($_GET['ticket_q'] ?? ''));
         $logQ = trim((string) ($_GET['log_q'] ?? ''));
@@ -51,13 +69,21 @@ final class AdminPanelController
             if (isset($_GET['log_q']) || isset($_GET['log_page'])) {
                 $section = 'loglar';
             }
+        } elseif ($guildQ !== '' || isset($_GET['guild_page']) || isset($_GET['guild_per'])) {
+            $section = 'loncalar';
+        } elseif ($horseQ !== '' || isset($_GET['horse_page']) || isset($_GET['horse_per'])) {
+            $section = 'binek';
+        } elseif ($banwordQ !== '' || isset($_GET['banword_page']) || isset($_GET['banword_per'])) {
+            $section = 'yasakli-kelimeler';
+        } elseif ($gmQ !== '' || isset($_GET['gm_page']) || isset($_GET['gm_per'])) {
+            $section = 'gm';
         } elseif ($q !== '' || $status !== '' || isset($_GET['page']) || isset($_GET['per'])) {
             $section = 'oyuncular';
         } elseif ($mailQ !== '' || isset($_GET['mail_tab'])) {
             $section = 'mail-ayarlari';
         }
         $allowed = [
-            'ozet', 'oyuncular', 'banlar', 'duyurular', 'destekler', 'sunucu', 'loglar',
+            'ozet', 'oyuncular', 'binek', 'gm', 'loncalar', 'lonca-savaslari', 'banlar', 'duyurular', 'destekler', 'sunucu', 'yasakli-kelimeler', 'loglar',
             'ceza-ayarlari', 'patch-linkleri', 'ozellikler-ayarlari', 'siniflar-ayarlari',
             'oranlar-ayarlari', 'siradaki-bolum', 'galeri-ayarlari', 'footer-ayarlari',
             'logo-ayarlari', 'mail-ayarlari', 'yetki-gruplari', 'ticket-ayarlari', 'duyuru-turleri',
@@ -90,10 +116,15 @@ final class AdminPanelController
 
         $menuGate = [
             'oyuncular' => PermissionService::FLAG_MENU_OYUNCULAR,
+            'binek' => PermissionService::FLAG_MENU_BINEK,
+            'gm' => PermissionService::FLAG_MENU_GM,
+            'loncalar' => PermissionService::FLAG_MENU_LONCALAR,
+            'lonca-savaslari' => PermissionService::FLAG_MENU_LONCA_SAVASLARI,
             'banlar' => PermissionService::FLAG_MENU_BANLAR,
             'duyurular' => PermissionService::FLAG_MENU_DUYURULAR,
             'destekler' => PermissionService::FLAG_MENU_DESTEKLER,
             'sunucu' => PermissionService::FLAG_MENU_SUNUCU,
+            'yasakli-kelimeler' => PermissionService::FLAG_MENU_YASAKLI_KELIMELER,
             'loglar' => PermissionService::FLAG_MENU_LOGLAR,
         ];
         if ($section === 'duyurular'
@@ -105,6 +136,35 @@ final class AdminPanelController
         } elseif (isset($menuGate[$section]) && $section !== 'duyurular' && empty($permFlags[$menuGate[$section]])) {
             Session::flash('panel_errors', ['Bu menüye erişim yetkin yok.']);
             $section = 'ozet';
+        }
+
+        $guilds = ['guilds' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 10, 'q' => '', 'per_page_options' => AdminGuildService::PER_PAGE_OPTIONS];
+        if (!empty($permFlags[PermissionService::FLAG_MENU_LONCALAR])) {
+            $guilds = AdminGuildService::listGuilds($guildQ, $guildPage, $guildPer);
+        }
+
+        $horses = ['horses' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 10, 'q' => '', 'per_page_options' => AdminHorseService::PER_PAGE_OPTIONS];
+        if (!empty($permFlags[PermissionService::FLAG_MENU_BINEK])) {
+            $horses = AdminHorseService::listHorses($horseQ, $horsePage, $horsePer);
+        }
+
+        $banwords = ['words' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 20, 'q' => '', 'per_page_options' => AdminBanwordService::PER_PAGE_OPTIONS];
+        if (!empty($permFlags[PermissionService::FLAG_MENU_YASAKLI_KELIMELER])) {
+            $banwords = AdminBanwordService::list($banwordQ, $banwordPage, $banwordPer);
+        }
+
+        $gms = ['gms' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 20, 'q' => '', 'per_page_options' => AdminGmService::PER_PAGE_OPTIONS, 'authorities' => AdminGmService::AUTHORITY_LABELS];
+        if (!empty($permFlags[PermissionService::FLAG_MENU_GM])) {
+            $gms = AdminGmService::list($gmQ, $gmPage, $gmPer);
+        }
+
+        $guildWars = [];
+        $guildWarHistory = [];
+        $guildWarBoard = [];
+        if (!empty($permFlags[PermissionService::FLAG_MENU_LONCA_SAVASLARI])) {
+            $guildWars = GuildWarService::listActive();
+            $guildWarHistory = GuildWarService::listHistory(40);
+            $guildWarBoard = GuildWarService::leaderboard(30);
         }
 
         $chapter = SiteContentService::nextChapter();
@@ -125,6 +185,13 @@ final class AdminPanelController
             'authUser' => $user,
             'stats' => $stats,
             'players' => $players,
+            'guilds' => $guilds,
+            'horses' => $horses,
+            'banwords' => $banwords,
+            'gms' => $gms,
+            'guildWars' => $guildWars,
+            'guildWarHistory' => $guildWarHistory,
+            'guildWarBoard' => $guildWarBoard,
             'panelSection' => $section,
             'penalties' => PenaltyService::listTemplates(),
             'activeBans' => PenaltyService::listActiveBans(100),
@@ -238,6 +305,74 @@ final class AdminPanelController
         echo json_encode(['ok' => true, 'results' => $results, 'q' => $q], JSON_UNESCAPED_UNICODE);
     }
 
+    public function guildJson(): void
+    {
+        $user = AuthService::requireAdmin();
+        $canGuilds = PermissionService::userHasFlag($user, PermissionService::FLAG_MENU_LONCALAR);
+        $canWars = PermissionService::userHasFlag($user, PermissionService::FLAG_MENU_LONCA_SAVASLARI);
+        if (!$canGuilds && !$canWars) {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => false, 'error' => 'Yetkin yok.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        $id = (int) ($_GET['id'] ?? 0);
+        $detail = AdminGuildService::guildDetail($id);
+        header('Content-Type: application/json; charset=utf-8');
+        if ($detail === null) {
+            http_response_code(404);
+            echo json_encode(['ok' => false, 'error' => 'Lonca bulunamadı.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        echo json_encode(['ok' => true, 'data' => $detail], JSON_UNESCAPED_UNICODE);
+    }
+
+    public function renameGuild(): void
+    {
+        $user = PermissionService::requireFlag(PermissionService::FLAG_MENU_LONCALAR);
+        Security::requireCsrf('login');
+        $guildId = (int) ($_POST['guild_id'] ?? 0);
+        $name = (string) ($_POST['name'] ?? '');
+        $result = AdminGuildService::rename($guildId, $name);
+        if (!empty($result['ok'])) {
+            AdminLogService::write($user, 'Lonca adı değişti', 'Lonca #' . $guildId . ' → ' . trim($name));
+        }
+        $this->flashResult($result, 'Lonca adı güncellendi.', 'loncalar');
+        redirect('/admin?section=loncalar');
+    }
+
+    public function renameHorse(): void
+    {
+        $user = PermissionService::requireFlag(PermissionService::FLAG_MENU_BINEK);
+        Security::requireCsrf('login');
+        $playerId = (int) ($_POST['player_id'] ?? 0);
+        $name = (string) ($_POST['name'] ?? '');
+        $result = AdminHorseService::rename($playerId, $name);
+        if (!empty($result['ok'])) {
+            AdminLogService::write($user, 'Binek adı değişti', 'Player #' . $playerId . ' → ' . trim($name));
+        }
+        $this->flashResult($result, 'At adı güncellendi.', 'binek');
+        redirect('/admin?section=binek');
+    }
+
+    public function changeGuildMaster(): void
+    {
+        $user = PermissionService::requireFlag(PermissionService::FLAG_MENU_LONCALAR);
+        Security::requireCsrf('login');
+        $guildId = (int) ($_POST['guild_id'] ?? 0);
+        $masterPid = (int) ($_POST['master_pid'] ?? 0);
+        $result = AdminGuildService::changeMaster($guildId, $masterPid);
+        if (!empty($result['ok'])) {
+            AdminLogService::write(
+                $user,
+                'Lonca ustası değişti',
+                'Lonca #' . $guildId . ' · yeni usta pid=' . $masterPid
+            );
+        }
+        $this->flashResult($result, 'Lonca ustası güncellendi.', 'loncalar');
+        redirect('/admin?section=loncalar');
+    }
+
     public function changeEmail(): void
     {
         $user = PermissionService::requireFlag(PermissionService::FLAG_PLAYER_DETAIL);
@@ -276,6 +411,112 @@ final class AdminPanelController
         ]);
         $this->flashResult($result, 'Şifre güncellendi.', 'oyuncular');
         redirect('/admin?section=oyuncular');
+    }
+
+    public function setSecurityCode(): void
+    {
+        $user = PermissionService::requireFlag(PermissionService::FLAG_PLAYER_DETAIL);
+        Security::requireCsrf('login');
+        $perm = AuthService::normalizePermission($user['permission'] ?? 0);
+        if ($perm < AuthService::PERM_ADMIN) {
+            Session::flash('panel_errors', ['Depo şifresi sıfırlamak için admin yetkisi gerekir.']);
+            Session::flash('panel_section', 'oyuncular');
+            redirect('/admin?section=oyuncular');
+        }
+        $accountId = (int) ($_POST['account_id'] ?? 0);
+        $code = (string) ($_POST['securitycode'] ?? '');
+        $result = AccountSecurityService::adminSetSecurityCode($accountId, $code, [
+            'account_id' => (int) $user['account_id'],
+            'login' => (string) $user['login'],
+            'permission' => $perm,
+        ]);
+        $this->flashResult($result, 'Depo şifresi güncellendi.', 'oyuncular');
+        redirect('/admin?section=oyuncular');
+    }
+
+    public function addBanword(): void
+    {
+        $user = PermissionService::requireFlag(PermissionService::FLAG_MENU_YASAKLI_KELIMELER);
+        Security::requireCsrf('login');
+        $word = (string) ($_POST['word'] ?? '');
+        $result = AdminBanwordService::add($word);
+        if (!empty($result['ok'])) {
+            AdminLogService::write($user, 'Yasaklı kelime eklendi', trim(mb_strtolower($word)));
+        }
+        $this->flashResult($result, 'Yasaklı kelime eklendi.', 'yasakli-kelimeler');
+        redirect('/admin?section=yasakli-kelimeler');
+    }
+
+    public function deleteBanword(): void
+    {
+        $user = PermissionService::requireFlag(PermissionService::FLAG_MENU_YASAKLI_KELIMELER);
+        Security::requireCsrf('login');
+        $word = (string) ($_POST['word'] ?? '');
+        $result = AdminBanwordService::delete($word);
+        if (!empty($result['ok'])) {
+            AdminLogService::write($user, 'Yasaklı kelime silindi', trim($word));
+        }
+        $this->flashResult($result, 'Yasaklı kelime silindi.', 'yasakli-kelimeler');
+        redirect('/admin?section=yasakli-kelimeler');
+    }
+
+    public function addGm(): void
+    {
+        $user = PermissionService::requireFlag(PermissionService::FLAG_MENU_GM);
+        Security::requireCsrf('login');
+        $result = AdminGmService::add(
+            (string) ($_POST['account'] ?? ''),
+            (string) ($_POST['name'] ?? ''),
+            (string) ($_POST['authority'] ?? 'PLAYER'),
+            (string) ($_POST['contact_ip'] ?? ''),
+            (string) ($_POST['server_ip'] ?? 'ALL')
+        );
+        if (!empty($result['ok'])) {
+            AdminLogService::write(
+                $user,
+                'GM eklendi',
+                trim((string) ($_POST['account'] ?? '')) . ' / ' . trim((string) ($_POST['name'] ?? ''))
+            );
+        }
+        $this->flashResult($result, 'GM eklendi.', 'gm');
+        redirect('/admin?section=gm');
+    }
+
+    public function updateGm(): void
+    {
+        $user = PermissionService::requireFlag(PermissionService::FLAG_MENU_GM);
+        Security::requireCsrf('login');
+        $id = (int) ($_POST['id'] ?? 0);
+        $result = AdminGmService::update(
+            $id,
+            (string) ($_POST['account'] ?? ''),
+            (string) ($_POST['name'] ?? ''),
+            (string) ($_POST['authority'] ?? 'PLAYER'),
+            (string) ($_POST['contact_ip'] ?? ''),
+            (string) ($_POST['server_ip'] ?? 'ALL')
+        );
+        if (!empty($result['ok'])) {
+            AdminLogService::write(
+                $user,
+                'GM güncellendi',
+                '#' . $id . ' · ' . trim((string) ($_POST['account'] ?? '')) . ' / ' . (string) ($_POST['authority'] ?? '')
+            );
+        }
+        $this->flashResult($result, 'GM güncellendi.', 'gm');
+        redirect('/admin?section=gm');
+    }
+
+    public function deleteGm(): void
+    {
+        $user = PermissionService::requireFlag(PermissionService::FLAG_MENU_GM);
+        Security::requireCsrf('login');
+        $id = (int) ($_POST['id'] ?? 0);
+        $result = AdminGmService::delete($id);
+        if (!empty($result['ok'])) {
+            AdminLogService::write($user, 'GM silindi', 'mID #' . $id);
+        }
+        $this->flashResult($result, 'GM silindi.', 'gm');
+        redirect('/admin?section=gm');
     }
 
     public function ban(): void

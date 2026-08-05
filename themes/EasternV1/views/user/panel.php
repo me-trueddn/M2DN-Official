@@ -51,6 +51,12 @@ $panelErrors = is_array($panelErrors ?? null) ? $panelErrors : [];
 $panelSuccess = is_string($panelSuccess ?? null) ? $panelSuccess : null;
 $panelSection = is_string($panelSection ?? null) && $panelSection !== '' ? $panelSection : 'ozet';
 $activityLogs = is_array($activityLogs ?? null) ? $activityLogs : [];
+$activityMeta = is_array($activityMeta ?? null) ? $activityMeta : [];
+$activityLogPage = max(1, (int) ($activityMeta['page'] ?? 1));
+$activityLogPages = max(1, (int) ($activityMeta['pages'] ?? 1));
+$activityLogTotal = (int) ($activityMeta['total'] ?? count($activityLogs));
+$activityLogPerPage = (int) ($activityMeta['per_page'] ?? 10);
+$activityLogsModal = is_array($activityLogsModal ?? null) ? $activityLogsModal : $activityLogs;
 $activeBan = is_array($activeBan ?? null) ? $activeBan : null;
 $ticketCategories = is_array($ticketCategories ?? null) ? $ticketCategories : [];
 $userTickets = is_array($userTickets ?? null) ? $userTickets : [];
@@ -61,6 +67,9 @@ $latestAnnouncement = $announcements[0] ?? null;
 $pastAnnouncements = array_slice($announcements, 1);
 $latestOverviewAnn = $overviewAnnouncements[0] ?? null;
 $pastOverviewAnn = array_slice($overviewAnnouncements, 1);
+$guildWars = is_array($guildWars ?? null) ? $guildWars : [];
+$guildWarHistory = is_array($guildWarHistory ?? null) ? $guildWarHistory : [];
+$guildWarBoard = is_array($guildWarBoard ?? null) ? $guildWarBoard : [];
 if (!isset($siteBrand) || !is_array($siteBrand)) {
     $siteBrand = \App\Services\SiteContentService::brandingDefaults();
 }
@@ -266,9 +275,20 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   .badge.pending{background:rgba(201,151,74,.15); color:var(--gold-light);}
   .badge.closed{background:rgba(154,143,128,.15); color:var(--ash);}
   .badge.banned{background:rgba(143,28,41,.2); color:var(--blood-light);}
+  .badge.ok{background:rgba(51,89,74,.2); color:var(--jade-light);}
   .char-click{cursor:pointer; transition:background .15s;}
   .char-click:hover{background:rgba(201,151,74,.06);}
   .vote-item.char-click{text-decoration:none; color:inherit;}
+  .row-user{display:flex; align-items:center; gap:10px;}
+  .row-user .av{width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:rgba(201,151,74,.1);color:var(--gold-light);font-size:.8rem;flex-shrink:0;}
+  .row-user .meta{font-size:.72rem;color:var(--ash);margin-top:2px;}
+  .guild-tabs{display:flex; gap:8px; flex-wrap:wrap; margin:4px 0 14px;}
+  .guild-tabs button{padding:8px 14px; background:var(--obsidian); border:1px solid var(--line); color:var(--ash); cursor:pointer; font:inherit; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em;}
+  .guild-tabs button.active{color:var(--gold-light); border-color:rgba(201,151,74,.45); background:rgba(201,151,74,.08);}
+  .guild-pane{display:none; overflow:auto;}
+  .guild-pane.active{display:block;}
+  .guild-link{background:none;border:none;color:var(--gold-light);cursor:pointer;padding:0;font:inherit;font-weight:600;}
+  .guild-link:hover{text-decoration:underline;}
 
   .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:900; padding:18px;}
   .modal-overlay.open{display:flex;}
@@ -289,6 +309,13 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   .modal-pager button:hover:not(:disabled){background:rgba(201,151,74,.08);}
   .modal-pager button:disabled{opacity:.4; cursor:not-allowed;}
   .modal-pager .cur{padding:6px 11px; border:1px solid var(--gold); background:rgba(201,151,74,.12); color:var(--gold-light);}
+
+  .pager{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:18px; flex-wrap:wrap; font-size:.8rem; color:var(--ash);}
+  .pager .links{display:flex; gap:8px; flex-wrap:wrap;}
+  .pager a, .pager span.cur{padding:7px 12px; border:1px solid var(--line); color:var(--gold-light);}
+  .pager span.cur{background:rgba(201,151,74,.12); border-color:var(--gold);}
+  .pager a:hover{background:rgba(201,151,74,.08);}
+  .pager a.disabled{opacity:.4; pointer-events:none;}
 
   /* shop grid */
   .shop-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:18px;}
@@ -482,6 +509,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
     <a class="nav-item<?= $panelSection === 'duyurular' ? ' active' : '' ?>" data-target="duyurular"><i class="fa-solid fa-bullhorn"></i> Duyurular</a>
     <a class="nav-item<?= $panelSection === 'karakterler' ? ' active' : '' ?>" data-target="karakterler"><i class="fa-solid fa-khanda"></i> Karakterlerim</a>
     <a class="nav-item<?= $panelSection === 'kayitlar' ? ' active' : '' ?>" data-target="kayitlar"><i class="fa-solid fa-clock-rotate-left"></i> Hesap Kayıtları</a>
+    <a class="nav-item<?= $panelSection === 'lonca-savaslari' ? ' active' : '' ?>" data-target="lonca-savaslari"><i class="fa-solid fa-crosshairs"></i> Lonca Savaşları</a>
 
     <div class="nav-group-label">Hesap</div>
     <a class="nav-item" data-target="destek"><i class="fa-solid fa-headset"></i> Destek Talepleri</a>
@@ -781,6 +809,158 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
       </div>
     </section>
 
+    <!-- ===================== LONCA SAVAŞLARI ===================== -->
+    <section class="section<?= $panelSection === 'lonca-savaslari' ? ' active' : '' ?>" id="lonca-savaslari">
+      <div class="card">
+        <div class="card-head">
+          <h3>Lonca Savaşları</h3>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span style="font-size:.8rem;color:var(--ash);"><?= count($guildWars) ?> aktif · <?= count($guildWarHistory) ?> geçmiş · salt görüntüleme</span>
+            <a class="btn btn-ghost btn-sm" href="<?= e(url('/panel?section=lonca-savaslari')) ?>" title="Yenile"><i class="fa-solid fa-arrows-rotate"></i> Yenile</a>
+          </div>
+        </div>
+        <p style="font-size:.82rem;color:var(--ash);margin-bottom:14px;line-height:1.55;">
+          Canlı savaşlar, geçmiş sonuçlar, ganimet ve lonca sıralaması. Lonca adına tıklayarak savaş istatistiklerini görebilirsin.
+        </p>
+
+        <div class="guild-tabs" id="userWarTabs">
+          <button type="button" class="active" data-war-tab="active">Aktif (<?= count($guildWars) ?>)</button>
+          <button type="button" data-war-tab="history">Geçmiş (<?= count($guildWarHistory) ?>)</button>
+          <button type="button" data-war-tab="board">Sıralama</button>
+        </div>
+
+        <div class="guild-pane active" data-war-pane="active">
+          <table>
+            <thead>
+              <tr>
+                <th>Lonca A</th>
+                <th></th>
+                <th>Lonca B</th>
+                <th>Tür</th>
+                <th>Skor</th>
+                <th>Ladder</th>
+                <th>Ganimet</th>
+                <th>Bahis</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php if ($guildWars === []): ?>
+                <tr><td colspan="8" style="color:var(--ash);">Şu an aktif lonca savaşı yok.</td></tr>
+              <?php else: ?>
+                <?php foreach ($guildWars as $w): ?>
+                <tr>
+                  <td class="row-user">
+                    <div class="av"><i class="fa-solid fa-shield"></i></div>
+                    <div>
+                      <button type="button" class="guild-link" data-guild-card="<?= (int) $w['from_id'] ?>"><?= e((string) $w['from_name']) ?></button>
+                      <div class="meta">Sv.<?= (int) $w['from_level'] ?> · <?= (int) ($w['from_win'] ?? 0) ?>/<?= (int) ($w['from_draw'] ?? 0) ?>/<?= (int) ($w['from_loss'] ?? 0) ?></div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;color:var(--blood-light);font-weight:700;letter-spacing:.08em;">VS</td>
+                  <td class="row-user">
+                    <div class="av"><i class="fa-solid fa-shield"></i></div>
+                    <div>
+                      <button type="button" class="guild-link" data-guild-card="<?= (int) $w['to_id'] ?>"><?= e((string) $w['to_name']) ?></button>
+                      <div class="meta">Sv.<?= (int) $w['to_level'] ?> · <?= (int) ($w['to_win'] ?? 0) ?>/<?= (int) ($w['to_draw'] ?? 0) ?>/<?= (int) ($w['to_loss'] ?? 0) ?></div>
+                    </div>
+                  </td>
+                  <td><span class="badge ok"><?= e((string) $w['war_type_label']) ?></span></td>
+                  <td style="font-family:var(--font-display);color:var(--gold-light);"><?= e((string) $w['score_label']) ?></td>
+                  <td style="font-size:.82rem;">
+                    <?= number_format((int) $w['from_ladder'], 0, ',', '.') ?>
+                    <span style="color:var(--ash);"> / </span>
+                    <?= number_format((int) $w['to_ladder'], 0, ',', '.') ?>
+                  </td>
+                  <td><?= e((string) ($w['warprice_label'] ?? '—')) ?></td>
+                  <td><?= (int) ($w['bet_total'] ?? 0) > 0 ? number_format((int) $w['bet_total'], 0, ',', '.') : '—' ?></td>
+                </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="guild-pane" data-war-pane="history">
+          <table>
+            <thead>
+              <tr>
+                <th>Tarih</th>
+                <th>Maç</th>
+                <th>Tür</th>
+                <th>Skor</th>
+                <th>Kazanan</th>
+                <th>Ganimet</th>
+                <th>Bahis</th>
+                <th>Durum</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php if ($guildWarHistory === []): ?>
+                <tr><td colspan="8" style="color:var(--ash);">Geçmiş savaş kaydı yok.</td></tr>
+              <?php else: ?>
+                <?php foreach ($guildWarHistory as $w): ?>
+                <tr>
+                  <td style="font-size:.82rem;white-space:nowrap;"><?= e((string) ($w['reserved_label'] ?? '—')) ?></td>
+                  <td>
+                    <button type="button" class="guild-link" data-guild-card="<?= (int) $w['from_id'] ?>"><?= e((string) $w['from_name']) ?></button>
+                    <span style="color:var(--ash);"> vs </span>
+                    <button type="button" class="guild-link" data-guild-card="<?= (int) $w['to_id'] ?>"><?= e((string) $w['to_name']) ?></button>
+                  </td>
+                  <td><span class="badge ok"><?= e((string) $w['war_type_label']) ?></span></td>
+                  <td style="color:var(--gold-light);"><?= e((string) $w['score_label']) ?></td>
+                  <td><?= e((string) (($w['winner_name'] ?? '') !== '' ? $w['winner_name'] : '—')) ?></td>
+                  <td><?= e((string) ($w['warprice_label'] ?? '—')) ?></td>
+                  <td><?= (int) ($w['bet_total'] ?? 0) > 0 ? number_format((int) $w['bet_total'], 0, ',', '.') : '—' ?></td>
+                  <td style="font-size:.8rem;color:var(--ash);"><?= e((string) ($w['status_label'] ?? '—')) ?></td>
+                </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="guild-pane" data-war-pane="board">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Lonca</th>
+                <th>Usta</th>
+                <th>Savaş</th>
+                <th>G</th>
+                <th>B</th>
+                <th>M</th>
+                <th>Galibiyet %</th>
+                <th>Ladder</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php if ($guildWarBoard === []): ?>
+                <tr><td colspan="9" style="color:var(--ash);">Henüz savaş kaydı olan lonca yok.</td></tr>
+              <?php else: ?>
+                <?php foreach ($guildWarBoard as $row): ?>
+                <tr>
+                  <td><?= (int) $row['rank'] ?></td>
+                  <td>
+                    <button type="button" class="guild-link" data-guild-card="<?= (int) $row['id'] ?>"><?= e((string) $row['name']) ?></button>
+                    <div class="meta" style="font-size:.72rem;color:var(--ash);">Sv.<?= (int) $row['level'] ?></div>
+                  </td>
+                  <td><?= e((string) $row['master_name']) ?></td>
+                  <td><?= (int) $row['wars'] ?></td>
+                  <td style="color:var(--gold-light);"><?= (int) $row['win'] ?></td>
+                  <td><?= (int) $row['draw'] ?></td>
+                  <td><?= (int) $row['loss'] ?></td>
+                  <td><?= e(number_format((float) $row['win_rate'], 1, ',', '.')) ?>%</td>
+                  <td><?= number_format((int) $row['ladder_point'], 0, ',', '.') ?></td>
+                </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- ===================== KARAKTERLER ===================== -->
     <section class="section<?= $panelSection === 'karakterler' ? ' active' : '' ?>" id="karakterler">
       <div class="card">
@@ -815,7 +995,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
       <div class="card">
         <div class="card-head">
           <h3>Hesap Kayıtları</h3>
-          <span style="font-size:.8rem;color:var(--ash);">Giriş, güvenlik ve yönetici işlemleri</span>
+          <span style="font-size:.8rem;color:var(--ash);"><?= number_format($activityLogTotal, 0, ',', '.') ?> kayıt · sayfa başına <?= (int) $activityLogPerPage ?></span>
         </div>
         <?php if ($activityLogs === []): ?>
           <div style="color:var(--ash); font-size:.9rem; padding:8px 0;">Henüz kayıt yok. Panele giriş ve güvenlik işlemleri burada listelenir.</div>
@@ -846,6 +1026,38 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
             <?php endforeach; ?>
           </tbody>
         </table>
+        <?php
+          $logMk = static function (int $p): string {
+              $qs = http_build_query(array_filter([
+                  'section' => 'kayitlar',
+                  'log_page' => $p > 1 ? $p : null,
+              ], static fn($v) => $v !== null && $v !== ''));
+              return url('/panel' . ($qs !== '' ? '?' . $qs : '?section=kayitlar'));
+          };
+        ?>
+        <?php if ($activityLogPages > 1 || $activityLogTotal > $activityLogPerPage): ?>
+        <div class="pager">
+          <div>
+            Sayfa <?= (int) $activityLogPage ?> / <?= (int) $activityLogPages ?>
+            · Toplam <?= number_format($activityLogTotal, 0, ',', '.') ?>
+          </div>
+          <div class="links">
+            <a class="<?= $activityLogPage <= 1 ? 'disabled' : '' ?>" href="<?= e($logMk(max(1, $activityLogPage - 1))) ?>">Önceki</a>
+            <?php
+              $lStart = max(1, $activityLogPage - 2);
+              $lEnd = min($activityLogPages, $activityLogPage + 2);
+              for ($i = $lStart; $i <= $lEnd; $i++):
+            ?>
+              <?php if ($i === $activityLogPage): ?>
+                <span class="cur"><?= $i ?></span>
+              <?php else: ?>
+                <a href="<?= e($logMk($i)) ?>"><?= $i ?></a>
+              <?php endif; ?>
+            <?php endfor; ?>
+            <a class="<?= $activityLogPage >= $activityLogPages ? 'disabled' : '' ?>" href="<?= e($logMk(min($activityLogPages, $activityLogPage + 1))) ?>">Sonraki</a>
+          </div>
+        </div>
+        <?php endif; ?>
         <?php endif; ?>
       </div>
     </section>
@@ -1031,7 +1243,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
               'evidence' => (string) ($log['evidence'] ?? ''),
               'actor_login' => (string) ($log['actor_login'] ?? ''),
           ];
-      }, $activityLogs),
+      }, $activityLogsModal),
       'characters' => $modalChars,
       'max_level' => (int) $maxLevel,
   ];
@@ -1105,6 +1317,16 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   </div>
 </div>
 
+<div class="modal-overlay" id="guildCardModal">
+  <div class="modal" style="width:760px;">
+    <h3><i class="fa-solid fa-shield"></i> <span id="guildCardTitle">Lonca</span></h3>
+    <div id="guildCardBody" style="color:var(--ash);font-size:.88rem;">Yükleniyor…</div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost btn-sm" id="guildCardClose">Kapat</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const navItems = document.querySelectorAll('.nav-item');
   const sections = document.querySelectorAll('.section');
@@ -1117,6 +1339,86 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   const csrfToken = <?= json_encode(\App\Core\Security::csrfToken(), JSON_UNESCAPED_UNICODE) ?>;
   const notifListUrl = <?= json_encode(url('/bildirimler/json'), JSON_UNESCAPED_UNICODE) ?>;
   const notifReadUrl = <?= json_encode(url('/bildirimler/okundu'), JSON_UNESCAPED_UNICODE) ?>;
+  const guildPublicJsonUrl = <?= json_encode(url('/panel/lonca/json'), JSON_UNESCAPED_UNICODE) ?>;
+
+  const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  function openGuildCard(id) {
+    const modal = document.getElementById('guildCardModal');
+    const body = document.getElementById('guildCardBody');
+    const title = document.getElementById('guildCardTitle');
+    if (!modal || !body) return;
+    title.textContent = 'Lonca';
+    body.innerHTML = 'Yükleniyor…';
+    modal.classList.add('open');
+    fetch(guildPublicJsonUrl + '?id=' + encodeURIComponent(id), { credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(res => {
+        if (!res.ok || !res.data) {
+          body.innerHTML = '<div style="color:var(--blood-light);">' + escHtml(res.error || 'Yüklenemedi') + '</div>';
+          return;
+        }
+        const g = res.data;
+        const ws = g.war_stats || {};
+        title.textContent = g.name || 'Lonca';
+        let html = '<div class="detail-meta">';
+        html += '<div class="row"><span class="k">Usta</span><span class="v">' + escHtml(g.master_name || '—') + '</span></div>';
+        html += '<div class="row"><span class="k">Seviye</span><span class="v">' + escHtml(String(g.level || 0)) + '</span></div>';
+        html += '<div class="row"><span class="k">Üye</span><span class="v">' + escHtml(String(g.member_count || 0)) + '</span></div>';
+        html += '<div class="row"><span class="k">Ladder</span><span class="v">' + Number(g.ladder_point || 0).toLocaleString('tr-TR') + '</span></div>';
+        html += '<div class="row"><span class="k">Toplam savaş</span><span class="v">' + escHtml(String(ws.wars || 0)) + '</span></div>';
+        html += '<div class="row"><span class="k">Galibiyet</span><span class="v">' + escHtml(String(ws.win || 0)) + '</span></div>';
+        html += '<div class="row"><span class="k">Beraberlik</span><span class="v">' + escHtml(String(ws.draw || 0)) + '</span></div>';
+        html += '<div class="row"><span class="k">Mağlubiyet</span><span class="v">' + escHtml(String(ws.loss || 0)) + '</span></div>';
+        html += '<div class="row"><span class="k">G / B / M</span><span class="v">' + escHtml(ws.record_label || '—') + '</span></div>';
+        html += '<div class="row"><span class="k">Galibiyet %</span><span class="v">' + escHtml(String(ws.win_rate || 0)) + '%</span></div>';
+        html += '</div>';
+        const recent = g.recent_wars || [];
+        html += '<div class="detail-block"><h4>Son savaşlar</h4>';
+        if (!recent.length) {
+          html += '<div style="color:var(--ash);">Kayıt yok.</div>';
+        } else {
+          html += '<table><thead><tr><th>Tarih</th><th>Rakip</th><th>Tür</th><th>Skor</th><th>Ganimet</th><th>Sonuç</th></tr></thead><tbody>';
+          recent.forEach(w => {
+            const gid = Number(g.id || 0);
+            const opponent = Number(w.from_id) === gid ? (w.to_name || '—') : (w.from_name || '—');
+            html += '<tr>';
+            html += '<td style="white-space:nowrap;font-size:.8rem;">' + escHtml(w.reserved_label || '—') + '</td>';
+            html += '<td>' + escHtml(opponent) + '</td>';
+            html += '<td>' + escHtml(w.war_type_label || '—') + '</td>';
+            html += '<td style="color:var(--gold-light);">' + escHtml(w.score_label || '—') + '</td>';
+            html += '<td>' + escHtml(w.warprice_label || '—') + '</td>';
+            html += '<td>' + escHtml(w.status_label || '—') + '</td>';
+            html += '</tr>';
+          });
+          html += '</tbody></table>';
+        }
+        html += '</div>';
+        body.innerHTML = html;
+      })
+      .catch(() => {
+        body.innerHTML = '<div style="color:var(--blood-light);">Detay yüklenemedi.</div>';
+      });
+  }
+
+  document.querySelectorAll('[data-guild-card]').forEach(btn => {
+    btn.addEventListener('click', () => openGuildCard(btn.dataset.guildCard));
+  });
+  document.getElementById('guildCardClose')?.addEventListener('click', () => document.getElementById('guildCardModal')?.classList.remove('open'));
+  document.getElementById('guildCardModal')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+  });
+  document.getElementById('userWarTabs')?.querySelectorAll('[data-war-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-war-tab');
+      const root = document.getElementById('lonca-savaslari');
+      if (!root) return;
+      root.querySelectorAll('[data-war-tab]').forEach(b => b.classList.toggle('active', b === btn));
+      root.querySelectorAll('[data-war-pane]').forEach(p => {
+        p.classList.toggle('active', p.getAttribute('data-war-pane') === tab);
+      });
+    });
+  });
 
   function navigatePanelSection(target) {
     if (!target) return;

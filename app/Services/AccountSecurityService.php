@@ -93,6 +93,67 @@ final class AccountSecurityService
         return ['ok' => true, 'errors' => []];
     }
 
+    /**
+     * Admin (WebPermission ≥ 1) depo / güvenli şifreyi doğrudan sıfırlar.
+     * @param array{account_id?:int,login?:string,permission?:int} $actor
+     * @return array{ok:bool, errors:list<string>}
+     */
+    public static function adminSetSecurityCode(int $targetAccountId, string $newCode, array $actor): array
+    {
+        $actorPerm = AuthService::normalizePermission($actor['permission'] ?? AuthService::PERM_USER);
+        if ($actorPerm < AuthService::PERM_ADMIN) {
+            return ['ok' => false, 'errors' => ['Depo şifresi sıfırlamak için admin yetkisi gerekir.']];
+        }
+
+        $newCode = trim($newCode);
+        if (!preg_match('/^\d{1,6}$/', $newCode)) {
+            return ['ok' => false, 'errors' => ['Depo şifresi 1–6 haneli ve sadece sayı olmalı.']];
+        }
+        if ($targetAccountId <= 0) {
+            return ['ok' => false, 'errors' => ['Geçersiz hesap.']];
+        }
+
+        try {
+            $pdo = Database::account();
+            $stmt = $pdo->prepare('SELECT id, login, WebPermission FROM account WHERE id = ? LIMIT 1');
+            $stmt->execute([$targetAccountId]);
+            $row = $stmt->fetch();
+            if (!$row) {
+                return ['ok' => false, 'errors' => ['Hesap bulunamadı.']];
+            }
+
+            $targetPerm = AuthService::normalizePermission($row['WebPermission'] ?? AuthService::PERM_USER);
+            if ($targetPerm > $actorPerm) {
+                return ['ok' => false, 'errors' => ['Daha yetkili hesabın depo şifresini sıfırlayamazsın.']];
+            }
+
+            $hash = Security::hashAccountPassword($newCode);
+            $pdo->prepare('UPDATE account SET securitycode = ? WHERE id = ?')->execute([$hash, $targetAccountId]);
+
+            $actorId = (int) ($actor['account_id'] ?? 0);
+            $actorLogin = (string) ($actor['login'] ?? '');
+            ActivityLogService::log(
+                $targetAccountId,
+                ActivityLogService::ACTION_SECURITY_CODE,
+                'Depo şifresi admin tarafından sıfırlandı',
+                (string) $row['login'],
+                $actorId > 0 ? $actorId : null,
+                $actorLogin !== '' ? $actorLogin : null
+            );
+            AdminLogService::write(
+                $actor,
+                'Depo şifresi sıfırlandı',
+                '#' . $targetAccountId . ' · ' . (string) $row['login'],
+                $targetAccountId,
+                (string) $row['login']
+            );
+
+            return ['ok' => true, 'errors' => []];
+        } catch (\Throwable) {
+            return ['ok' => false, 'errors' => ['Depo şifresi güncellenemedi.']];
+        }
+    }
+
     /** @return array{ok:bool, errors:list<string>, secret?:string} */
     public static function enableTotp(int $accountId): array
     {

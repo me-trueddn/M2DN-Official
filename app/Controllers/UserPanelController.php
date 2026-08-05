@@ -11,6 +11,7 @@ use App\Services\AccountSecurityService;
 use App\Services\ActivityLogService;
 use App\Services\AnnouncementService;
 use App\Services\AuthService;
+use App\Services\GuildWarService;
 use App\Services\PenaltyService;
 use App\Services\PlayerService;
 use App\Services\TicketService;
@@ -35,6 +36,9 @@ final class UserPanelController
             $searchResults = PlayerService::searchOwnedCharacters($accountId, $searchQuery);
         }
 
+        $logPage = max(1, (int) ($_GET['log_page'] ?? 1));
+        $activityPage = ActivityLogService::forAccountPaged($accountId, $logPage, 10);
+
         $pendingSecret = (string) ($security['totp_secret'] ?? '');
         $totpSetup = null;
         if ($pendingSecret !== '' && !$security['totp_enabled']) {
@@ -42,6 +46,14 @@ final class UserPanelController
                 'secret' => $pendingSecret,
                 'uri' => Totp::provisioningUri($pendingSecret, (string) $user['login']),
             ];
+        }
+
+        $panelSection = Session::flash('panel_section')
+            ?? (isset($_GET['section']) ? (string) $_GET['section'] : null)
+            ?? ((int) ($_GET['ticket'] ?? 0) > 0 ? 'destek' : null)
+            ?? ($searchQuery !== '' ? 'ozet' : null);
+        if (isset($_GET['log_page'])) {
+            $panelSection = 'kayitlar';
         }
 
         Theme::render('user/panel', [
@@ -55,22 +67,39 @@ final class UserPanelController
             'openTickets' => $dashboard['open_tickets'],
             'security' => $security,
             'totpSetup' => $totpSetup,
-            'activityLogs' => ActivityLogService::forAccount($accountId, 50),
+            'activityLogs' => $activityPage['rows'],
+            'activityMeta' => $activityPage,
+            'activityLogsModal' => ActivityLogService::forAccount($accountId, 50),
             'activeBan' => PenaltyService::getActiveBan($accountId),
             'searchQuery' => $searchQuery,
             'searchResults' => $searchResults,
             'panelErrors' => Session::flash('panel_errors') ?? [],
             'panelSuccess' => Session::flash('panel_success'),
-            'panelSection' => Session::flash('panel_section')
-                ?? (isset($_GET['section']) ? (string) $_GET['section'] : null)
-                ?? ((int) ($_GET['ticket'] ?? 0) > 0 ? 'destek' : null)
-                ?? ($searchQuery !== '' ? 'ozet' : null),
+            'panelSection' => $panelSection,
             'ticketCategories' => TicketService::categories(true),
             'userTickets' => TicketService::forAccount($accountId, 50),
             'ticketFileTypes' => TicketService::allowedFileTypes(true),
             'announcements' => AnnouncementService::list(true, 40),
             'overviewAnnouncements' => AnnouncementService::list(true, 5),
+            'guildWars' => GuildWarService::listActive(),
+            'guildWarHistory' => GuildWarService::listHistory(40),
+            'guildWarBoard' => GuildWarService::leaderboard(30),
         ]);
+    }
+
+    /** Lonca savaş / lonca kartı (oyuncu paneli — salt okunur). */
+    public function guildPublicJson(): void
+    {
+        AuthService::requireLogin();
+        $id = (int) ($_GET['id'] ?? 0);
+        header('Content-Type: application/json; charset=utf-8');
+        $card = GuildWarService::publicGuildCard($id);
+        if ($card === null) {
+            http_response_code(404);
+            echo json_encode(['ok' => false, 'error' => 'Lonca bulunamadı.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        echo json_encode(['ok' => true, 'data' => $card], JSON_UNESCAPED_UNICODE);
     }
 
     public function character(): void

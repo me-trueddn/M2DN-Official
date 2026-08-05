@@ -664,7 +664,7 @@ final class Schema
             $superId = (int) $pdo->query('SELECT id FROM permission_groups WHERE web_permission = 2 AND is_system = 1 LIMIT 1')->fetchColumn();
             $flags = [
                 'ban', 'player_detail', 'announcements', 'tickets', 'site_settings',
-                'menu_oyuncular', 'menu_banlar', 'menu_duyurular', 'menu_destekler', 'menu_sunucu', 'menu_loglar',
+                'menu_oyuncular', 'menu_binek', 'menu_gm', 'menu_loncalar', 'menu_lonca_savaslari', 'menu_banlar', 'menu_duyurular', 'menu_destekler', 'menu_sunucu', 'menu_yasakli_kelimeler', 'menu_loglar',
             ];
             $stmt = $pdo->prepare(
                 'INSERT INTO permission_group_flags (group_id, flag_key, is_enabled) VALUES (?,?,1)'
@@ -677,6 +677,26 @@ final class Schema
                     $stmt->execute([$superId, $f]);
                 }
             }
+        }
+
+        // Mevcut admin gruplarına yeni menü bayraklarını ekle
+        try {
+            $adminGroups = $pdo->query(
+                'SELECT id FROM permission_groups WHERE web_permission >= 1'
+            )->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            $insFlag = $pdo->prepare(
+                'INSERT IGNORE INTO permission_group_flags (group_id, flag_key, is_enabled)
+                 VALUES (?, ?, 1)'
+            );
+            foreach ($adminGroups as $gid) {
+                $insFlag->execute([(int) $gid, 'menu_loncalar']);
+                $insFlag->execute([(int) $gid, 'menu_lonca_savaslari']);
+                $insFlag->execute([(int) $gid, 'menu_binek']);
+                $insFlag->execute([(int) $gid, 'menu_yasakli_kelimeler']);
+                $insFlag->execute([(int) $gid, 'menu_gm']);
+            }
+        } catch (\Throwable) {
+            // ignore
         }
 
         if (!(int) $pdo->query('SELECT COUNT(*) FROM ticket_statuses')->fetchColumn()) {
