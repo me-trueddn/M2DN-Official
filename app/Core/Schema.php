@@ -141,6 +141,17 @@ final class Schema
         );
 
         $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `account_consents` (
+              `account_id` INT UNSIGNED NOT NULL,
+              `rules_accepted` TINYINT(1) NOT NULL DEFAULT 0,
+              `rules_accepted_at` DATETIME NULL DEFAULT NULL,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`account_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+
+        $pdo->exec(
             "CREATE TABLE IF NOT EXISTS `online_snapshots` (
               `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
               `server_key` VARCHAR(32) NOT NULL DEFAULT 'main',
@@ -198,17 +209,19 @@ final class Schema
               `reason` VARCHAR(500) NOT NULL DEFAULT '',
               `evidence` VARCHAR(1000) NOT NULL DEFAULT '',
               `days` INT UNSIGNED NOT NULL DEFAULT 0,
-              `banned_until` DATETIME NULL DEFAULT NULL,
               `banned_by_id` INT UNSIGNED NOT NULL DEFAULT 0,
               `banned_by_login` VARCHAR(30) NOT NULL DEFAULT '',
               `is_active` TINYINT(1) NOT NULL DEFAULT 1,
               `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
               `lifted_at` DATETIME NULL DEFAULT NULL,
               PRIMARY KEY (`id`),
-              KEY `idx_bans_account_active` (`account_id`, `is_active`),
-              KEY `idx_bans_until` (`banned_until`)
+              KEY `idx_bans_account_active` (`account_id`, `is_active`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
         );
+
+        self::migrateBanUntilToAvailDt($pdo);
+        self::dropBannedUntilColumn($pdo);
+        self::migratePermanentAvail1938($pdo);
 
         self::seedPenaltyTemplates($pdo);
         self::ensureSiteContentTables($pdo);
@@ -232,7 +245,11 @@ final class Schema
               ('rates', 'metin_pct', '85'),
               ('chapter', 'title', 'Yeni harita & boss güncellemesi'),
               ('footer', 'copyright', ?),
-              ('footer', 'brand_text', ?)
+              ('footer', 'brand_text', ?),
+              ('captcha', 'enabled', '0'),
+              ('captcha', 'provider', 'google'),
+              ('captcha', 'site_key', ''),
+              ('captcha', 'secret_key', '')
              ON DUPLICATE KEY UPDATE `setting_key` = `setting_key`"
         );
         $appName = (string) Config::get('app.name', 'M2DN');
@@ -338,6 +355,24 @@ final class Schema
               PRIMARY KEY (`id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
         );
+
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `community_rules` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `rule_no` INT UNSIGNED NOT NULL DEFAULT 1,
+              `title` VARCHAR(200) NOT NULL,
+              `detail` MEDIUMTEXT NOT NULL,
+              `penalty_1` VARCHAR(200) NOT NULL DEFAULT '',
+              `penalty_2` VARCHAR(200) NOT NULL DEFAULT '',
+              `penalty_3` VARCHAR(200) NOT NULL DEFAULT '',
+              `sort_order` INT NOT NULL DEFAULT 0,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_cr_sort` (`sort_order`, `rule_no`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
     }
 
     private static function seedSiteContent(PDO $pdo): void
@@ -396,9 +431,10 @@ final class Schema
                 ['server', 'Oranlar', '#oranlar', 3],
                 ['server', 'Galeri', '#galeri', 4],
                 ['community', 'Forum', '#', 1],
-                ['community', 'Kurallar', '#', 2],
-                ['community', 'Destek Talebi', '#', 3],
-                ['community', 'Bağış', '#', 4],
+                ['community', 'Kurallar', '/kurallar', 2],
+                ['community', 'Gizlilik / KVKK', '/gizlilik', 3],
+                ['community', 'Destek Talebi', '#', 4],
+                ['community', 'Bağış', '#', 5],
             ];
             $stmt = $pdo->prepare(
                 'INSERT INTO site_footer_links (column_key, label, url, sort_order, is_active, created_at, updated_at)
@@ -407,8 +443,47 @@ final class Schema
             foreach ($links as $l) {
                 $stmt->execute($l);
             }
+        } else {
+            // Mevcut "Kurallar" linkini /kurallar yap
+            try {
+                $pdo->exec(
+                    "UPDATE site_footer_links
+                     SET url = '/kurallar', updated_at = NOW()
+                     WHERE label LIKE '%Kural%'
+                       AND url <> '/kurallar'"
+                );
+            } catch (\Throwable) {
+                // ignore
+            }
+            // Gizlilik / KVKK footer linki
+            try {
+                $hasPrivacy = (int) $pdo->query(
+                    "SELECT COUNT(*) FROM site_footer_links
+                     WHERE label LIKE '%Gizlilik%' OR label LIKE '%KVKK%' OR url = '/gizlilik'"
+                )->fetchColumn();
+                if ($hasPrivacy === 0) {
+                    $sort = (int) $pdo->query(
+                        "SELECT COALESCE(MAX(sort_order),0)+1 FROM site_footer_links WHERE column_key='community'"
+                    )->fetchColumn();
+                    $pdo->prepare(
+                        'INSERT INTO site_footer_links (column_key, label, url, sort_order, is_active, created_at, updated_at)
+                         VALUES (?,?,?,?,1,NOW(),NOW())'
+                    )->execute(['community', 'Gizlilik / KVKK', '/gizlilik', $sort]);
+                } else {
+                    $pdo->exec(
+                        "UPDATE site_footer_links
+                         SET url = '/gizlilik', updated_at = NOW()
+                         WHERE (label LIKE '%Gizlilik%' OR label LIKE '%KVKK%')
+                           AND url <> '/gizlilik'"
+                    );
+                }
+            } catch (\Throwable) {
+                // ignore
+            }
         }
 
+        self::seedCommunityRules($pdo);
+        \App\Services\LegalContentService::ensureSeeded();
         if (!(int) $pdo->query('SELECT COUNT(*) FROM site_social_links')->fetchColumn()) {
             $socials = [
                 ['Discord', 'fa-brands fa-discord', '#', 1, 1],
@@ -423,6 +498,37 @@ final class Schema
             foreach ($socials as $s) {
                 $stmt->execute($s);
             }
+        }
+    }
+
+    private static function seedCommunityRules(PDO $pdo): void
+    {
+        try {
+            $count = (int) $pdo->query('SELECT COUNT(*) FROM community_rules')->fetchColumn();
+        } catch (\Throwable) {
+            return;
+        }
+        if ($count > 0) {
+            return;
+        }
+        $defaults = \App\Services\CommunityRulesService::defaults();
+        $stmt = $pdo->prepare(
+            'INSERT INTO community_rules
+              (rule_no, title, detail, penalty_1, penalty_2, penalty_3, sort_order, is_active, created_at, updated_at)
+             VALUES (?,?,?,?,?,?,?,1,NOW(),NOW())'
+        );
+        $n = 1;
+        foreach ($defaults as $row) {
+            $stmt->execute([
+                $n,
+                $row['title'],
+                $row['detail'],
+                $row['penalty_1'],
+                $row['penalty_2'],
+                $row['penalty_3'],
+                $n,
+            ]);
+            $n++;
         }
     }
 
@@ -911,6 +1017,226 @@ final class Schema
         }
     }
 
+    /**
+     * Aktif banların banned_until bilgisini account.availDt'ye taşır (oyun sunucusu buraya bakar).
+     */
+    private static function migrateBanUntilToAvailDt(PDO $pdo): void
+    {
+        $webDb = (string) (Config::get('web_database.database') ?? 'DNWeb');
+        if ($webDb === '' || !preg_match('/^[A-Za-z0-9_]+$/', $webDb)) {
+            $webDb = 'DNWeb';
+        }
+
+        $colCheck = $pdo->query(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = " . $pdo->quote($webDb) . "
+               AND TABLE_NAME = 'account_bans'
+               AND COLUMN_NAME = 'banned_until'"
+        )->fetchColumn();
+        if (!(int) $colCheck) {
+            return; // zaten migrate edilmiş
+        }
+
+        $flag = $pdo->query(
+            "SELECT setting_value FROM `{$webDb}`.`settings`
+             WHERE group_key='migrations' AND setting_key='ban_availDt_v1' LIMIT 1"
+        )->fetchColumn();
+        if ((string) $flag === '1') {
+            return;
+        }
+
+        try {
+            $rows = $pdo->query(
+                "SELECT account_id, account_login, banned_until, days
+                 FROM `{$webDb}`.`account_bans`
+                 WHERE is_active = 1"
+            )->fetchAll() ?: [];
+        } catch (\Throwable) {
+            return;
+        }
+
+        $servers = Config::get('servers', []);
+        if (!is_array($servers)) {
+            $servers = [];
+        }
+
+        foreach ($rows as $row) {
+            $aid = (int) ($row['account_id'] ?? 0);
+            $login = (string) ($row['account_login'] ?? '');
+            if ($aid <= 0) {
+                continue;
+            }
+            $until = (string) ($row['banned_until'] ?? '');
+            $days = (int) ($row['days'] ?? 0);
+            // Süreli: banned_until → availDt; süresiz: 10 Kasım 1938
+            $avail = \App\Services\PenaltyService::AVAIL_PERMANENT;
+            if ($days > 0 && $until !== '' && $until !== '0000-00-00 00:00:00' && strtotime($until)) {
+                $avail = date('Y-m-d H:i:s', (int) strtotime($until));
+            }
+
+            foreach ($servers as $server) {
+                if (!is_array($server) || empty($server['enabled'])) {
+                    continue;
+                }
+                $accountDb = (string) ($server['databases']['account'] ?? 'account');
+                if ($accountDb === '' || !preg_match('/^[A-Za-z0-9_]+$/', $accountDb)) {
+                    continue;
+                }
+                try {
+                    $upd = $pdo->prepare(
+                        "UPDATE `{$accountDb}`.`account`
+                         SET status = 'BLOCK', availDt = ?
+                         WHERE id = ?"
+                    );
+                    $upd->execute([$avail, $aid]);
+                    if ($upd->rowCount() === 0 && $login !== '') {
+                        $updLogin = $pdo->prepare(
+                            "UPDATE `{$accountDb}`.`account`
+                             SET status = 'BLOCK', availDt = ?
+                             WHERE login = ?"
+                        );
+                        $updLogin->execute([$avail, $login]);
+                    }
+                } catch (\Throwable) {
+                    // sunucu DB yoksa geç
+                }
+            }
+        }
+
+        try {
+            $pdo->prepare(
+                "INSERT INTO `{$webDb}`.`settings` (group_key, setting_key, setting_value)
+                 VALUES ('migrations', 'ban_availDt_v1', '1')
+                 ON DUPLICATE KEY UPDATE setting_value = '1'"
+            )->execute();
+        } catch (\Throwable) {
+            // ignore
+        }
+    }
+
+    /** Aktif süresiz banların availDt'sini 1938-11-10 yapar. */
+    private static function migratePermanentAvail1938(PDO $pdo): void
+    {
+        $webDb = (string) (Config::get('web_database.database') ?? 'DNWeb');
+        if ($webDb === '' || !preg_match('/^[A-Za-z0-9_]+$/', $webDb)) {
+            $webDb = 'DNWeb';
+        }
+
+        try {
+            $flag = $pdo->query(
+                "SELECT setting_value FROM `{$webDb}`.`settings`
+                 WHERE group_key='migrations' AND setting_key='ban_availDt_permanent_1938' LIMIT 1"
+            )->fetchColumn();
+            if ((string) $flag === '1') {
+                return;
+            }
+        } catch (\Throwable) {
+            return;
+        }
+
+        $perm = \App\Services\PenaltyService::AVAIL_PERMANENT;
+        try {
+            $rows = $pdo->query(
+                "SELECT account_id, account_login FROM `{$webDb}`.`account_bans`
+                 WHERE is_active = 1 AND days = 0"
+            )->fetchAll() ?: [];
+        } catch (\Throwable) {
+            return;
+        }
+
+        $servers = Config::get('servers', []);
+        if (!is_array($servers)) {
+            $servers = [];
+        }
+
+        foreach ($rows as $row) {
+            $aid = (int) ($row['account_id'] ?? 0);
+            $login = (string) ($row['account_login'] ?? '');
+            if ($aid <= 0) {
+                continue;
+            }
+            foreach ($servers as $server) {
+                if (!is_array($server) || empty($server['enabled'])) {
+                    continue;
+                }
+                $accountDb = (string) ($server['databases']['account'] ?? 'account');
+                if ($accountDb === '' || !preg_match('/^[A-Za-z0-9_]+$/', $accountDb)) {
+                    continue;
+                }
+                try {
+                    $upd = $pdo->prepare(
+                        "UPDATE `{$accountDb}`.`account`
+                         SET status = 'BLOCK', availDt = ?
+                         WHERE id = ?"
+                    );
+                    $upd->execute([$perm, $aid]);
+                    if ($upd->rowCount() === 0 && $login !== '') {
+                        $pdo->prepare(
+                            "UPDATE `{$accountDb}`.`account`
+                             SET status = 'BLOCK', availDt = ?
+                             WHERE login = ?"
+                        )->execute([$perm, $login]);
+                    }
+                } catch (\Throwable) {
+                    // ignore
+                }
+            }
+        }
+
+        // days=0 ceza şablonlarını süresiz / 1938 sentinel olarak netleştir
+        try {
+            $pdo->exec(
+                "UPDATE `{$webDb}`.`penalty_templates`
+                 SET name = IF(name = '' OR name IS NULL, 'Süresiz ban', name),
+                     reason = IF(
+                       reason IS NULL OR reason = '' OR reason LIKE '%kalıcı ban%',
+                       'Süresiz ban — availDt 10.11.1938',
+                       reason
+                     )
+                 WHERE days = 0"
+            );
+        } catch (\Throwable) {
+            // ignore
+        }
+
+        try {
+            $pdo->prepare(
+                "INSERT INTO `{$webDb}`.`settings` (group_key, setting_key, setting_value)
+                 VALUES ('migrations', 'ban_availDt_permanent_1938', '1')
+                 ON DUPLICATE KEY UPDATE setting_value = '1'"
+            )->execute();
+        } catch (\Throwable) {
+            // ignore
+        }
+    }
+
+    private static function dropBannedUntilColumn(PDO $pdo): void
+    {
+        $webDb = (string) (Config::get('web_database.database') ?? 'DNWeb');
+        if ($webDb === '' || !preg_match('/^[A-Za-z0-9_]+$/', $webDb)) {
+            $webDb = 'DNWeb';
+        }
+        $colCheck = $pdo->query(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = " . $pdo->quote($webDb) . "
+               AND TABLE_NAME = 'account_bans'
+               AND COLUMN_NAME = 'banned_until'"
+        )->fetchColumn();
+        if (!(int) $colCheck) {
+            return;
+        }
+        try {
+            $pdo->exec("ALTER TABLE `{$webDb}`.`account_bans` DROP COLUMN `banned_until`");
+        } catch (\Throwable) {
+            // ignore
+        }
+        try {
+            $pdo->exec("ALTER TABLE `{$webDb}`.`account_bans` DROP INDEX `idx_bans_until`");
+        } catch (\Throwable) {
+            // ignore
+        }
+    }
+
     private static function ensureAccountWebPermission(PDO $pdo): void
     {
         $servers = Config::get('servers', []);
@@ -998,7 +1324,7 @@ final class Schema
             ['Bot kullanımı', 'Otomatik bot / macro kullanımı', 3],
             ['Küfür / taciz', 'Küfür, hakaret veya taciz', 1],
             ['Hile', 'Hile / duvar içi / hız hilesi', 7],
-            ['Kalıcı hile', 'Ağır hile ihlali — kalıcı ban', 0],
+            ['Kalıcı hile', 'Ağır hile ihlali — süresiz ban (availDt: 10.11.1938)', 0],
             ['Ticaret dolandırıcılığı', 'Oyuncu dolandırıcılığı / trade scam', 5],
         ];
 

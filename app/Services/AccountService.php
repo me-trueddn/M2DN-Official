@@ -13,8 +13,13 @@ final class AccountService
     /**
      * @return array{ok:bool, errors:list<string>, account_id?:int}
      */
-    public static function register(string $login, string $password, string $email, string $securityCode): array
-    {
+    public static function register(
+        string $login,
+        string $password,
+        string $email,
+        string $securityCode,
+        bool $acceptRules = false
+    ): array {
         $errors = [];
 
         $login = trim($login);
@@ -36,6 +41,10 @@ final class AccountService
 
         if ($securityCode === '' || !preg_match('/^\d{1,6}$/', $securityCode)) {
             $errors[] = 'Güvenli şifre en fazla 6 haneli ve sadece sayı olmalı.';
+        }
+
+        if (!$acceptRules) {
+            $errors[] = 'Kayıt için Topluluk Kurallarını kabul etmelisin.';
         }
 
         if ($errors !== []) {
@@ -87,6 +96,7 @@ final class AccountService
 
         $accountId = (int) $pdo->lastInsertId();
         ActivityLogService::log($accountId, ActivityLogService::ACTION_REGISTER, 'Yeni hesap kaydı', $login);
+        AccountConsentService::recordRulesAccepted($accountId);
 
         try {
             MailService::sendTemplate('register', $email, $login, [

@@ -8,6 +8,8 @@ use App\Controllers\AdminMailController;
 use App\Controllers\AdminPanelController;
 use App\Controllers\AdminSiteController;
 use App\Controllers\AuthController;
+use App\Controllers\CommunityRulesController;
+use App\Controllers\PrivacyController;
 use App\Controllers\HomeController;
 use App\Controllers\NotificationController;
 use App\Controllers\PasswordResetController;
@@ -21,6 +23,8 @@ use App\Services\AuthService;
 /** @var Router $router */
 
 $router->get('/', [HomeController::class, 'index']);
+$router->get('/kurallar', [CommunityRulesController::class, 'index']);
+$router->get('/gizlilik', [PrivacyController::class, 'index']);
 $router->get('/panel', [UserPanelController::class, 'index']);
 $router->get('/panel/karakter', [UserPanelController::class, 'character']);
 $router->post('/panel/guvenlik/sifre', [UserPanelController::class, 'changePassword']);
@@ -56,6 +60,11 @@ $router->post('/admin/ayarlar/footer-link/sil', [AdminSiteController::class, 'de
 $router->post('/admin/ayarlar/sosyal', [AdminSiteController::class, 'saveSocial']);
 $router->post('/admin/ayarlar/sosyal/sil', [AdminSiteController::class, 'deleteSocial']);
 $router->post('/admin/ayarlar/logo', [AdminSiteController::class, 'saveLogo']);
+$router->post('/admin/ayarlar/captcha', [AdminSiteController::class, 'saveCaptcha']);
+$router->post('/admin/ayarlar/gizlilik', [AdminSiteController::class, 'savePrivacy']);
+$router->post('/admin/ayarlar/kurallar', [AdminSiteController::class, 'saveCommunityRule']);
+$router->post('/admin/ayarlar/kurallar/sil', [AdminSiteController::class, 'deleteCommunityRule']);
+$router->post('/admin/ayarlar/kurallar/numara', [AdminSiteController::class, 'renumberCommunityRules']);
 $router->post('/admin/ayarlar/mail', [AdminMailController::class, 'saveServer']);
 $router->post('/admin/ayarlar/mail/sil', [AdminMailController::class, 'deleteServer']);
 $router->post('/admin/ayarlar/mail/aktif', [AdminMailController::class, 'activateServer']);

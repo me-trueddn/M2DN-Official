@@ -78,6 +78,27 @@ final class Theme
         $data['servers'] = ServerManager::all();
         $data['currentServer'] = ServerManager::current();
         $data['csrf'] = Security::csrfField();
+        if (class_exists(\App\Services\CaptchaService::class)) {
+            try {
+                if (!isset($data['captchaEnabled'])) {
+                    $data['captchaEnabled'] = \App\Services\CaptchaService::isEnabled();
+                }
+                if (!isset($data['captchaWidget'])) {
+                    $data['captchaWidget'] = \App\Services\CaptchaService::widgetHtml();
+                }
+                if (!isset($data['captchaScripts'])) {
+                    $data['captchaScripts'] = \App\Services\CaptchaService::scriptTags();
+                }
+            } catch (\Throwable) {
+                $data['captchaEnabled'] = false;
+                $data['captchaWidget'] = '';
+                $data['captchaScripts'] = '';
+            }
+        } else {
+            $data['captchaEnabled'] = false;
+            $data['captchaWidget'] = '';
+            $data['captchaScripts'] = '';
+        }
 
         extract($data, EXTR_SKIP);
         require self::viewPath($view);

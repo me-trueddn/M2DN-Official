@@ -12,6 +12,9 @@ use App\Services\AdminPlayerService;
 use App\Services\AdminStatsService;
 use App\Services\AnnouncementService;
 use App\Services\AuthService;
+use App\Services\CaptchaService;
+use App\Services\CommunityRulesService;
+use App\Services\LegalContentService;
 use App\Services\MailService;
 use App\Services\PenaltyService;
 use App\Services\PermissionService;
@@ -58,6 +61,7 @@ final class AdminPanelController
             'ceza-ayarlari', 'patch-linkleri', 'ozellikler-ayarlari', 'siniflar-ayarlari',
             'oranlar-ayarlari', 'siradaki-bolum', 'galeri-ayarlari', 'footer-ayarlari',
             'logo-ayarlari', 'mail-ayarlari', 'yetki-gruplari', 'ticket-ayarlari', 'duyuru-turleri',
+            'kurallar-ayarlari', 'captcha-ayarlari', 'gizlilik-ayarlari',
         ];
         if (!in_array($section, $allowed, true)) {
             $section = 'ozet';
@@ -77,6 +81,7 @@ final class AdminPanelController
             'ceza-ayarlari', 'patch-linkleri', 'ozellikler-ayarlari', 'siniflar-ayarlari',
             'oranlar-ayarlari', 'siradaki-bolum', 'galeri-ayarlari', 'footer-ayarlari',
             'logo-ayarlari', 'mail-ayarlari', 'yetki-gruplari', 'ticket-ayarlari', 'duyuru-turleri',
+            'kurallar-ayarlari', 'captcha-ayarlari', 'gizlilik-ayarlari',
         ];
         if (in_array($section, $settingsSections, true) && empty($permFlags[PermissionService::FLAG_SITE_SETTINGS])) {
             Session::flash('panel_errors', ['Ayarlara erişim yetkin yok.']);
@@ -160,6 +165,12 @@ final class AdminPanelController
             'mailTemplates' => !empty($permFlags[PermissionService::FLAG_SITE_SETTINGS]) ? MailService::templates() : [],
             'mailLogs' => !empty($permFlags[PermissionService::FLAG_SITE_SETTINGS]) ? MailService::logs(10, $mailQ) : [],
             'mailLogSearch' => $mailQ,
+            'communityRules' => !empty($permFlags[PermissionService::FLAG_SITE_SETTINGS])
+                ? CommunityRulesService::list(false)
+                : [],
+            'captchaConfig' => CaptchaService::config(),
+            'privacyTitle' => LegalContentService::privacyTitle(),
+            'privacyHtml' => LegalContentService::privacyHtml(),
             'mailTab' => (static function () use ($mailQ): string {
                 $flash = Session::flash('mail_tab');
                 if (is_string($flash) && $flash !== '') {

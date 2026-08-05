@@ -483,6 +483,21 @@ $can = static function (string $flag) use ($permFlags): bool {
     background:#120e08; color:var(--parchment); padding:12px; font-family:ui-monospace,Consolas,monospace; font-size:.8rem; resize:vertical;}
   #annHtmlPanel.open{display:block;}
   #annEditor.html-mode{display:none;}
+  #privacyEditorWrap{border:1px solid var(--line); background:var(--obsidian); margin-top:8px;}
+  #privacyEditor{
+    min-height:380px; max-height:640px; overflow:auto; padding:14px 16px;
+    color:var(--parchment); font-size:.9rem; line-height:1.65; outline:none; background:var(--obsidian);
+  }
+  #privacyEditor:empty:before{content:attr(data-placeholder); color:var(--ash);}
+  #privacyEditor table{width:100%; border-collapse:collapse; margin:.5em 0;}
+  #privacyEditor th,#privacyEditor td{border:1px solid var(--line); padding:6px 8px;}
+  #privacyEditor a{color:var(--gold-light);}
+  #privacyEditor h2{font-family:var(--font-display); font-size:1rem; color:var(--gold-light); margin:1em 0 .4em;}
+  #privacyEditor h3{font-size:.92rem; color:var(--parchment); margin:.85em 0 .35em;}
+  #privacyHtmlPanel{display:none; width:100%; min-height:360px; border:none; border-top:1px solid var(--line);
+    background:#120e08; color:var(--parchment); padding:12px; font-family:ui-monospace,Consolas,monospace; font-size:.8rem; resize:vertical;}
+  #privacyHtmlPanel.open{display:block;}
+  #privacyEditor.html-mode{display:none;}
   .nav-parent{display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; user-select:none;}
   .nav-parent .chev{font-size:.65rem; opacity:.7; transition:transform .2s;}
   .nav-parent.open .chev{transform:rotate(90deg);}
@@ -576,9 +591,12 @@ $can = static function (string $flag) use ($permFlags): bool {
     <a class="nav-item<?= $panelSection === 'siradaki-bolum' ? ' active' : '' ?>" data-target="siradaki-bolum"><i class="fa-solid fa-clock"></i> Sıradaki Bölüm</a>
     <a class="nav-item<?= $panelSection === 'galeri-ayarlari' ? ' active' : '' ?>" data-target="galeri-ayarlari"><i class="fa-solid fa-images"></i> Galeri</a>
     <a class="nav-item<?= $panelSection === 'logo-ayarlari' ? ' active' : '' ?>" data-target="logo-ayarlari"><i class="fa-solid fa-image"></i> Logo</a>
+    <a class="nav-item<?= $panelSection === 'captcha-ayarlari' ? ' active' : '' ?>" data-target="captcha-ayarlari"><i class="fa-solid fa-robot"></i> Captcha</a>
     <a class="nav-item<?= $panelSection === 'mail-ayarlari' ? ' active' : '' ?>" data-target="mail-ayarlari"><i class="fa-solid fa-envelope"></i> Mail</a>
     <a class="nav-item<?= $panelSection === 'footer-ayarlari' ? ' active' : '' ?>" data-target="footer-ayarlari"><i class="fa-solid fa-shoe-prints"></i> Footer / Border</a>
     <a class="nav-item<?= $panelSection === 'ceza-ayarlari' ? ' active' : '' ?>" data-target="ceza-ayarlari"><i class="fa-solid fa-scale-balanced"></i> Ceza Ayarları</a>
+    <a class="nav-item<?= $panelSection === 'kurallar-ayarlari' ? ' active' : '' ?>" data-target="kurallar-ayarlari"><i class="fa-solid fa-book"></i> Topluluk Kuralları</a>
+    <a class="nav-item<?= $panelSection === 'gizlilik-ayarlari' ? ' active' : '' ?>" data-target="gizlilik-ayarlari"><i class="fa-solid fa-file-contract"></i> Gizlilik / KVKK</a>
     <a class="nav-item<?= $panelSection === 'yetki-gruplari' ? ' active' : '' ?>" data-target="yetki-gruplari"><i class="fa-solid fa-shield-halved"></i> Yetki Grupları</a>
     <a class="nav-item<?= $panelSection === 'ticket-ayarlari' ? ' active' : '' ?>" data-target="ticket-ayarlari"><i class="fa-solid fa-ticket"></i> Ticket Ayarları</a>
     <a class="nav-item<?= $panelSection === 'duyuru-turleri' ? ' active' : '' ?>" data-target="duyuru-turleri"><i class="fa-solid fa-tags"></i> Duyuru Türleri</a>
@@ -934,6 +952,150 @@ $can = static function (string $flag) use ($permFlags): bool {
       </div>
     </section>
 
+    <!-- ===================== TOPLULUK KURALLARI ===================== -->
+    <section class="section<?= $panelSection === 'kurallar-ayarlari' ? ' active' : '' ?>" id="kurallar-ayarlari">
+      <?php
+        $communityRules = isset($communityRules) && is_array($communityRules) ? $communityRules : [];
+      ?>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-head">
+          <h3>Topluluk Kuralları</h3>
+          <span style="font-size:.8rem;color:var(--ash);"><?= count($communityRules) ?> madde · <a href="<?= e(url('/kurallar')) ?>" target="_blank" style="color:var(--gold-light);">Sayfayı aç</a></span>
+        </div>
+        <p style="font-size:.8rem;color:var(--ash);margin-bottom:12px;">Public sayfa: <code>/kurallar</code> · Footer “Kurallar” linki bu adrese bağlıdır.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+          <form method="post" action="<?= e(url('/admin/ayarlar/kurallar/numara')) ?>" style="display:inline;"><?= $csrf ?><button type="submit" class="btn btn-ghost btn-sm"><i class="fa-solid fa-arrow-down-1-9"></i> Numaraları yenile</button></form>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Kural</th>
+                <th>1. İhlal</th>
+                <th>2. İhlal</th>
+                <th>3. İhlal</th>
+                <th>Durum</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php if ($communityRules === []): ?>
+                <tr><td colspan="7" style="color:var(--ash);">Henüz kural yok.</td></tr>
+              <?php else: ?>
+                <?php foreach ($communityRules as $cr):
+                  $detailPreview = (string) $cr['detail'];
+                  $detailShort = mb_strlen($detailPreview) > 120 ? mb_substr($detailPreview, 0, 120) . '…' : $detailPreview;
+                ?>
+                <tr>
+                  <td><?= (int) $cr['rule_no'] ?></td>
+                  <td style="max-width:220px;">
+                    <strong><?= e((string) $cr['title']) ?></strong>
+                    <div style="font-size:.72rem;color:var(--ash);margin-top:4px;max-height:3.2em;overflow:hidden;"><?= e($detailShort) ?></div>
+                  </td>
+                  <td style="font-size:.78rem;"><?= e((string) $cr['penalty_1']) ?></td>
+                  <td style="font-size:.78rem;"><?= e((string) $cr['penalty_2']) ?></td>
+                  <td style="font-size:.78rem;"><?= e((string) $cr['penalty_3']) ?></td>
+                  <td><?= !empty($cr['is_active']) ? '<span class="badge ok">Aktif</span>' : '<span class="badge ban">Pasif</span>' ?></td>
+                  <td class="actions-cell">
+                    <button type="button" title="Düzenle" data-edit-rule data-id="<?= (int) $cr['id'] ?>"><i class="fa-solid fa-pen"></i></button>
+                    <form method="post" action="<?= e(url('/admin/ayarlar/kurallar/sil')) ?>" style="display:inline;" onsubmit="return confirm('Bu kural silinsin mi?');">
+                      <?= $csrf ?><input type="hidden" name="id" value="<?= (int) $cr['id'] ?>">
+                      <button type="submit" class="danger" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+        <script type="application/json" id="communityRulesJson"><?= json_encode(array_values(array_map(static function (array $r): array {
+            return [
+                'id' => (int) $r['id'],
+                'title' => (string) $r['title'],
+                'detail' => (string) $r['detail'],
+                'penalty_1' => (string) $r['penalty_1'],
+                'penalty_2' => (string) $r['penalty_2'],
+                'penalty_3' => (string) $r['penalty_3'],
+                'sort_order' => (int) $r['sort_order'],
+                'is_active' => !empty($r['is_active']),
+            ];
+        }, $communityRules)), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) ?></script>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3 id="ruleFormTitle">Yeni Kural</h3></div>
+        <form method="post" action="<?= e(url('/admin/ayarlar/kurallar')) ?>" id="ruleForm">
+          <?= $csrf ?>
+          <input type="hidden" name="id" id="ruleId" value="">
+          <div class="form-row"><label>Kural başlığı</label><input name="title" id="ruleTitle" required maxlength="200"></div>
+          <div class="form-row"><label>Detay</label><textarea name="detail" id="ruleDetail" required style="min-height:140px;" placeholder="Madde madde açıklama…"></textarea></div>
+          <div class="grid grid-3">
+            <div class="form-row"><label>1. İhlal</label><input name="penalty_1" id="ruleP1" required maxlength="200"></div>
+            <div class="form-row"><label>2. İhlal</label><input name="penalty_2" id="ruleP2" required maxlength="200"></div>
+            <div class="form-row"><label>3. İhlal</label><input name="penalty_3" id="ruleP3" required maxlength="200"></div>
+          </div>
+          <div class="grid grid-2">
+            <div class="form-row"><label>Sıra</label><input type="number" name="sort_order" id="ruleSort" value="0" min="0"></div>
+            <div class="form-row"><label><input type="checkbox" name="is_active" id="ruleActive" value="1" checked> Aktif</label></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="ruleReset">Temizle</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===================== GİZLİLİK / KVKK ===================== -->
+    <section class="section<?= $panelSection === 'gizlilik-ayarlari' ? ' active' : '' ?>" id="gizlilik-ayarlari">
+      <?php
+        $privacyTitle = isset($privacyTitle) && is_string($privacyTitle) ? $privacyTitle : 'Gizlilik Sözleşmesi ve KVKK';
+        $privacyHtml = isset($privacyHtml) && is_string($privacyHtml) ? $privacyHtml : '';
+      ?>
+      <div class="card" style="max-width:960px;">
+        <div class="card-head">
+          <h3>Gizlilik Sözleşmesi ve KVKK</h3>
+          <a href="<?= e(url('/gizlilik')) ?>" target="_blank" style="font-size:.8rem;color:var(--gold-light);">Sayfayı aç</a>
+        </div>
+        <p style="font-size:.82rem;color:var(--ash);margin-bottom:14px;line-height:1.55;">
+          Public sayfa: <code>/gizlilik</code> · Footer “Gizlilik / KVKK” linki bu adrese bağlıdır. İçeriği editörle düzenleyebilirsiniz.
+        </p>
+        <form method="post" action="<?= e(url('/admin/ayarlar/gizlilik')) ?>" id="privacyForm">
+          <?= $csrf ?>
+          <div class="form-row"><label>Sayfa başlığı</label><input name="title" id="privacyTitle" required maxlength="200" value="<?= e($privacyTitle) ?>"></div>
+          <div class="form-row">
+            <label>İçerik</label>
+            <div id="privacyEditorWrap">
+              <div class="ann-toolbar" id="privacyToolbar" role="toolbar" aria-label="Metin araçları">
+                <button type="button" data-pcmd="bold" title="Kalın"><b>B</b></button>
+                <button type="button" data-pcmd="italic" title="İtalik"><i>I</i></button>
+                <button type="button" data-pcmd="underline" title="Altı çizili"><u>U</u></button>
+                <span class="sep"></span>
+                <button type="button" data-pcmd="formatBlock" data-value="h2" title="Bölüm başlığı">H2</button>
+                <button type="button" data-pcmd="formatBlock" data-value="h3" title="Alt başlık">H3</button>
+                <button type="button" data-pcmd="formatBlock" data-value="p" title="Paragraf">P</button>
+                <span class="sep"></span>
+                <button type="button" data-pcmd="insertUnorderedList" title="Madde listesi"><i class="fa-solid fa-list-ul"></i></button>
+                <button type="button" data-pcmd="insertOrderedList" title="Numaralı liste"><i class="fa-solid fa-list-ol"></i></button>
+                <span class="sep"></span>
+                <button type="button" data-pcmd="createLink" title="Link"><i class="fa-solid fa-link"></i></button>
+                <button type="button" data-pcmd="removeFormat" title="Biçimi temizle"><i class="fa-solid fa-eraser"></i></button>
+                <button type="button" data-pcmd="toggleHtml" title="HTML kaynak" id="privacyToggleHtml"><i class="fa-solid fa-code"></i></button>
+              </div>
+              <div id="privacyEditor" contenteditable="true" data-placeholder="Gizlilik metnini buraya yaz…"></div>
+              <textarea id="privacyHtmlPanel" spellcheck="false" aria-label="HTML kaynak"></textarea>
+            </div>
+            <textarea name="body" id="privacyBody" hidden><?= e($privacyHtml) ?></textarea>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+            <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+            <a class="btn btn-ghost btn-sm" href="<?= e(url('/gizlilik')) ?>" target="_blank">Önizle</a>
+          </div>
+        </form>
+      </div>
+    </section>
+
     <!-- ===================== CEZA AYARLARI ===================== -->
     <section class="section<?= $panelSection === 'ceza-ayarlari' ? ' active' : '' ?>" id="ceza-ayarlari">
       <div class="grid grid-2">
@@ -976,7 +1138,8 @@ $can = static function (string $flag) use ($permFlags): bool {
             <input type="hidden" name="id" id="penaltyId" value="">
             <div class="form-row"><label>Ceza Adı</label><input name="name" id="penaltyName" required maxlength="120" placeholder="Örn: Bot kullanımı"></div>
             <div class="form-row"><label>Sebep</label><input name="reason" id="penaltyReason" required maxlength="500" placeholder="Ban sebebini yaz"></div>
-            <div class="form-row"><label>Kaç gün (0 = süresiz)</label><input type="number" name="days" id="penaltyDays" min="0" max="3650" value="1" required></div>
+            <div class="form-row"><label>Kaç gün (0 = süresiz → 10.11.1938)</label><input type="number" name="days" id="penaltyDays" min="0" max="3650" value="1" required></div>
+            <p style="font-size:.72rem;color:var(--ash);margin:-6px 0 10px;">0 gün = süresiz ban. Oyun hesabında <code>availDt</code> sabiti: 10 Kasım 1938.</p>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
               <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-floppy-disk"></i> Kaydet</button>
               <button type="button" class="btn btn-ghost btn-sm" id="penaltyReset">Temizle</button>
@@ -1413,6 +1576,44 @@ $can = static function (string $flag) use ($permFlags): bool {
             <div class="form-row"><label>Admin paneli ikon</label><input type="number" name="admin_size" min="16" max="120" value="<?= (int) ($siteBrand['admin_size'] ?? 36) ?>"></div>
           </div>
           <p style="font-size:.75rem;color:var(--ash);margin:4px 0 16px;">Boş bırakılan yüklemeler mevcut dosyayı korur. Kaldır seçenekleri varsayılan tema görsellerine döner.</p>
+          <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===================== CAPTCHA ===================== -->
+    <section class="section<?= $panelSection === 'captcha-ayarlari' ? ' active' : '' ?>" id="captcha-ayarlari">
+      <?php
+        $captchaConfig = isset($captchaConfig) && is_array($captchaConfig) ? $captchaConfig : \App\Services\CaptchaService::config();
+        $capProvider = (string) ($captchaConfig['provider'] ?? 'google');
+        $capEnabled = !empty($captchaConfig['enabled']);
+      ?>
+      <div class="card" style="max-width:720px;">
+        <div class="card-head">
+          <h3>Captcha / Robot Doğrulama</h3>
+          <span style="font-size:.8rem;color:var(--ash);"><?= $capEnabled && !empty($captchaConfig['ready']) ? 'Aktif' : ($capEnabled ? 'Aktif (eksik key)' : 'Pasif') ?></span>
+        </div>
+        <p style="font-size:.82rem;color:var(--ash);margin-bottom:14px;line-height:1.55;">
+          Aktifken giriş, kayıt ve parola sıfırlama formlarında zorunlu olur. Google reCAPTCHA v2 veya Cloudflare Turnstile seçin; script / doğrulama adresleri sabittir — yalnızca key’leri girin.
+        </p>
+        <form method="post" action="<?= e(url('/admin/ayarlar/captcha')) ?>" id="captchaSettingsForm">
+          <?= $csrf ?>
+          <div class="form-row">
+            <label><input type="checkbox" name="enabled" value="1"<?= $capEnabled ? ' checked' : '' ?>> Captcha aktif</label>
+          </div>
+          <div class="form-row">
+            <label>Sağlayıcı</label>
+            <select name="provider" id="captchaProvider">
+              <?php foreach (($captchaConfig['providers'] ?? []) as $pkey => $pinfo): ?>
+                <option value="<?= e((string) $pkey) ?>"<?= $capProvider === $pkey ? ' selected' : '' ?>><?= e((string) ($pinfo['label'] ?? $pkey)) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="grid grid-2">
+            <div class="form-row"><label>Site Key</label><input name="site_key" value="<?= e((string) ($captchaConfig['site_key'] ?? '')) ?>" autocomplete="off" placeholder="Public site key"></div>
+            <div class="form-row"><label>Secret Key</label><input name="secret_key" type="password" value="<?= e((string) ($captchaConfig['secret_key'] ?? '')) ?>" autocomplete="new-password" placeholder="Secret key"></div>
+          </div>
+          <div id="captchaProviderHint" style="font-size:.75rem;color:var(--ash);margin:0 0 14px;line-height:1.5;"></div>
           <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
         </form>
       </div>
@@ -2615,6 +2816,7 @@ $can = static function (string $flag) use ($permFlags): bool {
         html += '<div class="row"><span class="k">Kayıt</span><span class="v">' + esc(a.create_label || '—') + '</span></div>';
         html += '<div class="row"><span class="k">Durum</span><span class="v"><span class="badge ' + esc(a.status_badge || '') + '">' + esc(a.status_label || '—') + '</span></span></div>';
         html += '<div class="row"><span class="k">Cash</span><span class="v">' + Number(a.cash || 0).toLocaleString('tr-TR') + '</span></div>';
+        html += '<div class="row"><span class="k">Kurallar</span><span class="v">' + esc(a.rules_accepted_label || 'Hayır') + '</span></div>';
         if (ban) {
           html += '<div class="row"><span class="k">Aktif Ceza</span><span class="v">' + esc(ban.penalty_name) + ' · ' + esc(ban.days_label) + '</span></div>';
           html += '<div class="row"><span class="k">Sebep</span><span class="v">' + esc(ban.reason) + '</span></div>';
@@ -2799,6 +3001,51 @@ $can = static function (string $flag) use ($permFlags): bool {
     });
   });
   document.getElementById('penaltyReset')?.addEventListener('click', resetPenaltyForm);
+
+  // Topluluk kuralları
+  const ruleFormTitle = document.getElementById('ruleFormTitle');
+  const ruleId = document.getElementById('ruleId');
+  const ruleTitle = document.getElementById('ruleTitle');
+  const ruleDetail = document.getElementById('ruleDetail');
+  const ruleP1 = document.getElementById('ruleP1');
+  const ruleP2 = document.getElementById('ruleP2');
+  const ruleP3 = document.getElementById('ruleP3');
+  const ruleSort = document.getElementById('ruleSort');
+  const ruleActive = document.getElementById('ruleActive');
+  let communityRulesMap = {};
+  try {
+    const raw = document.getElementById('communityRulesJson')?.textContent || '[]';
+    JSON.parse(raw).forEach(r => { communityRulesMap[String(r.id)] = r; });
+  } catch (_) { communityRulesMap = {}; }
+  function resetRuleForm() {
+    if (ruleFormTitle) ruleFormTitle.textContent = 'Yeni Kural';
+    if (ruleId) ruleId.value = '';
+    if (ruleTitle) ruleTitle.value = '';
+    if (ruleDetail) ruleDetail.value = '';
+    if (ruleP1) ruleP1.value = '';
+    if (ruleP2) ruleP2.value = '';
+    if (ruleP3) ruleP3.value = '';
+    if (ruleSort) ruleSort.value = '0';
+    if (ruleActive) ruleActive.checked = true;
+  }
+  document.querySelectorAll('[data-edit-rule]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const row = communityRulesMap[String(btn.dataset.id || '')];
+      if (!row) return;
+      if (ruleFormTitle) ruleFormTitle.textContent = 'Kural Düzenle #' + (row.id || '');
+      if (ruleId) ruleId.value = String(row.id || '');
+      if (ruleTitle) ruleTitle.value = row.title || '';
+      if (ruleDetail) ruleDetail.value = row.detail || '';
+      if (ruleP1) ruleP1.value = row.penalty_1 || '';
+      if (ruleP2) ruleP2.value = row.penalty_2 || '';
+      if (ruleP3) ruleP3.value = row.penalty_3 || '';
+      if (ruleSort) ruleSort.value = String(row.sort_order ?? 0);
+      if (ruleActive) ruleActive.checked = !!row.is_active;
+      showSection('kurallar-ayarlari');
+      ruleTitle?.focus();
+    });
+  });
+  document.getElementById('ruleReset')?.addEventListener('click', resetRuleForm);
 
   // Yetki grupları
   const groupFormTitle = document.getElementById('groupFormTitle');
@@ -3415,6 +3662,82 @@ $can = static function (string $flag) use ($permFlags): bool {
 
     load();
     setInterval(load, 60000);
+  })();
+</script>
+<script>
+  (function captchaSettingsHint() {
+    const sel = document.getElementById('captchaProvider');
+    const hint = document.getElementById('captchaProviderHint');
+    if (!sel || !hint) return;
+    const meta = <?= json_encode(array_map(static function (array $p): array {
+        return ['label' => (string) ($p['label'] ?? ''), 'script' => (string) ($p['script'] ?? ''), 'verify' => (string) ($p['verify'] ?? '')];
+    }, \App\Services\CaptchaService::config()['providers']), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) ?>;
+    function sync() {
+      const p = meta[sel.value] || {};
+      hint.innerHTML = '<strong>' + (p.label || sel.value) + '</strong><br>Script: <code>' + (p.script || '—') + '</code><br>Verify: <code>' + (p.verify || '—') + '</code>';
+    }
+    sel.addEventListener('change', sync);
+    sync();
+  })();
+</script>
+<script>
+  (function privacyEditor() {
+    const editor = document.getElementById('privacyEditor');
+    const htmlPanel = document.getElementById('privacyHtmlPanel');
+    const bodyField = document.getElementById('privacyBody');
+    const form = document.getElementById('privacyForm');
+    const toolbar = document.getElementById('privacyToolbar');
+    if (!editor || !bodyField || !form) return;
+    let htmlMode = false;
+    const initial = bodyField.value || '';
+    editor.innerHTML = initial;
+    if (htmlPanel) htmlPanel.value = initial;
+
+    function syncHidden() {
+      bodyField.value = htmlMode && htmlPanel ? htmlPanel.value : editor.innerHTML;
+    }
+    function exec(cmd, value) {
+      if (htmlMode && cmd !== 'toggleHtml') return;
+      editor.focus();
+      if (cmd === 'createLink') {
+        const url = window.prompt('Link URL', 'https://');
+        if (!url) return;
+        document.execCommand('createLink', false, url);
+        return;
+      }
+      if (cmd === 'formatBlock') {
+        document.execCommand('formatBlock', false, value || 'p');
+        return;
+      }
+      if (cmd === 'toggleHtml') {
+        if (!htmlMode) {
+          if (htmlPanel) htmlPanel.value = editor.innerHTML;
+          htmlMode = true;
+          editor.classList.add('html-mode');
+          htmlPanel?.classList.add('open');
+          htmlPanel?.focus();
+        } else {
+          if (htmlPanel) editor.innerHTML = htmlPanel.value;
+          htmlMode = false;
+          editor.classList.remove('html-mode');
+          htmlPanel?.classList.remove('open');
+          editor.focus();
+        }
+        return;
+      }
+      document.execCommand(cmd, false, value || null);
+    }
+    toolbar?.addEventListener('mousedown', (e) => {
+      if (e.target.closest('button,[data-pcmd]')) e.preventDefault();
+    });
+    toolbar?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-pcmd]');
+      if (!btn) return;
+      exec(btn.getAttribute('data-pcmd'), btn.getAttribute('data-value'));
+    });
+    editor.addEventListener('input', syncHidden);
+    htmlPanel?.addEventListener('input', syncHidden);
+    form.addEventListener('submit', () => { syncHidden(); });
   })();
 </script>
 </body>

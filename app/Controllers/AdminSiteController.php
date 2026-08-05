@@ -210,6 +210,66 @@ final class AdminSiteController
         $this->ok('Logo ayarları kaydedildi.', 'logo-ayarlari');
     }
 
+    public function saveCaptcha(): void
+    {
+        $this->gate();
+        $result = \App\Services\CaptchaService::save(
+            !empty($_POST['enabled']),
+            (string) ($_POST['provider'] ?? 'google'),
+            (string) ($_POST['site_key'] ?? ''),
+            (string) ($_POST['secret_key'] ?? '')
+        );
+        $this->fromResult($result, 'Captcha ayarları kaydedildi.', 'captcha-ayarlari');
+    }
+
+    public function savePrivacy(): void
+    {
+        $this->gate();
+        $result = \App\Services\LegalContentService::savePrivacy(
+            (string) ($_POST['title'] ?? ''),
+            (string) ($_POST['body'] ?? '')
+        );
+        $this->fromResult($result, 'Gizlilik / KVKK sayfası kaydedildi.', 'gizlilik-ayarlari');
+    }
+
+    public function saveCommunityRule(): void
+    {
+        $this->gate();
+        $idRaw = trim((string) ($_POST['id'] ?? ''));
+        $id = $idRaw !== '' ? (int) $idRaw : null;
+        if ($id !== null && $id <= 0) {
+            $id = null;
+        }
+        $result = \App\Services\CommunityRulesService::save(
+            $id,
+            (string) ($_POST['title'] ?? ''),
+            (string) ($_POST['detail'] ?? ''),
+            (string) ($_POST['penalty_1'] ?? ''),
+            (string) ($_POST['penalty_2'] ?? ''),
+            (string) ($_POST['penalty_3'] ?? ''),
+            (int) ($_POST['sort_order'] ?? 0),
+            !empty($_POST['is_active'])
+        );
+        $this->fromResult($result, $id ? 'Kural güncellendi.' : 'Kural eklendi.', 'kurallar-ayarlari');
+    }
+
+    public function deleteCommunityRule(): void
+    {
+        $this->gate();
+        $id = (int) ($_POST['id'] ?? 0);
+        if ($id <= 0 || !\App\Services\CommunityRulesService::delete($id)) {
+            $this->fail(['Kural silinemedi.'], 'kurallar-ayarlari');
+        }
+        $this->ok('Kural silindi.', 'kurallar-ayarlari');
+    }
+
+    public function renumberCommunityRules(): void
+    {
+        $this->gate();
+        \App\Services\CommunityRulesService::renumber();
+        $this->ok('Madde numaraları yenilendi.', 'kurallar-ayarlari');
+    }
+
     /** @param array{ok:bool, errors:list<string>} $result */
     private function fromResult(array $result, string $success, string $section): void
     {
@@ -230,6 +290,9 @@ final class AdminSiteController
             'siniflar-ayarlari' => 'Sınıf kaydedildi',
             'galeri-ayarlari' => 'Galeri güncellendi',
             'logo-ayarlari' => 'Logo ayarları güncellendi',
+            'captcha-ayarlari' => 'Captcha ayarları güncellendi',
+            'gizlilik-ayarlari' => 'Gizlilik / KVKK güncellendi',
+            'kurallar-ayarlari' => 'Topluluk kuralları güncellendi',
         ];
         AdminLogService::write(AuthService::user(), $labels[$section] ?? ('Ayar: ' . $section), $msg);
         Session::flash('panel_success', $msg);

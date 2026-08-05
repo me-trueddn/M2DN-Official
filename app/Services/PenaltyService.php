@@ -9,6 +9,12 @@ use App\Core\ServerManager;
 
 final class PenaltyService
 {
+    /** Metin2: boş / açık hesap availDt */
+    private const AVAIL_CLEAR = '0000-00-00 00:00:00';
+
+    /** Süresiz ban sentinel (10 Kasım 1938) — oyun/panel otomatik açmaz */
+    public const AVAIL_PERMANENT = '1938-11-10 00:00:00';
+
     /** @return list<array> */
     public static function listTemplates(bool $onlyActive = false): array
     {
@@ -73,7 +79,7 @@ final class PenaltyService
                 )->execute([$name, $reason, $days]);
             }
             return ['ok' => true, 'errors' => []];
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             return ['ok' => false, 'errors' => ['Ceza kaydedilemedi.']];
         }
     }
@@ -93,7 +99,8 @@ final class PenaltyService
     }
 
     /**
-     * Oyuncuyu banla: account.status = BLOCK + ban kaydı + activity log.
+     * Ban: account.status=BLOCK + account.availDt=bitiş (oyun buraya bakar).
+     * DNWeb.account_bans: sadece sebep / açıklama / kanıt meta.
      *
      * @param array{account_id:int, login:string} $admin
      * @return array{ok:bool, errors:list<string>}
@@ -127,28 +134,33 @@ final class PenaltyService
                 return ['ok' => false, 'errors' => ['Hesap bulunamadı.']];
             }
 
-            // Admin/superadmin banlanmasın (güvenlik)
             $perm = AuthService::normalizePermission($row['WebPermission'] ?? null);
             if ($perm === AuthService::PERM_ADMIN || $perm === AuthService::PERM_SUPER) {
                 return ['ok' => false, 'errors' => ['Yönetici hesapları banlanamaz.']];
             }
 
             $days = (int) $tpl['days'];
-            $untilSql = $days > 0 ? 'DATE_ADD(NOW(), INTERVAL ' . $days . ' DAY)' : 'NULL';
-
-            $acc->prepare("UPDATE account SET status = 'BLOCK' WHERE id = ?")->execute([$targetAccountId]);
+            // Süreli: availDt = şimdi + gün. Süresiz: 10 Kasım 1938 (sentinel)
+            if ($days > 0) {
+                $acc->prepare(
+                    "UPDATE account SET status = 'BLOCK', availDt = DATE_ADD(NOW(), INTERVAL {$days} DAY) WHERE id = ?"
+                )->execute([$targetAccountId]);
+            } else {
+                $acc->prepare(
+                    "UPDATE account SET status = 'BLOCK', availDt = ? WHERE id = ?"
+                )->execute([self::AVAIL_PERMANENT, $targetAccountId]);
+            }
 
             $web = Database::web();
-            // Eski aktif banları kapat
             $web->prepare(
                 'UPDATE account_bans SET is_active = 0, lifted_at = NOW() WHERE account_id = ? AND is_active = 1'
             )->execute([$targetAccountId]);
 
             $web->prepare(
-                "INSERT INTO account_bans
-                  (account_id, account_login, penalty_id, penalty_name, reason, evidence, days, banned_until,
+                'INSERT INTO account_bans
+                  (account_id, account_login, penalty_id, penalty_name, reason, evidence, days,
                    banned_by_id, banned_by_login, is_active, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, {$untilSql}, ?, ?, 1, NOW())"
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())'
             )->execute([
                 $targetAccountId,
                 (string) $row['login'],
@@ -227,7 +239,10 @@ final class PenaltyService
                 return ['ok' => false, 'errors' => ['Hesap bulunamadı.']];
             }
 
-            $acc->prepare("UPDATE account SET status = 'OK' WHERE id = ?")->execute([$targetAccountId]);
+            $acc->prepare(
+                "UPDATE account SET status = 'OK', availDt = ? WHERE id = ?"
+            )->execute([self::AVAIL_CLEAR, $targetAccountId]);
+
             Database::web()->prepare(
                 'UPDATE account_bans SET is_active = 0, lifted_at = NOW() WHERE account_id = ? AND is_active = 1'
             )->execute([$targetAccountId]);
@@ -258,47 +273,30 @@ final class PenaltyService
     }
 
     /** @return list<array> */
-    public static function listActiveBans(int $limit = 100): array
+    public static function listActiveBans(int $limit = 100, ?string $serverKey = null): array
     {
         $limit = max(1, min(500, $limit));
+        $serverKey = $serverKey ?: (ServerManager::current()['key'] ?? null);
         try {
             $stmt = Database::web()->query(
                 "SELECT id, account_id, account_login, penalty_name, reason, evidence, days,
-                        banned_until, banned_by_login, created_at
+                        banned_by_login, created_at
                  FROM account_bans
                  WHERE is_active = 1
                  ORDER BY id DESC
                  LIMIT {$limit}"
             );
+            $rows = $stmt->fetchAll() ?: [];
+            $availMap = self::availDtForAccounts(
+                array_map(static fn(array $r): int => (int) $r['account_id'], $rows),
+                $serverKey
+            );
             $out = [];
-            foreach ($stmt->fetchAll() ?: [] as $row) {
+            foreach ($rows as $row) {
+                $aid = (int) $row['account_id'];
                 $days = (int) ($row['days'] ?? 0);
-                $until = (string) ($row['banned_until'] ?? '');
-                $untilTs = $until !== '' ? strtotime($until) : false;
-                $remaining = 'Süresiz';
-                if ($days > 0 && $untilTs) {
-                    $sec = $untilTs - time();
-                    if ($sec <= 0) {
-                        $remaining = 'Süresi doldu';
-                    } else {
-                        $d = (int) floor($sec / 86400);
-                        $remaining = $d > 0 ? ($d . ' gün kaldı') : (max(1, (int) ceil($sec / 3600)) . ' saat kaldı');
-                    }
-                }
-                $out[] = [
-                    'id' => (int) $row['id'],
-                    'account_id' => (int) $row['account_id'],
-                    'account_login' => (string) $row['account_login'],
-                    'penalty_name' => (string) $row['penalty_name'],
-                    'reason' => (string) $row['reason'],
-                    'evidence' => (string) ($row['evidence'] ?? ''),
-                    'days' => $days,
-                    'days_label' => $days === 0 ? 'Süresiz' : ($days . ' gün'),
-                    'remaining_label' => $remaining,
-                    'banned_by_login' => (string) $row['banned_by_login'],
-                    'created_at' => (string) $row['created_at'],
-                    'created_label' => ($ts = strtotime((string) $row['created_at'])) ? date('d.m.Y H:i', $ts) : '—',
-                ];
+                $until = $availMap[$aid] ?? self::AVAIL_CLEAR;
+                $out[] = self::formatBanRow($row, $until, $days);
             }
             return $out;
         } catch (\Throwable) {
@@ -306,14 +304,15 @@ final class PenaltyService
         }
     }
 
-    public static function getActiveBan(int $accountId): ?array
+    public static function getActiveBan(int $accountId, ?string $serverKey = null): ?array
     {
         if ($accountId <= 0) {
             return null;
         }
+        $serverKey = $serverKey ?: (ServerManager::current()['key'] ?? null);
         try {
             $stmt = Database::web()->prepare(
-                'SELECT id, penalty_name, reason, evidence, days, banned_until, banned_by_login, created_at
+                'SELECT id, account_id, penalty_name, reason, evidence, days, banned_by_login, created_at
                  FROM account_bans WHERE account_id = ? AND is_active = 1 ORDER BY id DESC LIMIT 1'
             );
             $stmt->execute([$accountId]);
@@ -322,64 +321,136 @@ final class PenaltyService
                 return null;
             }
             $days = (int) ($row['days'] ?? 0);
-            $until = (string) ($row['banned_until'] ?? '');
-            $untilTs = $until !== '' ? strtotime($until) : false;
-            $remaining = 'Süresiz';
-            if ($days > 0 && $untilTs) {
-                $sec = $untilTs - time();
-                if ($sec <= 0) {
-                    $remaining = 'Süresi doldu';
-                } else {
-                    $d = (int) floor($sec / 86400);
-                    $remaining = $d > 0 ? ($d . ' gün kaldı') : (max(1, (int) ceil($sec / 3600)) . ' saat kaldı');
-                }
-            }
-            $createdTs = strtotime((string) ($row['created_at'] ?? ''));
-            return [
-                'id' => (int) $row['id'],
-                'penalty_name' => (string) $row['penalty_name'],
-                'reason' => (string) $row['reason'],
-                'evidence' => (string) ($row['evidence'] ?? ''),
-                'days' => $days,
-                'days_label' => $days === 0 ? 'Süresiz' : ($days . ' gün'),
-                'remaining_label' => $remaining,
-                'banned_until' => $until,
-                'banned_until_label' => $untilTs ? date('d.m.Y H:i', $untilTs) : '—',
-                'banned_by_login' => (string) $row['banned_by_login'],
-                'created_at' => (string) $row['created_at'],
-                'created_label' => $createdTs ? date('d.m.Y H:i', $createdTs) : '—',
-            ];
+            $availMap = self::availDtForAccounts([$accountId], $serverKey);
+            $until = $availMap[$accountId] ?? self::AVAIL_CLEAR;
+            return self::formatBanRow($row, $until, $days);
         } catch (\Throwable) {
             return null;
         }
     }
 
-    /** Süresi dolmuş banları otomatik kaldır. */
+    /**
+     * Süresi dolmuş banları kaldırır: account.availDt <= NOW() ve status=BLOCK.
+     * Süresiz sentinel (1938-11-10) ve 0000-00-00 dokunulmaz.
+     */
     public static function liftExpired(?string $serverKey = null): void
     {
         $serverKey = $serverKey ?: (ServerManager::current()['key'] ?? null);
         try {
-            $web = Database::web();
-            $stmt = $web->query(
-                'SELECT id, account_id FROM account_bans
-                 WHERE is_active = 1 AND banned_until IS NOT NULL AND banned_until <= NOW()'
+            $acc = Database::account($serverKey);
+            $perm = self::AVAIL_PERMANENT;
+            $stmt = $acc->prepare(
+                "SELECT id, login FROM account
+                 WHERE status = 'BLOCK'
+                   AND availDt IS NOT NULL
+                   AND availDt > '0000-00-00 00:00:00'
+                   AND availDt <> ?
+                   AND availDt <= NOW()"
             );
+            $stmt->execute([$perm]);
             $rows = $stmt->fetchAll() ?: [];
             if ($rows === []) {
                 return;
             }
-            $acc = Database::account($serverKey);
+            $web = Database::web();
             foreach ($rows as $row) {
-                $aid = (int) $row['account_id'];
-                $acc->prepare("UPDATE account SET status = 'OK' WHERE id = ? AND status = 'BLOCK'")->execute([$aid]);
+                $aid = (int) $row['id'];
+                $login = (string) ($row['login'] ?? '');
+                $acc->prepare(
+                    "UPDATE account SET status = 'OK', availDt = ? WHERE id = ?"
+                )->execute([self::AVAIL_CLEAR, $aid]);
                 $web->prepare(
-                    'UPDATE account_bans SET is_active = 0, lifted_at = NOW() WHERE id = ?'
-                )->execute([(int) $row['id']]);
-                ActivityLogService::log($aid, ActivityLogService::ACTION_UNBAN, 'Süre dolumu — otomatik ban kaldırma');
+                    'UPDATE account_bans SET is_active = 0, lifted_at = NOW()
+                     WHERE is_active = 1 AND (account_id = ? OR account_login = ?)'
+                )->execute([$aid, $login]);
+                ActivityLogService::log($aid, ActivityLogService::ACTION_UNBAN, 'Süre dolumu — otomatik ban kaldırma (availDt)', $login);
             }
         } catch (\Throwable) {
             // ignore
         }
+    }
+
+    /**
+     * @param list<int> $accountIds
+     * @return array<int, string> account_id => availDt
+     */
+    private static function availDtForAccounts(array $accountIds, ?string $serverKey): array
+    {
+        $accountIds = array_values(array_unique(array_filter($accountIds, static fn(int $id): bool => $id > 0)));
+        if ($accountIds === []) {
+            return [];
+        }
+        try {
+            $placeholders = implode(',', array_fill(0, count($accountIds), '?'));
+            $stmt = Database::account($serverKey)->prepare(
+                "SELECT id, availDt FROM account WHERE id IN ({$placeholders})"
+            );
+            $stmt->execute($accountIds);
+            $map = [];
+            foreach ($stmt->fetchAll() ?: [] as $r) {
+                $map[(int) $r['id']] = (string) ($r['availDt'] ?? self::AVAIL_CLEAR);
+            }
+            return $map;
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /** @param array<string, mixed> $row */
+    private static function formatBanRow(array $row, string $until, int $days): array
+    {
+        $isPermanent = $days === 0 || self::isPermanentAvail($until);
+        $untilTs = self::parseAvailTs($until);
+        $remaining = 'Süresiz';
+        if (!$isPermanent && $untilTs) {
+            $sec = $untilTs - time();
+            if ($sec <= 0) {
+                $remaining = 'Süresi doldu';
+            } else {
+                $d = (int) floor($sec / 86400);
+                $remaining = $d > 0 ? ($d . ' gün kaldı') : (max(1, (int) ceil($sec / 3600)) . ' saat kaldı');
+            }
+        }
+        $createdTs = strtotime((string) ($row['created_at'] ?? ''));
+        return [
+            'id' => (int) ($row['id'] ?? 0),
+            'account_id' => (int) ($row['account_id'] ?? 0),
+            'account_login' => (string) ($row['account_login'] ?? ''),
+            'penalty_name' => (string) ($row['penalty_name'] ?? ''),
+            'reason' => (string) ($row['reason'] ?? ''),
+            'evidence' => (string) ($row['evidence'] ?? ''),
+            'days' => $days,
+            'days_label' => $isPermanent ? 'Süresiz' : ($days . ' gün'),
+            'remaining_label' => $remaining,
+            'banned_until' => (!$isPermanent && $untilTs) ? date('Y-m-d H:i:s', $untilTs) : '',
+            'banned_until_label' => $isPermanent
+                ? 'Süresiz (10.11.1938)'
+                : ($untilTs ? date('d.m.Y H:i', $untilTs) : '—'),
+            'banned_by_login' => (string) ($row['banned_by_login'] ?? ''),
+            'created_at' => (string) ($row['created_at'] ?? ''),
+            'created_label' => $createdTs ? date('d.m.Y H:i', $createdTs) : '—',
+        ];
+    }
+
+    public static function isPermanentAvail(string $until): bool
+    {
+        $until = trim($until);
+        if ($until === '' || str_starts_with($until, '0000-00-00')) {
+            return false;
+        }
+        return str_starts_with($until, '1938-11-10');
+    }
+
+    private static function parseAvailTs(string $until): int|false
+    {
+        $until = trim($until);
+        if ($until === '' || $until === self::AVAIL_CLEAR || str_starts_with($until, '0000-00-00')) {
+            return false;
+        }
+        if (self::isPermanentAvail($until)) {
+            return false; // UI'da süre hesabı yapma
+        }
+        return strtotime($until);
     }
 
     private static function mapTemplate(array $row): array

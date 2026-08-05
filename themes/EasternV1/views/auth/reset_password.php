@@ -5,6 +5,9 @@
 /** @var string|null $resetSuccess */
 /** @var string $appName */
 /** @var array $siteBrand */
+/** @var bool $captchaEnabled */
+/** @var string $captchaWidget */
+/** @var string $captchaScripts */
 
 $appName = isset($appName) && is_string($appName) && $appName !== '' ? $appName : 'M2DN';
 if (!isset($siteBrand) || !is_array($siteBrand)) {
@@ -14,6 +17,9 @@ $brandLogo = (string) ($siteBrand['logo_url'] ?? '');
 $token = isset($token) && is_string($token) ? $token : '';
 $resetErrors = isset($resetErrors) && is_array($resetErrors) ? $resetErrors : [];
 $csrf = isset($csrf) && is_string($csrf) ? $csrf : \App\Core\Security::csrfField();
+$captchaEnabled = !empty($captchaEnabled);
+$captchaWidget = isset($captchaWidget) && is_string($captchaWidget) ? $captchaWidget : '';
+$captchaScripts = isset($captchaScripts) && is_string($captchaScripts) ? $captchaScripts : '';
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -36,7 +42,9 @@ $csrf = isset($csrf) && is_string($csrf) ? $csrf : \App\Core\Security::csrfField
     .err ul{margin:0;padding-left:18px;}
     a{color:var(--gold-light);text-decoration:none;}
     .foot{text-align:center;margin-top:16px;font-size:.85rem;color:var(--ash);}
+    .captcha-wrap{margin:4px 0 16px;display:flex;justify-content:center;}
   </style>
+  <?php if ($captchaEnabled && $captchaScripts !== ''): ?><?= $captchaScripts ?><?php endif; ?>
 </head>
 <body>
   <div class="card">
@@ -61,6 +69,7 @@ $csrf = isset($csrf) && is_string($csrf) ? $csrf : \App\Core\Security::csrfField
         <input id="np" type="password" name="password" maxlength="16" required minlength="4">
         <label for="npc">Parola tekrar</label>
         <input id="npc" type="password" name="password_confirm" maxlength="16" required minlength="4">
+        <?php if ($captchaEnabled): ?><?= $captchaWidget ?><?php endif; ?>
         <button type="submit" class="btn">Şifreyi Güncelle</button>
       </form>
       <p class="foot"><a href="<?= e(url('/giris')) ?>">Giriş sayfasına dön</a></p>

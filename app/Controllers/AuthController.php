@@ -8,6 +8,7 @@ use App\Core\Security;
 use App\Core\Session;
 use App\Services\AccountService;
 use App\Services\AuthService;
+use App\Services\CaptchaService;
 
 final class AuthController
 {
@@ -31,17 +32,25 @@ final class AuthController
         $password = (string) ($_POST['password'] ?? '');
         $email = (string) ($_POST['email'] ?? '');
         $securityCode = (string) ($_POST['securitycode'] ?? '');
-
-        $result = AccountService::register($login, $password, $email, $securityCode);
+        $acceptRules = !empty($_POST['accept_rules']);
 
         Session::flash('open_register', true);
+        Session::flash('register_old', [
+            'login' => $login,
+            'email' => $email,
+            'accept_rules' => $acceptRules ? '1' : '',
+        ]);
+
+        $captcha = CaptchaService::verifyRequest();
+        if (empty($captcha['ok'])) {
+            Session::flash('register_errors', $captcha['errors'] ?: ['Doğrulama başarısız.']);
+            redirect('/');
+        }
+
+        $result = AccountService::register($login, $password, $email, $securityCode, $acceptRules);
 
         if (!$result['ok']) {
             Session::flash('register_errors', $result['errors']);
-            Session::flash('register_old', [
-                'login' => $login,
-                'email' => $email,
-            ]);
             redirect('/');
         }
 
@@ -55,6 +64,14 @@ final class AuthController
 
         $login = (string) ($_POST['login'] ?? '');
         $password = (string) ($_POST['password'] ?? '');
+
+        $captcha = CaptchaService::verifyRequest();
+        if (empty($captcha['ok'])) {
+            Session::flash('login_errors', $captcha['errors'] ?: ['Doğrulama başarısız.']);
+            Session::flash('login_old', ['login' => $login]);
+            Session::flash('open_login', true);
+            redirect('/');
+        }
 
         $result = AuthService::login($login, $password);
 

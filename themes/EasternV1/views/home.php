@@ -63,6 +63,9 @@ $brandLogo = (string) ($siteBrand['logo_url'] ?? asset('img/logo-nav.svg'));
 $brandHomeSize = (int) ($siteBrand['home_size'] ?? 48);
 $isLoggedIn = $authUser !== null;
 $canAdmin = $isLoggedIn && \App\Services\AuthService::canAccessAdmin($authUser);
+$captchaEnabled = !empty($captchaEnabled);
+$captchaWidget = isset($captchaWidget) && is_string($captchaWidget) ? $captchaWidget : '';
+$captchaScripts = isset($captchaScripts) && is_string($captchaScripts) ? $captchaScripts : '';
 
 $mediaUrl = static function (string $path): string {
     $path = trim($path);
@@ -73,6 +76,19 @@ $mediaUrl = static function (string $path): string {
         return $path;
     }
     return asset($path);
+};
+$footerHref = static function (string $url): string {
+    $url = trim($url);
+    if ($url === '' || $url === '#') {
+        return '#';
+    }
+    if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://') || str_starts_with($url, 'mailto:')) {
+        return $url;
+    }
+    if (str_starts_with($url, '#')) {
+        return url('/') . $url;
+    }
+    return url($url);
 };
 ?>
 <!DOCTYPE html>
@@ -256,6 +272,10 @@ $mediaUrl = static function (string $path): string {
   }
   .modal-form input:focus{border-color:var(--gold);}
   .modal-form .hint{font-size:.7rem; color:var(--ash); margin-top:5px;}
+  .modal-form .captcha-wrap{margin:4px 0 16px; min-height:78px;}
+  .modal-form .rules-accept{display:flex;align-items:flex-start;gap:10px;margin:4px 0 16px;font-size:.85rem;color:var(--ash);line-height:1.45;}
+  .modal-form .rules-accept input{width:auto;margin-top:3px;flex-shrink:0;}
+  .modal-form .rules-accept a{color:var(--gold-light);text-decoration:underline;}
   .modal-form .btn{
     width:100%; justify-content:center; margin-top:6px; border:none; cursor:pointer; font-family:inherit;
   }
@@ -852,13 +872,13 @@ $mediaUrl = static function (string $path): string {
         <div class="footer-col">
           <h4>Sunucu</h4>
           <?php foreach (($siteFooterLinks['server'] ?? []) as $fl): ?>
-            <a href="<?= e((string) ($fl['url'] ?? '#')) ?>"><?= e((string) ($fl['label'] ?? '')) ?></a>
+            <a href="<?= e($footerHref((string) ($fl['url'] ?? '#'))) ?>"><?= e((string) ($fl['label'] ?? '')) ?></a>
           <?php endforeach; ?>
         </div>
         <div class="footer-col">
           <h4>Topluluk</h4>
           <?php foreach (($siteFooterLinks['community'] ?? []) as $fl): ?>
-            <a href="<?= e((string) ($fl['url'] ?? '#')) ?>"><?= e((string) ($fl['label'] ?? '')) ?></a>
+            <a href="<?= e($footerHref((string) ($fl['url'] ?? '#'))) ?>"><?= e((string) ($fl['label'] ?? '')) ?></a>
           <?php endforeach; ?>
         </div>
       </div>
@@ -925,6 +945,7 @@ $mediaUrl = static function (string $path): string {
         <label for="login-pass">Parola</label>
         <input id="login-pass" name="password" type="password" maxlength="16" required>
       </div>
+      <?php if ($captchaEnabled): ?><?= $captchaWidget ?><?php endif; ?>
       <p style="margin:-4px 0 14px;text-align:right;font-size:.82rem;">
         <button type="button" id="openForgotModal" style="background:none;border:0;color:var(--gold-light,#e8c078);cursor:pointer;font:inherit;text-decoration:underline;padding:0;">Parolamı unuttum</button>
       </p>
@@ -965,6 +986,7 @@ $mediaUrl = static function (string $path): string {
         <input id="forgot-email" name="email" type="email" maxlength="64" required
                value="<?= e((string) ($forgotOld['email'] ?? '')) ?>">
       </div>
+      <?php if ($captchaEnabled): ?><?= $captchaWidget ?><?php endif; ?>
       <button type="submit" class="btn btn-primary"><i class="fa-solid fa-envelope"></i> Sıfırlama bağlantısı gönder</button>
     </form>
   </div>
@@ -1042,6 +1064,11 @@ $mediaUrl = static function (string $path): string {
         <input id="reg-security" name="securitycode" type="text" inputmode="numeric"
                pattern="\d{1,6}" maxlength="6" required>
       </div>
+      <label class="rules-accept">
+        <input type="checkbox" name="accept_rules" value="1" required<?= !empty($registerOld['accept_rules']) ? ' checked' : '' ?>>
+        <span><a href="<?= e(url('/kurallar')) ?>" target="_blank" rel="noopener">Topluluk Kurallarını</a> okudum ve kabul ediyorum.</span>
+      </label>
+      <?php if ($captchaEnabled): ?><?= $captchaWidget ?><?php endif; ?>
       <button type="submit" class="btn btn-primary"><i class="fa-solid fa-user-plus"></i> Hesap Oluştur</button>
     </form>
   </div>
@@ -1265,6 +1292,9 @@ $mediaUrl = static function (string $path): string {
   updateCountdown();
   setInterval(updateCountdown, 1000);
 </script>
+<?php if ($captchaEnabled && $captchaScripts !== ''): ?>
+<?= $captchaScripts ?>
+<?php endif; ?>
 
 </body>
 </html>

@@ -227,6 +227,11 @@ final class AdminPlayerService
             'web_permission' => AuthService::normalizePermission($row['WebPermission'] ?? null),
         ];
 
+        $rulesConsent = AccountConsentService::rulesStatus($accountId);
+        $account['rules_accepted'] = $rulesConsent['accepted'];
+        $account['rules_accepted_at'] = $rulesConsent['accepted_at'];
+        $account['rules_accepted_label'] = $rulesConsent['accepted_label'];
+
         $dashboard = PlayerService::dashboard($accountId, $serverKey);
         $security = AccountSecurityService::getSettings($accountId);
 

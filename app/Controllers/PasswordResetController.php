@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Core\Security;
 use App\Core\Session;
 use App\Core\Theme;
+use App\Services\CaptchaService;
 use App\Services\PasswordResetService;
 
 final class PasswordResetController
@@ -16,13 +17,21 @@ final class PasswordResetController
         Security::requireCsrf('login');
         $login = (string) ($_POST['login'] ?? '');
         $email = (string) ($_POST['email'] ?? '');
-        $result = PasswordResetService::requestForgot($login, $email);
+
         Session::flash('open_forgot', true);
+        Session::flash('forgot_old', ['login' => $login, 'email' => $email]);
+
+        $captcha = CaptchaService::verifyRequest();
+        if (empty($captcha['ok'])) {
+            Session::flash('forgot_errors', $captcha['errors'] ?: ['Doğrulama başarısız.']);
+            redirect('/');
+        }
+
+        $result = PasswordResetService::requestForgot($login, $email);
         if (!empty($result['ok'])) {
             Session::flash('forgot_success', 'Eşleşme doğruysa sıfırlama bağlantısı e-postana gönderildi.');
         } else {
             Session::flash('forgot_errors', $result['errors'] ?: ['İşlem başarısız.']);
-            Session::flash('forgot_old', ['login' => $login, 'email' => $email]);
         }
         redirect('/');
     }
@@ -34,6 +43,9 @@ final class PasswordResetController
             'token' => $token,
             'resetErrors' => Session::flash('reset_errors') ?? [],
             'resetSuccess' => Session::flash('reset_success'),
+            'captchaEnabled' => CaptchaService::isEnabled(),
+            'captchaWidget' => CaptchaService::widgetHtml(),
+            'captchaScripts' => CaptchaService::scriptTags(),
         ]);
     }
 
@@ -43,6 +55,13 @@ final class PasswordResetController
         $token = (string) ($_POST['token'] ?? '');
         $password = (string) ($_POST['password'] ?? '');
         $confirm = (string) ($_POST['password_confirm'] ?? '');
+
+        $captcha = CaptchaService::verifyRequest();
+        if (empty($captcha['ok'])) {
+            Session::flash('reset_errors', $captcha['errors'] ?: ['Doğrulama başarısız.']);
+            redirect('/sifre-sifirla?token=' . urlencode($token));
+        }
+
         $result = PasswordResetService::consumeToken($token, $password, $confirm);
         if (!empty($result['ok'])) {
             Session::flash('login_success', 'Şifren güncellendi. Yeni şifrenle giriş yapabilirsin.');

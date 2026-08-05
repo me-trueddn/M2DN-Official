@@ -101,6 +101,7 @@ $brandAdminSize = (int) ($siteBrand['admin_size'] ?? 36);
           <div class="row"><span class="k">Kayıt</span><span class="v"><?= e((string) ($account['create_label'] ?? '—')) ?></span></div>
           <div class="row"><span class="k">Durum</span><span class="v"><span class="badge <?= e((string) ($account['status_badge'] ?? 'active')) ?>"><?= e((string) ($account['status_label'] ?? '—')) ?></span></span></div>
           <div class="row"><span class="k">Cash</span><span class="v"><?= number_format((int) ($account['cash'] ?? 0), 0, ',', '.') ?></span></div>
+          <div class="row"><span class="k">Kurallar</span><span class="v"><?= e((string) ($account['rules_accepted_label'] ?? 'Hayır')) ?></span></div>
           <div class="row"><span class="k">2FA</span><span class="v"><?= $totpOn ? 'Aktif' : 'Kapalı' ?></span></div>
           <div class="row"><span class="k">IP Kilidi</span><span class="v"><?= $ipLockOn ? e((string) ($security['locked_ip'] ?? 'Açık')) : 'Kapalı' ?></span></div>
         </div>
