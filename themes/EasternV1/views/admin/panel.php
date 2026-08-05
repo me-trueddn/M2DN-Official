@@ -5,6 +5,13 @@
 /** @var array $servers */
 /** @var string $csrf */
 /** @var array|null $authUser */
+/** @var array $stats */
+/** @var array $players */
+/** @var string $panelSection */
+/** @var list<array> $penalties */
+/** @var list<array> $activeBans */
+/** @var list<string> $panelErrors */
+/** @var string|null $panelSuccess */
 
 $appName = $appName ?? 'M2DN';
 $appTagline = $appTagline ?? '';
@@ -12,6 +19,30 @@ $currentServer = is_array($currentServer ?? null) ? $currentServer : [];
 $servers = is_array($servers ?? null) ? $servers : [];
 $csrf = $csrf ?? '';
 $authUser = is_array($authUser ?? null) ? $authUser : null;
+$stats = is_array($stats ?? null) ? $stats : [];
+$players = is_array($players ?? null) ? $players : [];
+$panelSection = is_string($panelSection ?? null) && $panelSection !== '' ? $panelSection : 'ozet';
+$onlineCount = (int) ($stats['online'] ?? 0);
+$onlineWindow = (int) ($stats['online_window_minutes'] ?? 15);
+$regsToday = (int) ($stats['registrations_today'] ?? 0);
+$regsYesterday = (int) ($stats['registrations_yesterday'] ?? 0);
+$chartLabels = is_array($stats['chart']['labels'] ?? null) ? $stats['chart']['labels'] : [];
+$chartValues = is_array($stats['chart']['values'] ?? null) ? $stats['chart']['values'] : [];
+$recentRegs = is_array($stats['recent_registrations'] ?? null) ? $stats['recent_registrations'] : [];
+$regsDelta = $regsToday - $regsYesterday;
+$playerAccounts = is_array($players['accounts'] ?? null) ? $players['accounts'] : [];
+$playerTotal = (int) ($players['total'] ?? 0);
+$playerPage = (int) ($players['page'] ?? 1);
+$playerPages = (int) ($players['pages'] ?? 1);
+$playerQ = (string) ($players['q'] ?? '');
+$playerStatus = (string) ($players['status'] ?? '');
+$playerPerPage = (int) ($players['per_page'] ?? 10);
+$playerPerOptions = is_array($players['per_page_options'] ?? null) ? $players['per_page_options'] : [10, 20, 30, 50, 100];
+$penalties = is_array($penalties ?? null) ? $penalties : [];
+$activeBans = is_array($activeBans ?? null) ? $activeBans : [];
+$panelErrors = is_array($panelErrors ?? null) ? $panelErrors : [];
+$panelSuccess = is_string($panelSuccess ?? null) ? $panelSuccess : null;
+$settingsOpen = in_array($panelSection, ['ceza-ayarlari'], true);
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -134,15 +165,26 @@ $authUser = is_array($authUser ?? null) ? $authUser : null;
   .badge.banned{background:rgba(143,28,41,.2); color:var(--blood-light);}
   .badge.closed{background:rgba(154,143,128,.15); color:var(--ash);}
 
-  .filters{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px;}
+  .filters{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; align-items:center;}
   .filters input, .filters select{background:var(--obsidian); border:1px solid var(--line); padding:9px 12px; color:var(--parchment); font-size:.8rem; outline:none;}
   .filters input:focus, .filters select:focus{border-color:var(--gold);}
+  .filters button.btn{cursor:pointer;}
+  .badge.active{background:rgba(51,89,74,.2); color:var(--jade-light);}
+  .pager{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:18px; flex-wrap:wrap; font-size:.8rem; color:var(--ash);}
+  .pager .links{display:flex; gap:8px; flex-wrap:wrap;}
+  .pager a, .pager span.cur{padding:7px 12px; border:1px solid var(--line); color:var(--gold-light);}
+  .pager span.cur{background:rgba(201,151,74,.12); border-color:var(--gold);}
+  .pager a:hover{background:rgba(201,151,74,.08);}
+  .pager a.disabled{opacity:.4; pointer-events:none;}
 
   /* chart */
   .chart-wrap{position:relative;}
+  .chart-canvas-box{position:relative; width:100%; height:240px;}
   .chart-legend{display:flex; gap:18px; margin-top:14px; font-size:.75rem; color:var(--ash);}
   .chart-legend span{display:flex; align-items:center; gap:6px;}
   .chart-legend .dot{width:8px; height:8px; border-radius:50%;}
+  .coming-soon{font-size:.78rem; color:var(--ash); font-style:italic;}
+  .stat-card .coming-soon{margin-top:2px;}
 
   /* activity feed */
   .feed-item{display:flex; gap:12px; padding:14px 0; border-bottom:1px solid rgba(201,151,74,.08);}
@@ -173,9 +215,27 @@ $authUser = is_array($authUser ?? null) ? $authUser : null;
   .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:900;}
   .modal-overlay.open{display:flex;}
   .modal{width:400px; max-width:90vw; background:var(--obsidian-2); border:1px solid var(--gold); padding:28px; clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);}
+  .modal.modal-lg{width:720px; max-height:88vh; overflow:auto;}
   .modal h3{font-size:1.1rem; color:var(--gold-light); margin-bottom:12px;}
   .modal p{font-size:.85rem; color:var(--ash); margin-bottom:20px; line-height:1.6;}
   .modal .modal-actions{display:flex; gap:12px; justify-content:flex-end;}
+  .form-row select{width:100%; background:var(--obsidian); border:1px solid var(--line); padding:12px 14px; color:var(--parchment); font-size:.88rem; outline:none; font-family:inherit;}
+  .form-row select:focus{border-color:var(--gold);}
+  .nav-parent{display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; user-select:none;}
+  .nav-parent .chev{font-size:.65rem; opacity:.7; transition:transform .2s;}
+  .nav-parent.open .chev{transform:rotate(90deg);}
+  .nav-sub{display:none; padding:0 0 6px 10px;}
+  .nav-sub.open{display:block;}
+  .nav-sub .nav-item{padding:8px 12px; font-size:.8rem;}
+  .flash{margin:0 0 18px; padding:12px 14px; font-size:.85rem; border:1px solid var(--line);}
+  .flash.ok{background:rgba(51,89,74,.18); color:var(--jade-light); border-color:rgba(79,138,113,.35);}
+  .flash.err{background:rgba(143,28,41,.18); color:#e8a0a8; border-color:rgba(197,51,71,.35);}
+  .detail-meta{display:grid; gap:8px; margin-bottom:16px;}
+  .detail-meta .row{display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid rgba(201,151,74,.08); font-size:.84rem;}
+  .detail-meta .k{color:var(--ash);}
+  .detail-meta .v{color:var(--gold-light); font-weight:600; text-align:right; word-break:break-all;}
+  .detail-block{margin-top:16px;}
+  .detail-block h4{font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ash); margin-bottom:10px;}
 
   @media (max-width:1100px){
     .grid-4{grid-template-columns:repeat(2,1fr);}
@@ -217,20 +277,29 @@ $authUser = is_array($authUser ?? null) ? $authUser : null;
     <?php endif; ?>
 
     <div class="nav-group-label">Genel</div>
-    <a class="nav-item active" data-target="ozet"><i class="fa-solid fa-gauge-high"></i> Genel Bakış</a>
+    <a class="nav-item<?= $panelSection === 'ozet' ? ' active' : '' ?>" data-target="ozet"><i class="fa-solid fa-gauge-high"></i> Genel Bakış</a>
 
     <div class="nav-group-label">Oyuncular</div>
-    <a class="nav-item" data-target="oyuncular"><i class="fa-solid fa-users"></i> Oyuncu Yönetimi</a>
-    <a class="nav-item" data-target="banlar"><i class="fa-solid fa-gavel"></i> Ban / Mute <span class="count">14</span></a>
+    <a class="nav-item<?= $panelSection === 'oyuncular' ? ' active' : '' ?>" data-target="oyuncular"><i class="fa-solid fa-users"></i> Oyuncu Yönetimi</a>
+    <a class="nav-item" data-target="banlar"><i class="fa-solid fa-gavel"></i> Ban / Mute</a>
 
     <div class="nav-group-label">İçerik</div>
     <a class="nav-item" data-target="duyurular"><i class="fa-solid fa-bullhorn"></i> Duyurular</a>
-    <a class="nav-item" data-target="destekler"><i class="fa-solid fa-headset"></i> Destek Talepleri <span class="count">6</span></a>
+    <a class="nav-item" data-target="destekler"><i class="fa-solid fa-headset"></i> Destek Talepleri</a>
 
     <div class="nav-group-label">Sistem</div>
     <a class="nav-item" href="<?= e(url('/panel')) ?>"><i class="fa-solid fa-user"></i> Oyuncu Paneli</a>
     <a class="nav-item" data-target="sunucu"><i class="fa-solid fa-server"></i> Sunucu Kontrol</a>
     <a class="nav-item" data-target="loglar"><i class="fa-solid fa-scroll"></i> Loglar</a>
+
+    <div class="nav-group-label">Ayarlar</div>
+    <div class="nav-item nav-parent<?= $settingsOpen ? ' open active' : '' ?>" id="settingsParent" data-parent="settings">
+      <span><i class="fa-solid fa-sliders"></i> Site Ayarları</span>
+      <i class="fa-solid fa-chevron-right chev"></i>
+    </div>
+    <div class="nav-sub<?= $settingsOpen ? ' open' : '' ?>" id="settingsSub">
+      <a class="nav-item<?= $panelSection === 'ceza-ayarlari' ? ' active' : '' ?>" data-target="ceza-ayarlari"><i class="fa-solid fa-scale-balanced"></i> Ceza Ayarları</a>
+    </div>
 
     <div class="sidebar-foot">
       <div class="sidebar-char">
@@ -267,136 +336,274 @@ $authUser = is_array($authUser ?? null) ? $authUser : null;
       </div>
     </div>
 
+    <?php if ($panelSuccess): ?>
+      <div class="flash ok"><?= e($panelSuccess) ?></div>
+    <?php endif; ?>
+    <?php if ($panelErrors !== []): ?>
+      <div class="flash err">
+        <?php foreach ($panelErrors as $err): ?>
+          <div><?= e((string) $err) ?></div>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
+
     <!-- ===================== GENEL BAKIŞ ===================== -->
-    <section class="section active" id="ozet">
+    <section class="section<?= $panelSection === 'ozet' ? ' active' : '' ?>" id="ozet">
       <div class="grid grid-4" style="margin-bottom:22px;">
         <div class="card stat-card">
           <div class="icon"><i class="fa-solid fa-users"></i></div>
-          <strong>1.247</strong><span class="lbl">Çevrimiçi Oyuncu</span>
-          <span class="delta">+8% dün ile kıyasla</span>
+          <strong><?= number_format($onlineCount, 0, ',', '.') ?></strong>
+          <span class="lbl">Çevrimiçi Oyuncu</span>
+          <span class="delta">Son <?= (int) $onlineWindow ?> dk · last_play</span>
         </div>
         <div class="card stat-card">
           <div class="icon"><i class="fa-solid fa-sack-dollar"></i></div>
-          <strong>₺12.480</strong><span class="lbl">Günlük Gelir</span>
-          <span class="delta">+₺1.120 bugün</span>
+          <strong>—</strong>
+          <span class="lbl">Günlük Gelir</span>
+          <span class="coming-soon">Market ile bağlanacak · yapım aşamasında</span>
         </div>
         <div class="card stat-card">
           <div class="icon"><i class="fa-solid fa-user-plus"></i></div>
-          <strong>86</strong><span class="lbl">Yeni Kayıt (24s)</span>
+          <strong><?= number_format($regsToday, 0, ',', '.') ?></strong>
+          <span class="lbl">Yeni Kayıt (bugün)</span>
+          <?php if ($regsDelta > 0): ?>
+            <span class="delta">Düne göre +<?= (int) $regsDelta ?></span>
+          <?php elseif ($regsDelta < 0): ?>
+            <span class="delta down">Düne göre <?= (int) $regsDelta ?></span>
+          <?php else: ?>
+            <span class="delta">Dün: <?= number_format($regsYesterday, 0, ',', '.') ?></span>
+          <?php endif; ?>
         </div>
         <div class="card stat-card">
           <div class="icon"><i class="fa-solid fa-ticket"></i></div>
-          <strong>6</strong><span class="lbl">Açık Destek Talebi</span>
-          <span class="delta down">2 tanesi 24s+ bekliyor</span>
+          <strong>—</strong>
+          <span class="lbl">Açık Destek Talebi</span>
+          <span class="coming-soon">Destek sistemi · yapım aşamasında</span>
         </div>
       </div>
 
       <div class="grid grid-3">
         <div class="card chart-wrap">
-          <div class="card-head"><h3>Çevrimiçi Oyuncu Trendi (7 Gün)</h3><a href="#">Raporu indir</a></div>
-          <svg viewBox="0 0 600 220" style="width:100%; height:220px;">
-            <defs>
-              <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#c9974a" stop-opacity="0.35"/>
-                <stop offset="100%" stop-color="#c9974a" stop-opacity="0"/>
-              </linearGradient>
-            </defs>
-            <line x1="0" y1="40" x2="600" y2="40" stroke="rgba(201,151,74,.1)"/>
-            <line x1="0" y1="100" x2="600" y2="100" stroke="rgba(201,151,74,.1)"/>
-            <line x1="0" y1="160" x2="600" y2="160" stroke="rgba(201,151,74,.1)"/>
-            <path d="M0,150 L85,120 L170,135 L255,90 L340,105 L425,60 L510,75 L600,40 L600,220 L0,220 Z" fill="url(#areaGrad)"/>
-            <path d="M0,150 L85,120 L170,135 L255,90 L340,105 L425,60 L510,75 L600,40" fill="none" stroke="#c9974a" stroke-width="2.5"/>
-            <path d="M0,180 L85,170 L170,175 L255,150 L340,160 L425,130 L510,140 L600,120" fill="none" stroke="#8f1c29" stroke-width="2" stroke-dasharray="4 4" opacity=".8"/>
-          </svg>
+          <div class="card-head">
+            <h3>Çevrimiçi Oyuncu Trendi</h3>
+            <span style="font-size:.75rem;color:var(--ash);">Son 24 saat · 5 dk örnekleme</span>
+          </div>
+          <div class="chart-canvas-box">
+            <canvas id="onlineChart" aria-label="Çevrimiçi oyuncu grafiği"></canvas>
+          </div>
           <div class="chart-legend">
-            <span><div class="dot" style="background:#c9974a"></div> Aktif Oyuncu</span>
-            <span><div class="dot" style="background:#8f1c29"></div> Yeni Kayıt</span>
+            <span><div class="dot" style="background:#c9974a"></div> Çevrimiçi hesap (last_play)</span>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-head"><h3>Son Aktiviteler</h3></div>
-          <div class="feed-item"><div class="fi-icon"><i class="fa-solid fa-gavel"></i></div><div><div class="fi-text"><b>GolgeAvci</b> 3 gün banlandı</div><div class="fi-time">4 dk önce · Admin_Orhan</div></div></div>
-          <div class="feed-item"><div class="fi-icon"><i class="fa-solid fa-bullhorn"></i></div><div><div class="fi-text">Yeni duyuru yayınlandı</div><div class="fi-time">22 dk önce · GM_Aylin</div></div></div>
-          <div class="feed-item"><div class="fi-icon"><i class="fa-solid fa-server"></i></div><div><div class="fi-text">Kanal 3 yeniden başlatıldı</div><div class="fi-time">1 saat önce · Sistem</div></div></div>
-          <div class="feed-item"><div class="fi-icon"><i class="fa-solid fa-headset"></i></div><div><div class="fi-text">Destek talebi #1042 kapatıldı</div><div class="fi-time">2 saat önce · GM_Baran</div></div></div>
+          <div class="card-head"><h3>Son Kayıtlar</h3></div>
+          <?php if ($recentRegs === []): ?>
+            <div class="coming-soon">Henüz kayıt yok.</div>
+          <?php else: ?>
+            <?php foreach ($recentRegs as $reg): ?>
+              <?php
+                $when = '—';
+                $ts = strtotime((string) ($reg['create_time'] ?? ''));
+                if ($ts) {
+                    $when = date('d.m.Y H:i', $ts);
+                }
+              ?>
+              <div class="feed-item">
+                <div class="fi-icon"><i class="fa-solid fa-user-plus"></i></div>
+                <div>
+                  <div class="fi-text"><b><?= e((string) ($reg['login'] ?? '')) ?></b> kayıt oldu</div>
+                  <div class="fi-time"><?= e($when) ?></div>
+                </div>
+              </div>
+            <?php endforeach; ?>
+          <?php endif; ?>
         </div>
       </div>
     </section>
 
     <!-- ===================== OYUNCU YÖNETİMİ ===================== -->
-    <section class="section" id="oyuncular">
+    <section class="section<?= $panelSection === 'oyuncular' ? ' active' : '' ?>" id="oyuncular">
       <div class="card">
-        <div class="card-head"><h3>Oyuncu Yönetimi</h3><span style="font-size:.8rem; color:var(--ash);">1.842 kayıtlı hesap</span></div>
-        <div class="filters">
-          <input placeholder="Kullanıcı adı ara..." style="flex:1; min-width:180px;">
-          <select><option>Tüm Durumlar</option><option>Çevrimiçi</option><option>Çevrimdışı</option><option>Banlı</option></select>
-          <select><option>Tüm Sınıflar</option><option>Savaşçı</option><option>Ninja</option><option>Sura</option><option>Şaman</option></select>
+        <div class="card-head">
+          <h3>Oyuncu Yönetimi</h3>
+          <span style="font-size:.8rem; color:var(--ash);"><?= number_format($playerTotal, 0, ',', '.') ?> kayıtlı hesap</span>
         </div>
+        <form class="filters" method="get" action="<?= e(url('/admin')) ?>">
+          <input type="hidden" name="section" value="oyuncular">
+          <input name="q" value="<?= e($playerQ) ?>" placeholder="Hesap, karakter veya e-posta ara..." style="flex:1; min-width:200px;">
+          <select name="status">
+            <option value=""<?= $playerStatus === '' ? ' selected' : '' ?>>Tüm Durumlar</option>
+            <option value="OK"<?= $playerStatus === 'OK' ? ' selected' : '' ?>>Aktif</option>
+            <option value="BLOCK"<?= $playerStatus === 'BLOCK' ? ' selected' : '' ?>>Banlı</option>
+          </select>
+          <select name="per" title="Sayfa başına">
+            <?php foreach ($playerPerOptions as $opt): ?>
+              <option value="<?= (int) $opt ?>"<?= $playerPerPage === (int) $opt ? ' selected' : '' ?>><?= (int) $opt ?> / sayfa</option>
+            <?php endforeach; ?>
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Filtrele</button>
+        </form>
         <table>
-          <thead><tr><th>Hesap</th><th>Karakter</th><th>Seviye</th><th>IP</th><th>Durum</th><th>İşlemler</th></tr></thead>
+          <thead><tr><th>Hesap</th><th>E-posta</th><th>Karakter</th><th>Seviye</th><th>IP</th><th>Durum</th><th>İşlemler</th></tr></thead>
           <tbody>
-            <tr>
-              <td class="row-user"><div class="av"><i class="fa-solid fa-user"></i></div><div><div>karakilic92</div><div class="meta">Kayıt: Oca 2022</div></div></td>
-              <td>KaraKilic</td><td>96</td><td>88.240.xx.xx</td>
-              <td><span class="badge online">Çevrimiçi</span></td>
-              <td class="actions-cell">
-                <button title="Detay"><i class="fa-solid fa-eye"></i></button>
-                <button title="Eşya ver"><i class="fa-solid fa-box-open"></i></button>
-                <button title="Sustur"><i class="fa-solid fa-comment-slash"></i></button>
-                <button title="Banla" class="danger" data-ban="karakilic92"><i class="fa-solid fa-gavel"></i></button>
-              </td>
-            </tr>
-            <tr>
-              <td class="row-user"><div class="av"><i class="fa-solid fa-user"></i></div><div><div>golgeavci</div><div class="meta">Kayıt: Mar 2023</div></div></td>
-              <td>GolgeAvci</td><td>77</td><td>45.112.xx.xx</td>
-              <td><span class="badge banned">Banlı</span></td>
-              <td class="actions-cell">
-                <button title="Detay"><i class="fa-solid fa-eye"></i></button>
-                <button title="Eşya ver"><i class="fa-solid fa-box-open"></i></button>
-                <button title="Sustur"><i class="fa-solid fa-comment-slash"></i></button>
-                <button title="Banı kaldır"><i class="fa-solid fa-lock-open"></i></button>
-              </td>
-            </tr>
-            <tr>
-              <td class="row-user"><div class="av"><i class="fa-solid fa-user"></i></div><div><div>yesilnefes</div><div class="meta">Kayıt: Tem 2021</div></div></td>
-              <td>YesilNefes</td><td>64</td><td>31.200.xx.xx</td>
-              <td><span class="badge offline">Çevrimdışı</span></td>
-              <td class="actions-cell">
-                <button title="Detay"><i class="fa-solid fa-eye"></i></button>
-                <button title="Eşya ver"><i class="fa-solid fa-box-open"></i></button>
-                <button title="Sustur"><i class="fa-solid fa-comment-slash"></i></button>
-                <button title="Banla" class="danger" data-ban="yesilnefes"><i class="fa-solid fa-gavel"></i></button>
-              </td>
-            </tr>
-            <tr>
-              <td class="row-user"><div class="av"><i class="fa-solid fa-user"></i></div><div><div>surahan</div><div class="meta">Kayıt: May 2024</div></div></td>
-              <td>SuraHan</td><td>103</td><td>78.190.xx.xx</td>
-              <td><span class="badge online">Çevrimiçi</span></td>
-              <td class="actions-cell">
-                <button title="Detay"><i class="fa-solid fa-eye"></i></button>
-                <button title="Eşya ver"><i class="fa-solid fa-box-open"></i></button>
-                <button title="Sustur"><i class="fa-solid fa-comment-slash"></i></button>
-                <button title="Banla" class="danger" data-ban="surahan"><i class="fa-solid fa-gavel"></i></button>
-              </td>
-            </tr>
+            <?php if ($playerAccounts === []): ?>
+              <tr><td colspan="7" style="color:var(--ash);">Kayıt bulunamadı.</td></tr>
+            <?php else: ?>
+              <?php foreach ($playerAccounts as $acc): ?>
+              <tr>
+                <td class="row-user">
+                  <div class="av"><i class="fa-solid fa-user"></i></div>
+                  <div>
+                    <div><?= e((string) $acc['login']) ?></div>
+                    <div class="meta">Kayıt: <?= e((string) $acc['create_label']) ?><?= (int) ($acc['character_count'] ?? 0) > 1 ? ' · ' . (int) $acc['character_count'] . ' karakter' : '' ?></div>
+                  </div>
+                </td>
+                <td style="font-size:.82rem;word-break:break-all;"><?= e((string) $acc['email']) ?></td>
+                <td><?= e((string) $acc['character_name']) ?></td>
+                <td><?= $acc['character_level'] !== null && (int) $acc['character_level'] > 0 ? (int) $acc['character_level'] : '—' ?></td>
+                <td><?= e((string) $acc['ip']) ?></td>
+                <td>
+                  <span class="badge <?= e((string) $acc['status_badge']) ?>">
+                    <?= e((string) $acc['status_label']) ?>
+                  </span>
+                </td>
+                <td class="actions-cell">
+                  <button type="button" title="Detay" data-detail="<?= (int) $acc['id'] ?>"><i class="fa-solid fa-eye"></i></button>
+                  <?php if ($acc['status'] === 'BLOCK'): ?>
+                    <button type="button" title="Banı kaldır"
+                      data-unban-id="<?= (int) $acc['id'] ?>"
+                      data-unban-login="<?= e((string) $acc['login']) ?>"
+                      data-unban-section="oyuncular"><i class="fa-solid fa-lock-open"></i></button>
+                  <?php else: ?>
+                    <button type="button" title="Banla" class="danger" data-ban-id="<?= (int) $acc['id'] ?>" data-ban-login="<?= e((string) $acc['login']) ?>"><i class="fa-solid fa-gavel"></i></button>
+                  <?php endif; ?>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </tbody>
+        </table>
+
+        <?php
+          $mk = static function (int $p, ?int $per = null) use ($playerQ, $playerStatus, $playerPerPage): string {
+              $per = $per ?? $playerPerPage;
+              $qs = http_build_query(array_filter([
+                  'section' => 'oyuncular',
+                  'q' => $playerQ !== '' ? $playerQ : null,
+                  'status' => $playerStatus !== '' ? $playerStatus : null,
+                  'per' => $per !== 10 ? $per : null,
+                  'page' => $p > 1 ? $p : null,
+              ], static fn($v) => $v !== null && $v !== ''));
+              return url('/admin' . ($qs !== '' ? '?' . $qs : ''));
+          };
+        ?>
+        <div class="pager">
+          <div>
+            Sayfa <?= (int) $playerPage ?> / <?= (int) $playerPages ?>
+            · <?= (int) $playerPerPage ?> kayıt / sayfa
+            · Toplam <?= number_format($playerTotal, 0, ',', '.') ?>
+          </div>
+          <div class="links">
+            <a class="<?= $playerPage <= 1 ? 'disabled' : '' ?>" href="<?= e($mk(max(1, $playerPage - 1))) ?>">Önceki</a>
+            <?php
+              $start = max(1, $playerPage - 2);
+              $end = min($playerPages, $playerPage + 2);
+              for ($i = $start; $i <= $end; $i++):
+            ?>
+              <?php if ($i === $playerPage): ?>
+                <span class="cur"><?= $i ?></span>
+              <?php else: ?>
+                <a href="<?= e($mk($i)) ?>"><?= $i ?></a>
+              <?php endif; ?>
+            <?php endfor; ?>
+            <a class="<?= $playerPage >= $playerPages ? 'disabled' : '' ?>" href="<?= e($mk(min($playerPages, $playerPage + 1))) ?>">Sonraki</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== BANLAR ===================== -->
+    <section class="section<?= $panelSection === 'banlar' ? ' active' : '' ?>" id="banlar">
+      <div class="card">
+        <div class="card-head"><h3>Aktif Banlar</h3><span style="font-size:.8rem; color:var(--ash);"><?= count($activeBans) ?> aktif kısıtlama</span></div>
+        <table>
+          <thead><tr><th>Hesap</th><th>Ceza</th><th>Sebep</th><th>Süre</th><th>Yetkili</th><th>İşlem</th></tr></thead>
+          <tbody>
+            <?php if ($activeBans === []): ?>
+              <tr><td colspan="6" style="color:var(--ash);">Aktif ban yok.</td></tr>
+            <?php else: ?>
+              <?php foreach ($activeBans as $ban): ?>
+              <tr>
+                <td><?= e((string) $ban['account_login']) ?></td>
+                <td><span class="badge banned"><?= e((string) $ban['penalty_name']) ?></span></td>
+                <td style="color:var(--ash); max-width:220px;"><?= e((string) $ban['reason']) ?></td>
+                <td><?= e((string) $ban['remaining_label']) ?></td>
+                <td><?= e((string) $ban['banned_by_login']) ?></td>
+                <td class="actions-cell">
+                  <button type="button" title="Detay" data-detail="<?= (int) $ban['account_id'] ?>"><i class="fa-solid fa-eye"></i></button>
+                  <button type="button" title="Kaldır"
+                    data-unban-id="<?= (int) $ban['account_id'] ?>"
+                    data-unban-login="<?= e((string) $ban['account_login']) ?>"
+                    data-unban-section="banlar"><i class="fa-solid fa-lock-open"></i></button>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            <?php endif; ?>
           </tbody>
         </table>
       </div>
     </section>
 
-    <!-- ===================== BANLAR ===================== -->
-    <section class="section" id="banlar">
-      <div class="card">
-        <div class="card-head"><h3>Ban / Mute Listesi</h3><span style="font-size:.8rem; color:var(--ash);">14 aktif kısıtlama</span></div>
-        <table>
-          <thead><tr><th>Hesap</th><th>Tür</th><th>Sebep</th><th>Süre</th><th>Yetkili</th><th>İşlem</th></tr></thead>
-          <tbody>
-            <tr><td>golgeavci</td><td><span class="badge banned">Ban</span></td><td>Bot kullanımı</td><td>3 gün kaldı</td><td>Admin_Orhan</td><td class="actions-cell"><button title="Kaldır"><i class="fa-solid fa-lock-open"></i></button></td></tr>
-            <tr><td>demirkol44</td><td><span class="badge pending">Mute</span></td><td>Küfür / taciz</td><td>12 saat kaldı</td><td>GM_Aylin</td><td class="actions-cell"><button title="Kaldır"><i class="fa-solid fa-lock-open"></i></button></td></tr>
-            <tr><td>ateskurdu</td><td><span class="badge banned">Ban</span></td><td>Hile / duvar içi</td><td>Kalıcı</td><td>Admin_Orhan</td><td class="actions-cell"><button title="Kaldır"><i class="fa-solid fa-lock-open"></i></button></td></tr>
-          </tbody>
-        </table>
+    <!-- ===================== CEZA AYARLARI ===================== -->
+    <section class="section<?= $panelSection === 'ceza-ayarlari' ? ' active' : '' ?>" id="ceza-ayarlari">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-head"><h3>Sabit Cezalar</h3><span style="font-size:.8rem;color:var(--ash);">0 gün = süresiz</span></div>
+          <table>
+            <thead><tr><th>Ceza Adı</th><th>Sebep</th><th>Süre</th><th></th></tr></thead>
+            <tbody>
+              <?php if ($penalties === []): ?>
+                <tr><td colspan="4" style="color:var(--ash);">Henüz ceza tanımlanmamış.</td></tr>
+              <?php else: ?>
+                <?php foreach ($penalties as $p): ?>
+                <tr>
+                  <td><?= e((string) $p['name']) ?></td>
+                  <td style="color:var(--ash); max-width:240px;"><?= e((string) $p['reason']) ?></td>
+                  <td><?= e((string) $p['days_label']) ?></td>
+                  <td class="actions-cell">
+                    <button type="button" title="Düzenle"
+                      data-edit-penalty
+                      data-id="<?= (int) $p['id'] ?>"
+                      data-name="<?= e((string) $p['name']) ?>"
+                      data-reason="<?= e((string) $p['reason']) ?>"
+                      data-days="<?= (int) $p['days'] ?>"><i class="fa-solid fa-pen"></i></button>
+                    <form method="post" action="<?= e(url('/admin/ayarlar/ceza/sil')) ?>" style="display:inline;" onsubmit="return confirm('Bu cezayı silmek istiyor musun?');">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $p['id'] ?>">
+                      <button type="submit" class="danger" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3 id="penaltyFormTitle">Yeni Ceza</h3></div>
+          <form method="post" action="<?= e(url('/admin/ayarlar/ceza/kaydet')) ?>" id="penaltyForm">
+            <?= $csrf ?>
+            <input type="hidden" name="id" id="penaltyId" value="">
+            <div class="form-row"><label>Ceza Adı</label><input name="name" id="penaltyName" required maxlength="120" placeholder="Örn: Bot kullanımı"></div>
+            <div class="form-row"><label>Sebep</label><input name="reason" id="penaltyReason" required maxlength="500" placeholder="Ban sebebini yaz"></div>
+            <div class="form-row"><label>Kaç gün (0 = süresiz)</label><input type="number" name="days" id="penaltyDays" min="0" max="3650" value="1" required></div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-floppy-disk"></i> Kaydet</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="penaltyReset">Temizle</button>
+            </div>
+          </form>
+        </div>
       </div>
     </section>
 
@@ -498,27 +705,105 @@ $authUser = is_array($authUser ?? null) ? $authUser : null;
 <div class="modal-overlay" id="banModal">
   <div class="modal">
     <h3><i class="fa-solid fa-gavel"></i> Oyuncuyu Banla</h3>
-    <p><b id="banTarget">—</b> hesabını banlamak üzeresin. Bu işlem oyuncunun tüm sunucuya erişimini kısıtlar.</p>
-    <div class="form-row"><label>Süre</label><input placeholder="Örn: 3 gün, kalıcı"></div>
-    <div class="form-row"><label>Sebep</label><input placeholder="Ban sebebini yaz"></div>
-    <div class="modal-actions">
-      <a class="btn btn-ghost btn-sm" id="banCancel">Vazgeç</a>
-      <a class="btn btn-primary btn-sm" id="banConfirm">Banla</a>
+    <p><b id="banTarget">—</b> hesabını banlamak üzeresin. Oyuna giriş engellenir; panele girebilir.</p>
+    <form method="post" action="<?= e(url('/admin/oyuncu/ban')) ?>" id="banForm">
+      <?= $csrf ?>
+      <input type="hidden" name="account_id" id="banAccountId" value="">
+      <div class="form-row">
+        <label>Sabit Ceza</label>
+        <select name="penalty_id" id="banPenaltyId" required>
+          <option value="">Seç...</option>
+          <?php foreach ($penalties as $p): ?>
+            <?php if (!empty($p['is_active'])): ?>
+              <option value="<?= (int) $p['id'] ?>"><?= e((string) $p['name']) ?> — <?= e((string) $p['days_label']) ?></option>
+            <?php endif; ?>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Kanıt (opsiyonel — link / açıklama)</label>
+        <textarea name="evidence" id="banEvidence" placeholder="https://... veya kısa açıklama" style="min-height:72px;"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="banCancel">Vazgeç</button>
+        <button type="submit" class="btn btn-primary btn-sm" id="banConfirm">Banla</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ UNBAN MODAL ============ -->
+<div class="modal-overlay" id="unbanModal">
+  <div class="modal">
+    <h3><i class="fa-solid fa-lock-open"></i> Banı Kaldır</h3>
+    <p><b id="unbanTarget">—</b> hesabının banını kaldırmak üzeresin. Sebep zorunludur.</p>
+    <form method="post" action="<?= e(url('/admin/oyuncu/unban')) ?>" id="unbanForm">
+      <?= $csrf ?>
+      <input type="hidden" name="account_id" id="unbanAccountId" value="">
+      <input type="hidden" name="redirect_section" id="unbanSection" value="oyuncular">
+      <div class="form-row">
+        <label>Kaldırma sebebi</label>
+        <textarea name="reason" id="unbanReason" required minlength="3" maxlength="500" placeholder="Ban neden kaldırılıyor?" style="min-height:80px;"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="unbanCancel">Vazgeç</button>
+        <button type="submit" class="btn btn-primary btn-sm">Banı Kaldır</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ DETAY MODAL ============ -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal modal-lg">
+    <h3><i class="fa-solid fa-user"></i> <span id="detailTitle">Oyuncu Detayı</span></h3>
+    <div id="detailBody" style="color:var(--ash); font-size:.88rem;">Yükleniyor…</div>
+    <div class="modal-actions" style="margin-top:18px;">
+      <button type="button" class="btn btn-ghost btn-sm" id="detailClose">Kapat</button>
     </div>
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
-  const navItems = document.querySelectorAll('.nav-item');
+  const navItems = document.querySelectorAll('.nav-item[data-target]');
   const sections = document.querySelectorAll('.section');
-  navItems.forEach(item => {
-    item.addEventListener('click', () => {
-      navItems.forEach(n => n.classList.remove('active'));
-      item.classList.add('active');
-      const target = item.dataset.target;
-      sections.forEach(s => s.classList.toggle('active', s.id === target));
-      document.getElementById('sidebar').classList.remove('open');
+  const initialSection = <?= json_encode($panelSection, JSON_UNESCAPED_UNICODE) ?>;
+  const playerJsonUrl = <?= json_encode(url('/admin/oyuncu/json'), JSON_UNESCAPED_UNICODE) ?>;
+  const settingsParent = document.getElementById('settingsParent');
+  const settingsSub = document.getElementById('settingsSub');
+
+  function showSection(target) {
+    if (!target) return;
+    document.querySelectorAll('.nav-item').forEach(n => {
+      if (n.dataset.target) n.classList.toggle('active', n.dataset.target === target);
     });
+    if (settingsParent) {
+      const isSettings = target === 'ceza-ayarlari';
+      settingsParent.classList.toggle('active', isSettings);
+      if (isSettings) {
+        settingsParent.classList.add('open');
+        settingsSub?.classList.add('open');
+      }
+    }
+    sections.forEach(s => s.classList.toggle('active', s.id === target));
+    document.getElementById('sidebar').classList.remove('open');
+  }
+
+  if (initialSection) showSection(initialSection);
+
+  navItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      const target = item.dataset.target;
+      if (!target) return;
+      e.preventDefault();
+      showSection(target);
+    });
+  });
+
+  settingsParent?.addEventListener('click', () => {
+    settingsParent.classList.toggle('open');
+    settingsSub?.classList.toggle('open');
   });
 
   document.querySelectorAll('[data-toggle]').forEach(t => {
@@ -532,15 +817,144 @@ $authUser = is_array($authUser ?? null) ? $authUser : null;
   // Ban modal
   const banModal = document.getElementById('banModal');
   const banTarget = document.getElementById('banTarget');
-  document.querySelectorAll('[data-ban]').forEach(btn => {
+  const banAccountId = document.getElementById('banAccountId');
+  document.querySelectorAll('[data-ban-id]').forEach(btn => {
     btn.addEventListener('click', () => {
-      banTarget.textContent = btn.dataset.ban;
+      banTarget.textContent = btn.dataset.banLogin || '—';
+      banAccountId.value = btn.dataset.banId || '';
+      document.getElementById('banPenaltyId').value = '';
+      document.getElementById('banEvidence').value = '';
       banModal.classList.add('open');
     });
   });
   document.getElementById('banCancel').addEventListener('click', () => banModal.classList.remove('open'));
-  document.getElementById('banConfirm').addEventListener('click', () => banModal.classList.remove('open'));
   banModal.addEventListener('click', (e) => { if (e.target === banModal) banModal.classList.remove('open'); });
+
+  // Unban modal
+  const unbanModal = document.getElementById('unbanModal');
+  const unbanTarget = document.getElementById('unbanTarget');
+  const unbanAccountId = document.getElementById('unbanAccountId');
+  const unbanSection = document.getElementById('unbanSection');
+  const unbanReason = document.getElementById('unbanReason');
+  document.querySelectorAll('[data-unban-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      unbanTarget.textContent = btn.dataset.unbanLogin || '—';
+      unbanAccountId.value = btn.dataset.unbanId || '';
+      unbanSection.value = btn.dataset.unbanSection || 'oyuncular';
+      unbanReason.value = '';
+      unbanModal.classList.add('open');
+      unbanReason.focus();
+    });
+  });
+  document.getElementById('unbanCancel').addEventListener('click', () => unbanModal.classList.remove('open'));
+  unbanModal.addEventListener('click', (e) => { if (e.target === unbanModal) unbanModal.classList.remove('open'); });
+  document.getElementById('unbanForm').addEventListener('submit', (e) => {
+    if (!unbanReason.value.trim()) {
+      e.preventDefault();
+      unbanReason.focus();
+      alert('Ban kaldırma sebebi zorunludur.');
+    }
+  });
+
+  // Detail modal
+  const detailModal = document.getElementById('detailModal');
+  const detailBody = document.getElementById('detailBody');
+  const detailTitle = document.getElementById('detailTitle');
+  function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function openDetail(id) {
+    detailTitle.textContent = 'Oyuncu Detayı';
+    detailBody.innerHTML = 'Yükleniyor…';
+    detailModal.classList.add('open');
+    fetch(playerJsonUrl + '?id=' + encodeURIComponent(id), { credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(res => {
+        if (!res.ok || !res.data) {
+          detailBody.innerHTML = '<div style="color:var(--blood-light);">' + esc(res.error || 'Yüklenemedi') + '</div>';
+          return;
+        }
+        const a = res.data.account || {};
+        const ban = res.data.active_ban;
+        const chars = res.data.characters || [];
+        const logs = res.data.activity || [];
+        detailTitle.textContent = a.login || 'Oyuncu';
+        let html = '<div class="detail-meta">';
+        html += '<div class="row"><span class="k">E-posta</span><span class="v">' + esc(a.email || '—') + '</span></div>';
+        html += '<div class="row"><span class="k">IP</span><span class="v">' + esc(a.ip || '—') + '</span></div>';
+        html += '<div class="row"><span class="k">Kayıt</span><span class="v">' + esc(a.create_label || '—') + '</span></div>';
+        html += '<div class="row"><span class="k">Durum</span><span class="v"><span class="badge ' + esc(a.status_badge || '') + '">' + esc(a.status_label || '—') + '</span></span></div>';
+        html += '<div class="row"><span class="k">Cash</span><span class="v">' + Number(a.cash || 0).toLocaleString('tr-TR') + '</span></div>';
+        if (ban) {
+          html += '<div class="row"><span class="k">Aktif Ceza</span><span class="v">' + esc(ban.penalty_name) + ' · ' + esc(ban.days_label) + '</span></div>';
+          html += '<div class="row"><span class="k">Sebep</span><span class="v">' + esc(ban.reason) + '</span></div>';
+          if (ban.evidence) html += '<div class="row"><span class="k">Kanıt</span><span class="v">' + esc(ban.evidence) + '</span></div>';
+          html += '<div class="row"><span class="k">Banlayan</span><span class="v">' + esc(ban.banned_by_login) + '</span></div>';
+        }
+        html += '</div>';
+
+        html += '<div class="detail-block"><h4>Karakterler (' + chars.length + ')</h4>';
+        if (!chars.length) html += '<div>Karakter yok.</div>';
+        else {
+          html += '<table><thead><tr><th>Ad</th><th>Sınıf</th><th>Sv.</th></tr></thead><tbody>';
+          chars.forEach(ch => {
+            html += '<tr><td>' + esc(ch.name) + '</td><td>' + esc(ch.job_label) + '</td><td>' + esc(ch.level) + '</td></tr>';
+          });
+          html += '</tbody></table>';
+        }
+        html += '</div>';
+
+        html += '<div class="detail-block"><h4>Panel Hesap Kayıtları</h4>';
+        if (!logs.length) html += '<div>Henüz kayıt yok.</div>';
+        else {
+          html += '<table><thead><tr><th>Zaman</th><th>İşlem</th><th>Detay</th><th>Yetkili</th></tr></thead><tbody>';
+          logs.slice(0, 25).forEach(log => {
+            html += '<tr><td>' + esc(log.created_label) + '</td><td>' + esc(log.action_label) + '</td>';
+            let det = log.detail || '—';
+            if (log.evidence) det += (det !== '—' ? ' · ' : '') + 'Kanıt: ' + log.evidence;
+            html += '<td style="color:var(--ash);">' + esc(det) + '</td>';
+            html += '<td>' + esc(log.actor_login || '—') + '</td></tr>';
+          });
+          html += '</tbody></table>';
+        }
+        html += '</div>';
+        detailBody.innerHTML = html;
+      })
+      .catch(() => {
+        detailBody.innerHTML = '<div style="color:var(--blood-light);">Detay yüklenemedi.</div>';
+      });
+  }
+  document.querySelectorAll('[data-detail]').forEach(btn => {
+    btn.addEventListener('click', () => openDetail(btn.dataset.detail));
+  });
+  document.getElementById('detailClose').addEventListener('click', () => detailModal.classList.remove('open'));
+  detailModal.addEventListener('click', (e) => { if (e.target === detailModal) detailModal.classList.remove('open'); });
+
+  // Penalty form edit
+  const penaltyFormTitle = document.getElementById('penaltyFormTitle');
+  const penaltyId = document.getElementById('penaltyId');
+  const penaltyName = document.getElementById('penaltyName');
+  const penaltyReason = document.getElementById('penaltyReason');
+  const penaltyDays = document.getElementById('penaltyDays');
+  function resetPenaltyForm() {
+    penaltyFormTitle.textContent = 'Yeni Ceza';
+    penaltyId.value = '';
+    penaltyName.value = '';
+    penaltyReason.value = '';
+    penaltyDays.value = '1';
+  }
+  document.querySelectorAll('[data-edit-penalty]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      penaltyFormTitle.textContent = 'Ceza Düzenle';
+      penaltyId.value = btn.dataset.id || '';
+      penaltyName.value = btn.dataset.name || '';
+      penaltyReason.value = btn.dataset.reason || '';
+      penaltyDays.value = btn.dataset.days || '0';
+      showSection('ceza-ayarlari');
+      penaltyName.focus();
+    });
+  });
+  document.getElementById('penaltyReset')?.addEventListener('click', resetPenaltyForm);
 
   (function sessionCountdown() {
     const el = document.getElementById('sessionTimer');
@@ -549,6 +963,7 @@ $authUser = is_array($authUser ?? null) ? $authUser : null;
     const expires = parseInt(el.dataset.expires || '0', 10);
     const logoutUrl = el.dataset.logout || '/cikis';
     if (!expires) { valueEl.textContent = '--:--'; return; }
+
 
     const pad = (n) => String(n).padStart(2, '0');
     const tick = () => {
@@ -564,6 +979,56 @@ $authUser = is_array($authUser ?? null) ? $authUser : null;
       setTimeout(tick, 1000);
     };
     tick();
+  })();
+
+  (function onlineChart() {
+    const canvas = document.getElementById('onlineChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+    const labels = <?= json_encode($chartLabels, JSON_UNESCAPED_UNICODE) ?>;
+    const values = <?= json_encode($chartValues, JSON_UNESCAPED_UNICODE) ?>;
+    new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Çevrimiçi',
+          data: values,
+          borderColor: '#c9974a',
+          backgroundColor: 'rgba(201,151,74,.18)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.35,
+          pointRadius: labels.length > 40 ? 0 : 3,
+          pointHoverRadius: 5,
+          pointBackgroundColor: '#eccd8e',
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#161009',
+            titleColor: '#eccd8e',
+            bodyColor: '#e9dfc6',
+            borderColor: 'rgba(201,151,74,.3)',
+            borderWidth: 1,
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: '#9a8f80', maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+            grid: { color: 'rgba(201,151,74,.08)' }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#9a8f80', precision: 0 },
+            grid: { color: 'rgba(201,151,74,.08)' }
+          }
+        }
+      }
+    });
   })();
 </script>
 </body>

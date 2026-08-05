@@ -57,6 +57,8 @@ final class AccountSecurityService
         $upd = $pdo->prepare('UPDATE account SET password = ? WHERE id = ?');
         $upd->execute([$hash, $accountId]);
 
+        ActivityLogService::log($accountId, ActivityLogService::ACTION_PASSWORD, 'Parola güncellendi');
+
         return ['ok' => true, 'errors' => []];
     }
 
@@ -86,6 +88,8 @@ final class AccountSecurityService
         $upd = $pdo->prepare('UPDATE account SET securitycode = ? WHERE id = ?');
         $upd->execute([$hash, $accountId]);
 
+        ActivityLogService::log($accountId, ActivityLogService::ACTION_SECURITY_CODE, 'Depo / güvenli şifre güncellendi');
+
         return ['ok' => true, 'errors' => []];
     }
 
@@ -100,6 +104,8 @@ final class AccountSecurityService
              SET totp_secret = ?, totp_enabled = 0, totp_confirmed = 0, updated_at = NOW()
              WHERE account_id = ?'
         )->execute([$secret, $accountId]);
+
+        ActivityLogService::log($accountId, ActivityLogService::ACTION_2FA_START, '2FA kurulum anahtarı oluşturuldu');
 
         return ['ok' => true, 'errors' => [], 'secret' => $secret];
     }
@@ -118,6 +124,8 @@ final class AccountSecurityService
         Database::web()->prepare(
             'UPDATE account_security SET totp_enabled = 1, totp_confirmed = 1, updated_at = NOW() WHERE account_id = ?'
         )->execute([$accountId]);
+
+        ActivityLogService::log($accountId, ActivityLogService::ACTION_2FA_ENABLE, 'İki adımlı doğrulama aktif');
 
         return ['ok' => true, 'errors' => []];
     }
@@ -138,6 +146,8 @@ final class AccountSecurityService
              WHERE account_id = ?'
         )->execute([$accountId]);
 
+        ActivityLogService::log($accountId, ActivityLogService::ACTION_2FA_DISABLE, 'İki adımlı doğrulama kapatıldı');
+
         return ['ok' => true, 'errors' => []];
     }
 
@@ -148,6 +158,12 @@ final class AccountSecurityService
         Database::web()->prepare(
             'UPDATE account_security SET ip_lock_enabled = ?, locked_ip = ?, updated_at = NOW() WHERE account_id = ?'
         )->execute([$enabled ? 1 : 0, $ip, $accountId]);
+
+        ActivityLogService::log(
+            $accountId,
+            $enabled ? ActivityLogService::ACTION_IP_LOCK_ON : ActivityLogService::ACTION_IP_LOCK_OFF,
+            $enabled ? ('Kilitlenen IP: ' . (string) $ip) : 'IP kilidi kaldırıldı'
+        );
 
         return ['ok' => true, 'errors' => []];
     }

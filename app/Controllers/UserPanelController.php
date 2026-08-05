@@ -8,7 +8,9 @@ use App\Core\Security;
 use App\Core\Session;
 use App\Core\Theme;
 use App\Services\AccountSecurityService;
+use App\Services\ActivityLogService;
 use App\Services\AuthService;
+use App\Services\PenaltyService;
 use App\Services\PlayerService;
 use App\Services\Totp;
 
@@ -18,6 +20,7 @@ final class UserPanelController
     {
         $user = AuthService::requireLogin();
         $accountId = (int) $user['account_id'];
+        PenaltyService::liftExpired();
         $dashboard = PlayerService::dashboard($accountId);
         $security = AccountSecurityService::getSettings($accountId);
 
@@ -47,6 +50,8 @@ final class UserPanelController
             'openTickets' => $dashboard['open_tickets'],
             'security' => $security,
             'totpSetup' => $totpSetup,
+            'activityLogs' => ActivityLogService::forAccount($accountId, 50),
+            'activeBan' => PenaltyService::getActiveBan($accountId),
             'searchQuery' => $searchQuery,
             'searchResults' => $searchResults,
             'panelErrors' => Session::flash('panel_errors') ?? [],

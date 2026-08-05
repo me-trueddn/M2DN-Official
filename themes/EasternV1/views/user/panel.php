@@ -19,6 +19,8 @@
 /** @var list<string> $panelErrors */
 /** @var string|null $panelSuccess */
 /** @var string|null $panelSection */
+/** @var list<array> $activityLogs */
+/** @var array|null $activeBan */
 
 $appName = $appName ?? 'M2DN';
 $appTagline = $appTagline ?? '';
@@ -40,9 +42,14 @@ $searchResults = is_array($searchResults ?? null) ? $searchResults : [];
 $panelErrors = is_array($panelErrors ?? null) ? $panelErrors : [];
 $panelSuccess = is_string($panelSuccess ?? null) ? $panelSuccess : null;
 $panelSection = is_string($panelSection ?? null) && $panelSection !== '' ? $panelSection : 'ozet';
+$activityLogs = is_array($activityLogs ?? null) ? $activityLogs : [];
+$activeBan = is_array($activeBan ?? null) ? $activeBan : null;
 $totpOn = !empty($security['totp_enabled']);
 $ipLockOn = !empty($security['ip_lock_enabled']);
 $notifyOn = !empty($security['login_notify']);
+$isBanned = !empty($account['is_banned']) || strtoupper((string) ($account['status'] ?? '')) === 'BLOCK';
+$statusLabel = (string) ($account['status_label'] ?? ($isBanned ? 'Banlı' : 'Aktif'));
+$statusBadge = (string) ($account['status_badge'] ?? ($isBanned ? 'banned' : 'online'));
 
 $levelPct = 0;
 if ($primary) {
@@ -218,6 +225,30 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   .badge.offline{background:rgba(154,143,128,.15); color:var(--ash);}
   .badge.pending{background:rgba(201,151,74,.15); color:var(--gold-light);}
   .badge.closed{background:rgba(154,143,128,.15); color:var(--ash);}
+  .badge.banned{background:rgba(143,28,41,.2); color:var(--blood-light);}
+  .char-click{cursor:pointer; transition:background .15s;}
+  .char-click:hover{background:rgba(201,151,74,.06);}
+  .vote-item.char-click{text-decoration:none; color:inherit;}
+
+  .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:900; padding:18px;}
+  .modal-overlay.open{display:flex;}
+  .modal{width:680px; max-width:100%; max-height:88vh; overflow:auto; background:var(--obsidian-2); border:1px solid var(--gold); padding:26px; clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);}
+  .modal h3{font-size:1.1rem; color:var(--gold-light); margin-bottom:14px;}
+  .modal .modal-actions{display:flex; gap:12px; justify-content:flex-end; margin-top:18px;}
+  .detail-meta{display:grid; gap:6px; margin-bottom:14px;}
+  .detail-meta .row{display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid rgba(201,151,74,.08); font-size:.84rem;}
+  .detail-meta .k{color:var(--ash);}
+  .detail-meta .v{color:var(--gold-light); font-weight:600; text-align:right; word-break:break-all;}
+  .detail-block{margin-top:16px;}
+  .detail-block h4{font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ash); margin-bottom:10px;}
+  .ban-box{margin-top:14px; padding:14px; border:1px solid rgba(197,51,71,.35); background:rgba(143,28,41,.12);}
+  .ban-box h4{color:var(--blood-light); margin-bottom:10px; font-size:.85rem;}
+  .modal-pager{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; flex-wrap:wrap; font-size:.78rem; color:var(--ash);}
+  .modal-pager .links{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .modal-pager button{padding:6px 11px; border:1px solid var(--line); background:var(--obsidian); color:var(--gold-light); font-size:.74rem; cursor:pointer;}
+  .modal-pager button:hover:not(:disabled){background:rgba(201,151,74,.08);}
+  .modal-pager button:disabled{opacity:.4; cursor:not-allowed;}
+  .modal-pager .cur{padding:6px 11px; border:1px solid var(--gold); background:rgba(201,151,74,.12); color:var(--gold-light);}
 
   /* shop grid */
   .shop-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:18px;}
@@ -313,6 +344,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
     <div class="nav-group-label">Genel</div>
     <a class="nav-item<?= $panelSection === 'ozet' ? ' active' : '' ?>" data-target="ozet"><i class="fa-solid fa-gauge-high"></i> Genel Bakış</a>
     <a class="nav-item<?= $panelSection === 'karakterler' ? ' active' : '' ?>" data-target="karakterler"><i class="fa-solid fa-khanda"></i> Karakterlerim</a>
+    <a class="nav-item<?= $panelSection === 'kayitlar' ? ' active' : '' ?>" data-target="kayitlar"><i class="fa-solid fa-clock-rotate-left"></i> Hesap Kayıtları</a>
 
     <div class="nav-group-label">Oyun</div>
     <a class="nav-item" data-target="magaza"><i class="fa-solid fa-store"></i> Mağaza</a>
@@ -376,10 +408,10 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
               <div class="empty">Hesabında “<?= e($searchQuery) ?>” ile eşleşen karakter yok.</div>
             <?php else: ?>
               <?php foreach ($searchResults as $sr): ?>
-                <a href="<?= e(url('/panel/karakter?id=' . (int) $sr['id'])) ?>">
+                <button type="button" data-open-char="<?= (int) $sr['id'] ?>" style="display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;color:inherit;padding:10px 12px;cursor:pointer;text-align:left;font:inherit;">
                   <i class="fa-solid <?= e($sr['job_icon']) ?>" style="color:var(--gold-light);"></i>
                   <span><?= e($sr['name']) ?> · Sv. <?= (int) $sr['level'] ?> · <?= e($sr['job_label']) ?></span>
-                </a>
+                </button>
               <?php endforeach; ?>
             <?php endif; ?>
           </div>
@@ -406,7 +438,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
     <section class="section<?= $panelSection === 'ozet' ? ' active' : '' ?>" id="ozet">
 
       <?php if ($primary): ?>
-      <div class="char-banner">
+      <div class="char-banner char-click" data-open-char="<?= (int) $primary['id'] ?>" role="button" tabindex="0" title="Detay">
         <div class="char-portrait">
           <div class="char-portrait-inner">
             <?php if (!empty($primary['job_gif'])): ?>
@@ -427,6 +459,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
             <?php endif; ?>
             <span>Krallık <b><?= e($primary['empire_label']) ?></b></span>
             <span>Oyun Süresi <b><?= e($primary['playtime_label']) ?></b></span>
+            <span>Durum <b style="color:<?= $isBanned ? 'var(--blood-light)' : 'var(--jade-light)' ?>"><?= e($statusLabel) ?></b></span>
           </div>
           <div class="exp-bar">
             <div class="track"><div class="fill" style="width:<?= (int) $levelPct ?>%"></div></div>
@@ -437,7 +470,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
             </div>
           </div>
         </div>
-        <div class="quick-actions">
+        <div class="quick-actions" onclick="event.stopPropagation()">
           <a class="btn btn-primary btn-sm" href="#karakterler" data-jump="karakterler"><i class="fa-solid fa-users"></i> Karakterler</a>
           <a class="btn btn-ghost btn-sm" href="#destek" data-jump="destek"><i class="fa-solid fa-headset"></i> Destek Aç</a>
         </div>
@@ -478,23 +511,23 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
             <div style="color:var(--ash); font-size:.85rem;">Henüz karakter yok.</div>
           <?php else: ?>
             <?php foreach (array_slice($characters, 0, 4) as $ch): ?>
-            <a class="vote-item" href="<?= e(url('/panel/karakter?id=' . (int) $ch['id'])) ?>" style="color:inherit;">
+            <button type="button" class="vote-item char-click" data-open-char="<?= (int) $ch['id'] ?>" style="width:100%; text-align:left; background:none; border:none; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 0; border-bottom:1px solid rgba(201,151,74,.08);">
               <div>
                 <div class="name"><i class="fa-solid <?= e($ch['job_icon']) ?>" style="margin-right:6px;color:var(--gold-light);"></i><?= e($ch['name']) ?></div>
                 <div class="cooldown"><?= e($ch['job_label']) ?> · Sv. <?= (int) $ch['level'] ?><?= !empty($ch['guild']) ? ' · ' . e($ch['guild']) : '' ?></div>
               </div>
-              <span class="badge offline">Sv. <?= (int) $ch['level'] ?></span>
-            </a>
+              <span class="badge <?= e($statusBadge) ?>"><?= e($statusLabel) ?></span>
+            </button>
             <?php endforeach; ?>
           <?php endif; ?>
         </div>
 
         <div class="card">
           <div class="card-head"><h3>Hesap Özeti</h3></div>
-          <div class="security-row">
+          <button type="button" class="security-row char-click" data-open-account style="width:100%; text-align:left; background:none; border:none; display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; padding:12px 0; border-bottom:1px solid rgba(201,151,74,.08); color:inherit;">
             <div><div class="t">Kullanıcı Adı</div><div class="d"><?= e((string) ($account['login'] ?? '')) ?></div></div>
-            <span class="badge <?= strtoupper((string)($account['status'] ?? '')) === 'OK' ? 'online' : 'offline' ?>"><?= e((string) ($account['status'] ?? '—')) ?></span>
-          </div>
+            <span class="badge <?= e($statusBadge) ?>"><?= e($statusLabel) ?></span>
+          </button>
           <div class="security-row">
             <div><div class="t">E-posta</div><div class="d"><?= e((string) ($account['email'] ?? '—')) ?></div></div>
           </div>
@@ -509,6 +542,14 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
             <div><div class="t">Mileage</div><div class="d"><?= number_format((int) $account['mileage'], 0, ',', '.') ?></div></div>
           </div>
           <?php endif; ?>
+          <?php if ($isBanned && $activeBan): ?>
+          <div class="security-row">
+            <div>
+              <div class="t">Ban Sebebi</div>
+              <div class="d"><?= e((string) $activeBan['penalty_name']) ?> · <?= e((string) $activeBan['days_label']) ?></div>
+            </div>
+          </div>
+          <?php endif; ?>
         </div>
       </div>
     </section>
@@ -521,20 +562,59 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
           <div style="color:var(--ash); font-size:.9rem; padding:8px 0;">Bu hesaba bağlı karakter yok.</div>
         <?php else: ?>
         <table>
-          <thead><tr><th>Karakter</th><th>Sınıf</th><th>Seviye</th><th>Klan</th><th>Yang</th><th>Oyun Süresi</th></tr></thead>
+          <thead><tr><th>Karakter</th><th>Sınıf</th><th>Seviye</th><th>Klan</th><th>Yang</th><th>Oyun Süresi</th><th>Durum</th></tr></thead>
           <tbody>
             <?php foreach ($characters as $ch): ?>
-            <tr>
+            <tr class="char-click" data-open-char="<?= (int) $ch['id'] ?>" style="cursor:pointer;">
               <td class="row-class">
-                <a href="<?= e(url('/panel/karakter?id=' . (int) $ch['id'])) ?>" style="display:inline-flex;align-items:center;gap:10px;color:inherit;">
-                  <i class="fa-solid <?= e($ch['job_icon']) ?>"></i> <?= e($ch['name']) ?>
-                </a>
+                <i class="fa-solid <?= e($ch['job_icon']) ?>"></i> <?= e($ch['name']) ?>
               </td>
               <td><?= e($ch['job_label']) ?></td>
               <td><?= (int) $ch['level'] ?> / <?= (int) $maxLevel ?></td>
               <td><?= e($ch['guild'] ?? '—') ?></td>
               <td><?= number_format((int) $ch['gold'], 0, ',', '.') ?></td>
               <td><?= e($ch['playtime_label']) ?></td>
+              <td><span class="badge <?= e($statusBadge) ?>"><?= e($statusLabel) ?></span></td>
+            </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+        <?php endif; ?>
+      </div>
+    </section>
+
+    <!-- ===================== HESAP KAYITLARI ===================== -->
+    <section class="section<?= $panelSection === 'kayitlar' ? ' active' : '' ?>" id="kayitlar">
+      <div class="card">
+        <div class="card-head">
+          <h3>Hesap Kayıtları</h3>
+          <span style="font-size:.8rem;color:var(--ash);">Giriş, güvenlik ve yönetici işlemleri</span>
+        </div>
+        <?php if ($activityLogs === []): ?>
+          <div style="color:var(--ash); font-size:.9rem; padding:8px 0;">Henüz kayıt yok. Panele giriş ve güvenlik işlemleri burada listelenir.</div>
+        <?php else: ?>
+        <table>
+          <thead><tr><th>Zaman</th><th>İşlem</th><th>Detay / Kanıt</th><th>Yetkili</th></tr></thead>
+          <tbody>
+            <?php foreach ($activityLogs as $log): ?>
+            <tr>
+              <td><?= e((string) $log['created_label']) ?></td>
+              <td><?= e((string) $log['action_label']) ?></td>
+              <td style="color:var(--ash);">
+                <?php
+                  $det = (string) ($log['detail'] ?? '');
+                  $ev = (string) ($log['evidence'] ?? '');
+                  if ($det === '' && $ev === '') {
+                      echo '—';
+                  } else {
+                      echo e($det !== '' ? $det : '');
+                      if ($ev !== '') {
+                          echo ($det !== '' ? '<br>' : '') . '<span style="opacity:.85;">Kanıt: ' . e($ev) . '</span>';
+                      }
+                  }
+                ?>
+              </td>
+              <td><?= e((string) (($log['actor_login'] ?? '') !== '' ? $log['actor_login'] : '—')) ?></td>
             </tr>
             <?php endforeach; ?>
           </tbody>
@@ -682,10 +762,60 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   </main>
 </div>
 
+<?php
+  $modalChars = [];
+  foreach ($characters as $ch) {
+      $modalChars[(string) (int) $ch['id']] = [
+          'id' => (int) $ch['id'],
+          'name' => (string) $ch['name'],
+          'job_label' => (string) $ch['job_label'],
+          'job_icon' => (string) $ch['job_icon'],
+          'level' => (int) $ch['level'],
+          'guild' => (string) ($ch['guild'] ?? ''),
+          'empire_label' => (string) ($ch['empire_label'] ?? ''),
+          'gold' => (int) ($ch['gold'] ?? 0),
+          'playtime_label' => (string) ($ch['playtime_label'] ?? '—'),
+      ];
+  }
+  $modalPayload = [
+      'account' => [
+          'login' => (string) ($account['login'] ?? ''),
+          'email' => (string) ($account['email'] ?? ''),
+          'status_label' => $statusLabel,
+          'status_badge' => $statusBadge,
+          'is_banned' => $isBanned,
+          'create_label' => $createLabel,
+      ],
+      'ban' => $activeBan,
+      'activity' => array_map(static function (array $log): array {
+          return [
+              'created_label' => (string) ($log['created_label'] ?? ''),
+              'action_label' => (string) ($log['action_label'] ?? ''),
+              'detail' => (string) ($log['detail'] ?? ''),
+              'evidence' => (string) ($log['evidence'] ?? ''),
+              'actor_login' => (string) ($log['actor_login'] ?? ''),
+          ];
+      }, $activityLogs),
+      'characters' => $modalChars,
+      'max_level' => (int) $maxLevel,
+  ];
+?>
+
+<div class="modal-overlay" id="accountModal">
+  <div class="modal">
+    <h3><i class="fa-solid fa-user"></i> <span id="accountModalTitle">Hesap Detayı</span></h3>
+    <div id="accountModalBody"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost btn-sm" id="accountModalClose">Kapat</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const navItems = document.querySelectorAll('.nav-item');
   const sections = document.querySelectorAll('.section');
   const initialSection = <?= json_encode($panelSection, JSON_UNESCAPED_UNICODE) ?>;
+  const modalData = <?= json_encode($modalPayload, JSON_UNESCAPED_UNICODE) ?>;
 
   function showSection(target) {
     if (!target) return;
@@ -715,6 +845,129 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   document.getElementById('mobileToggle').addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('open');
   });
+
+  (function accountModal() {
+    const overlay = document.getElementById('accountModal');
+    const titleEl = document.getElementById('accountModalTitle');
+    const bodyEl = document.getElementById('accountModalBody');
+    const closeBtn = document.getElementById('accountModalClose');
+    if (!overlay || !bodyEl) return;
+
+    const LOGS_PER_PAGE = 5;
+    let currentCharId = null;
+    let activityPage = 1;
+
+    function esc(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function activityTableHtml(logs, page) {
+      const total = logs.length;
+      const pages = Math.max(1, Math.ceil(total / LOGS_PER_PAGE));
+      page = Math.min(Math.max(1, page), pages);
+      activityPage = page;
+      const start = (page - 1) * LOGS_PER_PAGE;
+      const slice = logs.slice(start, start + LOGS_PER_PAGE);
+
+      let html = '<table><thead><tr><th>Zaman</th><th>İşlem</th><th>Detay</th><th>Yetkili</th></tr></thead><tbody>';
+      slice.forEach(log => {
+        let det = log.detail || '';
+        if (log.evidence) det += (det ? ' · ' : '') + 'Kanıt: ' + log.evidence;
+        html += '<tr><td>' + esc(log.created_label) + '</td><td>' + esc(log.action_label) + '</td><td style="color:var(--ash)">' + esc(det || '—') + '</td><td>' + esc(log.actor_login || '—') + '</td></tr>';
+      });
+      html += '</tbody></table>';
+
+      if (pages > 1) {
+        html += '<div class="modal-pager">';
+        html += '<div>' + total + ' kayıt · Sayfa ' + page + ' / ' + pages + '</div>';
+        html += '<div class="links">';
+        html += '<button type="button" data-act-page="' + (page - 1) + '"' + (page <= 1 ? ' disabled' : '') + '>Önceki</button>';
+        const from = Math.max(1, page - 2);
+        const to = Math.min(pages, page + 2);
+        for (let i = from; i <= to; i++) {
+          if (i === page) html += '<span class="cur">' + i + '</span>';
+          else html += '<button type="button" data-act-page="' + i + '">' + i + '</button>';
+        }
+        html += '<button type="button" data-act-page="' + (page + 1) + '"' + (page >= pages ? ' disabled' : '') + '>Sonraki</button>';
+        html += '</div></div>';
+      }
+      return html;
+    }
+
+    function render(charId, page) {
+      currentCharId = charId;
+      if (page == null) activityPage = 1;
+      else activityPage = page;
+
+      const acc = modalData.account || {};
+      const ban = modalData.ban;
+      const logs = modalData.activity || [];
+      const char = charId ? (modalData.characters[String(charId)] || null) : null;
+      titleEl.textContent = char ? char.name : (acc.login || 'Hesap Detayı');
+
+      let html = '<div class="detail-meta">';
+      if (char) {
+        html += '<div class="row"><span class="k">Sınıf</span><span class="v">' + esc(char.job_label) + '</span></div>';
+        html += '<div class="row"><span class="k">Seviye</span><span class="v">' + esc(char.level) + ' / ' + esc(modalData.max_level) + '</span></div>';
+        html += '<div class="row"><span class="k">Klan</span><span class="v">' + esc(char.guild || '—') + '</span></div>';
+        html += '<div class="row"><span class="k">Krallık</span><span class="v">' + esc(char.empire_label || '—') + '</span></div>';
+        html += '<div class="row"><span class="k">Yang</span><span class="v">' + Number(char.gold || 0).toLocaleString('tr-TR') + '</span></div>';
+        html += '<div class="row"><span class="k">Oyun Süresi</span><span class="v">' + esc(char.playtime_label || '—') + '</span></div>';
+      } else {
+        html += '<div class="row"><span class="k">Hesap</span><span class="v">' + esc(acc.login || '—') + '</span></div>';
+        html += '<div class="row"><span class="k">E-posta</span><span class="v">' + esc(acc.email || '—') + '</span></div>';
+        html += '<div class="row"><span class="k">Üyelik</span><span class="v">' + esc(acc.create_label || '—') + '</span></div>';
+      }
+      html += '<div class="row"><span class="k">Durum</span><span class="v"><span class="badge ' + esc(acc.status_badge || '') + '">' + esc(acc.status_label || '—') + '</span></span></div>';
+      html += '</div>';
+
+      if (acc.is_banned && ban) {
+        html += '<div class="ban-box"><h4><i class="fa-solid fa-gavel"></i> Hesap Banı</h4><div class="detail-meta" style="margin:0">';
+        html += '<div class="row"><span class="k">Ceza</span><span class="v">' + esc(ban.penalty_name) + '</span></div>';
+        html += '<div class="row"><span class="k">Sebep</span><span class="v">' + esc(ban.reason) + '</span></div>';
+        html += '<div class="row"><span class="k">Süre</span><span class="v">' + esc(ban.days_label) + (ban.remaining_label ? ' · ' + esc(ban.remaining_label) : '') + '</span></div>';
+        if (ban.banned_until_label && ban.banned_until_label !== '—') {
+          html += '<div class="row"><span class="k">Bitiş</span><span class="v">' + esc(ban.banned_until_label) + '</span></div>';
+        }
+        html += '<div class="row"><span class="k">Kanıt</span><span class="v">' + esc(ban.evidence || '—') + '</span></div>';
+        html += '</div><div style="font-size:.75rem;color:var(--ash);margin-top:8px;">Bu ban hesaba aittir; tüm karakterler için geçerlidir.</div></div>';
+      }
+
+      html += '<div class="detail-block"><h4>Hesap Aktiviteleri</h4>';
+      if (!logs.length) {
+        html += '<div style="color:var(--ash);font-size:.85rem;">Henüz kayıt yok.</div>';
+      } else {
+        html += activityTableHtml(logs, activityPage);
+      }
+      html += '</div>';
+
+      bodyEl.innerHTML = html;
+      overlay.classList.add('open');
+
+      bodyEl.querySelectorAll('[data-act-page]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const p = parseInt(btn.getAttribute('data-act-page') || '1', 10);
+          if (!p) return;
+          render(currentCharId, p);
+        });
+      });
+    }
+
+    document.querySelectorAll('[data-open-char]').forEach(el => {
+      el.addEventListener('click', () => render(el.getAttribute('data-open-char')));
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          render(el.getAttribute('data-open-char'));
+        }
+      });
+    });
+    document.querySelectorAll('[data-open-account]').forEach(el => {
+      el.addEventListener('click', () => render(null));
+    });
+    closeBtn?.addEventListener('click', () => overlay.classList.remove('open'));
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
+  })();
 
   (function sessionCountdown() {
     const el = document.getElementById('sessionTimer');

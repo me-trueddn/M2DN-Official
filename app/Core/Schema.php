@@ -140,6 +140,78 @@ final class Schema
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
         );
 
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `online_snapshots` (
+              `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `server_key` VARCHAR(32) NOT NULL DEFAULT 'main',
+              `online_count` INT UNSIGNED NOT NULL DEFAULT 0,
+              `recorded_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_online_server_time` (`server_key`, `recorded_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `account_activity_log` (
+              `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `account_id` INT UNSIGNED NOT NULL,
+              `account_login` VARCHAR(30) NOT NULL DEFAULT '',
+              `action` VARCHAR(64) NOT NULL,
+              `detail` VARCHAR(500) NOT NULL DEFAULT '',
+              `evidence` VARCHAR(1000) NOT NULL DEFAULT '',
+              `actor_account_id` INT UNSIGNED NULL DEFAULT NULL,
+              `actor_login` VARCHAR(30) NOT NULL DEFAULT '',
+              `ip` VARCHAR(45) NOT NULL DEFAULT '',
+              `user_agent` VARCHAR(255) NOT NULL DEFAULT '',
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_activity_account` (`account_id`, `id`),
+              KEY `idx_activity_action` (`action`),
+              KEY `idx_activity_created` (`created_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+
+        self::ensureColumn($pdo, 'account_activity_log', 'evidence', "VARCHAR(1000) NOT NULL DEFAULT '' AFTER `detail`");
+        self::ensureColumn($pdo, 'account_activity_log', 'actor_account_id', 'INT UNSIGNED NULL DEFAULT NULL AFTER `evidence`');
+        self::ensureColumn($pdo, 'account_activity_log', 'actor_login', "VARCHAR(30) NOT NULL DEFAULT '' AFTER `actor_account_id`");
+
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `penalty_templates` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `name` VARCHAR(120) NOT NULL,
+              `reason` VARCHAR(500) NOT NULL,
+              `days` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '0 = süresiz',
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `account_bans` (
+              `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `account_id` INT UNSIGNED NOT NULL,
+              `account_login` VARCHAR(30) NOT NULL DEFAULT '',
+              `penalty_id` INT UNSIGNED NULL DEFAULT NULL,
+              `penalty_name` VARCHAR(120) NOT NULL DEFAULT '',
+              `reason` VARCHAR(500) NOT NULL DEFAULT '',
+              `evidence` VARCHAR(1000) NOT NULL DEFAULT '',
+              `days` INT UNSIGNED NOT NULL DEFAULT 0,
+              `banned_until` DATETIME NULL DEFAULT NULL,
+              `banned_by_id` INT UNSIGNED NOT NULL DEFAULT 0,
+              `banned_by_login` VARCHAR(30) NOT NULL DEFAULT '',
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `lifted_at` DATETIME NULL DEFAULT NULL,
+              PRIMARY KEY (`id`),
+              KEY `idx_bans_account_active` (`account_id`, `is_active`),
+              KEY `idx_bans_until` (`banned_until`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+
+        self::seedPenaltyTemplates($pdo);
+
         $seed = $pdo->prepare(
             "INSERT INTO `settings` (`group_key`, `setting_key`, `setting_value`) VALUES
               ('site', 'name', ?),
@@ -212,6 +284,52 @@ final class Schema
             $pdo->exec(
                 "UPDATE `{$accountDb}`.`account` SET `WebPermission` = 0 WHERE `WebPermission` IS NULL"
             );
+        }
+    }
+
+    private static function ensureColumn(PDO $pdo, string $table, string $column, string $definition): void
+    {
+        $webDb = (string) (Config::get('web_database.database') ?? 'DNWeb');
+        if ($webDb === '' || !preg_match('/^[A-Za-z0-9_]+$/', $webDb)) {
+            $webDb = 'DNWeb';
+        }
+        if (!preg_match('/^[A-Za-z0-9_]+$/', $table) || !preg_match('/^[A-Za-z0-9_]+$/', $column)) {
+            return;
+        }
+
+        $colCheck = $pdo->query(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = " . $pdo->quote($webDb) . "
+               AND TABLE_NAME = " . $pdo->quote($table) . "
+               AND COLUMN_NAME = " . $pdo->quote($column)
+        )->fetchColumn();
+
+        if (!(int) $colCheck) {
+            $pdo->exec("ALTER TABLE `{$webDb}`.`{$table}` ADD COLUMN `{$column}` {$definition}");
+        }
+    }
+
+    private static function seedPenaltyTemplates(PDO $pdo): void
+    {
+        $count = (int) $pdo->query('SELECT COUNT(*) FROM penalty_templates')->fetchColumn();
+        if ($count > 0) {
+            return;
+        }
+
+        $defaults = [
+            ['Bot kullanımı', 'Otomatik bot / macro kullanımı', 3],
+            ['Küfür / taciz', 'Küfür, hakaret veya taciz', 1],
+            ['Hile', 'Hile / duvar içi / hız hilesi', 7],
+            ['Kalıcı hile', 'Ağır hile ihlali — kalıcı ban', 0],
+            ['Ticaret dolandırıcılığı', 'Oyuncu dolandırıcılığı / trade scam', 5],
+        ];
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO penalty_templates (name, reason, days, is_active, created_at, updated_at)
+             VALUES (?, ?, ?, 1, NOW(), NOW())'
+        );
+        foreach ($defaults as $row) {
+            $stmt->execute($row);
         }
     }
 }

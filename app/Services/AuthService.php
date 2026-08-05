@@ -44,7 +44,9 @@ final class AuthService
             return ['ok' => false, 'errors' => ['Kullanıcı adı veya parola hatalı.']];
         }
 
-        if (strtoupper((string) ($row['status'] ?? '')) !== 'OK') {
+        if (strtoupper((string) ($row['status'] ?? '')) === 'BLOCK') {
+            // Banlı hesap panele girebilir; oyuna giremez (status BLOCK)
+        } elseif (strtoupper((string) ($row['status'] ?? '')) !== 'OK') {
             return ['ok' => false, 'errors' => ['Hesabın aktif değil.']];
         }
 
@@ -109,16 +111,21 @@ final class AuthService
         $token = bin2hex(random_bytes(32));
         $tokenHash = self::hashToken($token);
         $ttl = self::ttlMinutes();
-        $expiresAt = (new \DateTimeImmutable('now'))->modify('+' . $ttl . ' minutes')->format('Y-m-d H:i:s');
+        $expiresAt = null; // MySQL NOW() ile yazılacak
         $ip = Security::clientIp();
         $uaHash = hash('sha256', (string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
 
         $web = Database::web();
         $ins = $web->prepare(
             'INSERT INTO web_sessions (account_id, token_hash, ip, user_agent_hash, expires_at, created_at, last_seen_at)
-             VALUES (?, ?, ?, ?, ?, NOW(), NOW())'
+             VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ' . $ttl . ' MINUTE), NOW(), NOW())'
         );
-        $ins->execute([$accountId, $tokenHash, $ip, $uaHash, $expiresAt]);
+        $ins->execute([$accountId, $tokenHash, $ip, $uaHash]);
+
+        $expStmt = $web->prepare('SELECT expires_at FROM web_sessions WHERE token_hash = ? LIMIT 1');
+        $expStmt->execute([$tokenHash]);
+        $expiresAt = (string) ($expStmt->fetchColumn() ?: '');
+        $expiresTs = strtotime($expiresAt) ?: (time() + $ttl * 60);
 
         Session::set('auth', [
             'account_id' => $accountId,
@@ -126,26 +133,34 @@ final class AuthService
             'token' => $token,
             'permission' => $permission,
             'issued_at' => time(),
-            'expires_at' => strtotime($expiresAt),
+            'expires_at' => $expiresTs,
         ]);
 
         Session::forget('simulate_user');
         Session::forget('simulate_token');
         Session::forget('user_id');
         Session::forget('pending_2fa');
+
+        ActivityLogService::log($accountId, ActivityLogService::ACTION_LOGIN, 'Web paneli oturumu açıldı', $login);
     }
 
     public static function logout(): void
     {
         $auth = Session::get('auth');
         $accountId = 0;
+        $login = '';
         $tokenHash = null;
 
         if (is_array($auth)) {
             $accountId = (int) ($auth['account_id'] ?? 0);
+            $login = (string) ($auth['login'] ?? '');
             if (!empty($auth['token'])) {
                 $tokenHash = self::hashToken((string) $auth['token']);
             }
+        }
+
+        if ($accountId > 0) {
+            ActivityLogService::log($accountId, ActivityLogService::ACTION_LOGOUT, 'Web paneli oturumu kapatıldı', $login);
         }
 
         try {
@@ -191,17 +206,17 @@ final class AuthService
             return null;
         }
 
-        // PHP session tarafındaki mutlak süre (girişten itibaren)
-        $sessionExpires = (int) ($auth['expires_at'] ?? 0);
-        if ($sessionExpires > 0 && $sessionExpires < time()) {
-            self::logout();
-            return null;
-        }
-
         $tokenHash = self::hashToken($token);
         $web = Database::web();
+        $ttl = self::ttlMinutes();
+        $maxTtl = self::maxTtlMinutes();
+
+        // Süre kontrolü MySQL NOW() ile — PHP/MySQL saat farkında yanlış logout olmasın
         $stmt = $web->prepare(
-            'SELECT id, account_id, expires_at, created_at FROM web_sessions WHERE token_hash = ? LIMIT 1'
+            'SELECT id, account_id, expires_at, created_at,
+                    (expires_at > NOW()) AS is_alive,
+                    (created_at > (NOW() - INTERVAL ' . $maxTtl . ' MINUTE)) AS within_max
+             FROM web_sessions WHERE token_hash = ? LIMIT 1'
         );
         $stmt->execute([$tokenHash]);
         $session = $stmt->fetch();
@@ -211,7 +226,7 @@ final class AuthService
             return null;
         }
 
-        if (strtotime((string) $session['expires_at']) < time()) {
+        if (!(int) ($session['is_alive'] ?? 0) || !(int) ($session['within_max'] ?? 0)) {
             $web->prepare('DELETE FROM web_sessions WHERE id = ?')->execute([(int) $session['id']]);
             self::purgeExpired();
             self::logout();
@@ -223,8 +238,13 @@ final class AuthService
         $q = $acc->prepare('SELECT id, login, status, WebPermission FROM account WHERE id = ? LIMIT 1');
         $q->execute([$accountId]);
         $row = $q->fetch();
+        if (!$row) {
+            self::logout();
+            return null;
+        }
 
-        if (!$row || strtoupper((string) ($row['status'] ?? '')) !== 'OK') {
+        $status = strtoupper((string) ($row['status'] ?? ''));
+        if ($status !== 'OK' && $status !== 'BLOCK') {
             self::logout();
             return null;
         }
@@ -236,13 +256,33 @@ final class AuthService
 
         $permission = self::normalizePermission($row['WebPermission'] ?? null);
 
-        // Sadece last_seen güncelle — expires_at sabit (timeout uzamaz)
-        $web->prepare('UPDATE web_sessions SET last_seen_at = NOW() WHERE id = ?')
-            ->execute([(int) $session['id']]);
+        // Sliding: idle TTL yenile, mutlak tavanı aşma (rowCount'a güvenme — aynı saniyede 0 dönebilir)
+        $web->prepare(
+            'UPDATE web_sessions
+             SET last_seen_at = NOW(),
+                 expires_at = LEAST(
+                   DATE_ADD(NOW(), INTERVAL ' . $ttl . ' MINUTE),
+                   DATE_ADD(created_at, INTERVAL ' . $maxTtl . ' MINUTE)
+                 )
+             WHERE id = ? AND token_hash = ?'
+        )->execute([(int) $session['id'], $tokenHash]);
+
+        $fresh = $web->prepare(
+            'SELECT expires_at FROM web_sessions WHERE id = ? AND token_hash = ? LIMIT 1'
+        );
+        $fresh->execute([(int) $session['id'], $tokenHash]);
+        $freshRow = $fresh->fetch();
+        if (!$freshRow) {
+            self::logout();
+            return null;
+        }
+
+        $expiresTs = strtotime((string) $freshRow['expires_at']) ?: (time() + $ttl * 60);
+        $createdAt = strtotime((string) $session['created_at']) ?: time();
 
         $auth['permission'] = $permission;
-        $expiresTs = strtotime((string) $session['expires_at']) ?: 0;
         $auth['expires_at'] = $expiresTs;
+        $auth['issued_at'] = (int) ($auth['issued_at'] ?? $createdAt);
         Session::set('auth', $auth);
 
         return [
@@ -272,7 +312,7 @@ final class AuthService
     {
         $user = self::user();
         if ($user === null) {
-            Session::flash('login_errors', ['Oturum süresi doldu veya giriş yapılmadı. Tekrar giriş yap.']);
+            Session::flash('login_errors', ['Oturumun sona erdi. Lütfen tekrar giriş yap.']);
             Session::flash('open_login', true);
             redirect('/');
         }
@@ -305,6 +345,12 @@ final class AuthService
     private static function ttlMinutes(): int
     {
         return max(1, (int) Config::get('security.web_session_ttl', 10));
+    }
+
+    private static function maxTtlMinutes(): int
+    {
+        $max = max(1, (int) Config::get('security.web_session_max_ttl', 120));
+        return max(self::ttlMinutes(), $max);
     }
 
     private static function hashToken(string $token): string

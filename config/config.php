@@ -52,8 +52,10 @@ return [
         'web_password_cost'  => 12,
         'max_login_attempts' => 5,
         'lockout_minutes'    => 15,
-        // Panel oturumu: girişten itibaren sabit süre (dakika). Süre dolunca logout + token silinir.
+        // Panel oturumu: her geçerli istekte süre yenilenir (dakika, idle timeout).
         'web_session_ttl'    => 10,
+        // Girişten itibaren mutlak üst süre (dakika) — sürekli yenilemeyle sonsuz oturum engeli.
+        'web_session_max_ttl'=> 120,
         // Token imzalama — canlıda mutlaka değiştirin
         'app_key'            => 'M2DN-change-me-to-a-long-random-secret-key',
         'force_https'        => false, // Canlıda true yapın
@@ -159,6 +161,17 @@ return [
     */
     'game_limits' => [
         'max_level' => null,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin panel
+    |--------------------------------------------------------------------------
+    | online_window_minutes: player.last_play son X dakika içindeyse "çevrimiçi"
+    | kabul edilir (oyun sunucusu canlı socket tablosu tutmaz).
+    */
+    'admin' => [
+        'online_window_minutes' => 15,
     ],
 
 ];

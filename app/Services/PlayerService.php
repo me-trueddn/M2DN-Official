@@ -295,11 +295,17 @@ final class PlayerService
         $stmt->execute([$accountId]);
         $row = $stmt->fetch() ?: [];
 
+        $st = strtoupper((string) ($row['status'] ?? ''));
+        $isBanned = $st === 'BLOCK';
+
         return [
             'id' => (int) ($row['id'] ?? $accountId),
             'login' => (string) ($row['login'] ?? ''),
             'email' => (string) ($row['email'] ?? ''),
-            'status' => (string) ($row['status'] ?? ''),
+            'status' => $st,
+            'status_label' => $isBanned ? 'Banlı' : ($st === 'OK' ? 'Aktif' : ($st !== '' ? $st : '—')),
+            'status_badge' => $isBanned ? 'banned' : 'online',
+            'is_banned' => $isBanned,
             'create_time' => (string) ($row['create_time'] ?? ''),
             'cash' => (int) ($row['cash'] ?? 0),
             'mileage' => (int) ($row['mileage'] ?? 0),

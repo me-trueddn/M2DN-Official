@@ -24,6 +24,12 @@ $router->post('/panel/guvenlik/2fa/kapat', [UserPanelController::class, 'disable
 $router->post('/panel/guvenlik/ip', [UserPanelController::class, 'setIpLock']);
 $router->post('/panel/guvenlik/bildirim', [UserPanelController::class, 'setLoginNotify']);
 $router->get('/admin', [AdminPanelController::class, 'index']);
+$router->get('/admin/oyuncu', [AdminPanelController::class, 'player']);
+$router->get('/admin/oyuncu/json', [AdminPanelController::class, 'playerJson']);
+$router->post('/admin/oyuncu/ban', [AdminPanelController::class, 'ban']);
+$router->post('/admin/oyuncu/unban', [AdminPanelController::class, 'unban']);
+$router->post('/admin/ayarlar/ceza/kaydet', [AdminPanelController::class, 'savePenalty']);
+$router->post('/admin/ayarlar/ceza/sil', [AdminPanelController::class, 'deletePenalty']);
 
 $router->get('/kayit', [AuthController::class, 'showRegister']);
 $router->post('/kayit', [AuthController::class, 'register']);

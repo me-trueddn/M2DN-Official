@@ -85,10 +85,13 @@ final class AccountService
             $ip,
         ]);
 
+        $accountId = (int) $pdo->lastInsertId();
+        ActivityLogService::log($accountId, ActivityLogService::ACTION_REGISTER, 'Yeni hesap kaydı', $login);
+
         return [
             'ok' => true,
             'errors' => [],
-            'account_id' => (int) $pdo->lastInsertId(),
+            'account_id' => $accountId,
         ];
     }
 
