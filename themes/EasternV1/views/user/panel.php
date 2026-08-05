@@ -20,12 +20,18 @@
 /** @var string|null $panelSuccess */
 /** @var string|null $panelSection */
 /** @var list<array> $activityLogs */
+/** @var array $activityMeta */
+/** @var list<array> $activityLogsModal */
 /** @var array|null $activeBan */
 /** @var list<array> $ticketCategories */
 /** @var list<array> $userTickets */
 /** @var list<array> $ticketFileTypes */
 /** @var list<array> $announcements */
 /** @var list<array> $overviewAnnouncements */
+/** @var list<array> $guildWars */
+/** @var list<array> $guildWarHistory */
+/** @var list<array> $guildWarBoard */
+/** @var array $rankings */
 /** @var array $siteBrand */
 /** @var string $appVersion */
 
