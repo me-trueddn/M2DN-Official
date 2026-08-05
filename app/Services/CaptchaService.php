@@ -109,8 +109,6 @@ window.M2DN_CAPTCHA = { provider: {$providerJson}, siteKey: {$siteKeyJson} };
     if (!el || !el.isConnected) return false;
     var overlay = el.closest('.modal-overlay');
     if (overlay && !overlay.classList.contains('open')) return false;
-    var style = window.getComputedStyle(el);
-    if (style.display === 'none' || style.visibility === 'hidden') return false;
     return true;
   }
 
@@ -140,6 +138,8 @@ window.M2DN_CAPTCHA = { provider: {$providerJson}, siteKey: {$siteKeyJson} };
     }
 
     try {
+      // Önceki başarısız denemeden kalan içeriği temizle
+      el.innerHTML = '';
       var id;
       if (window.M2DN_CAPTCHA.provider === 'cloudflare') {
         id = window.turnstile.render(el, {
@@ -157,7 +157,7 @@ window.M2DN_CAPTCHA = { provider: {$providerJson}, siteKey: {$siteKeyJson} };
         el.setAttribute('data-widget-id', String(id));
       }
     } catch (e) {
-      // iframe henüz hazır değilse bir sonraki refresh dener
+      el.removeAttribute('data-widget-id');
     }
   }
 

@@ -153,7 +153,19 @@ final class Security
         header('X-Frame-Options: SAMEORIGIN');
         header('Referrer-Policy: strict-origin-when-cross-origin');
         header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
-        header("Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; script-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self';");
+        // Captcha (Google reCAPTCHA + Cloudflare Turnstile) script/iframe/img izinleri
+        header(
+            "Content-Security-Policy: "
+            . "default-src 'self'; "
+            . "base-uri 'self'; "
+            . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
+            . "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; "
+            . "script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com https://www.recaptcha.net https://challenges.cloudflare.com; "
+            . "img-src 'self' data: https://www.gstatic.com https://www.google.com https://challenges.cloudflare.com; "
+            . "frame-src 'self' https://www.google.com https://www.recaptcha.net https://challenges.cloudflare.com; "
+            . "connect-src 'self' https://www.google.com https://challenges.cloudflare.com; "
+            . "frame-ancestors 'self';"
+        );
 
         if (Config::get('security.force_https') && (!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off')) {
             $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
