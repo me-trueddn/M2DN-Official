@@ -242,6 +242,26 @@ final class TicketService
             }
 
             $web->commit();
+
+            $linkAdmin = '/admin?section=destekler&ticket=' . $ticketId;
+            NotificationService::pushStaff(
+                'ticket_created',
+                'Yeni ticket: ' . $code,
+                $subject . ' · ' . $login,
+                $linkAdmin
+            );
+            foreach (NotificationService::staffAccountIds() as $staffId) {
+                $contact = self::accountContact($staffId);
+                if ($contact && $contact['email'] !== '') {
+                    MailService::sendTemplate('ticket_created', $contact['email'], $contact['login'], [
+                        'login' => $login,
+                        'code' => $code,
+                        'subject' => $subject,
+                        'link' => $linkAdmin,
+                    ]);
+                }
+            }
+
             return ['ok' => true, 'errors' => [], 'ticket_id' => $ticketId, 'code' => $code];
         } catch (\Throwable) {
             try {
@@ -306,6 +326,39 @@ final class TicketService
                     ->execute([$statusId, $ticketId]);
             }
 
+            $code = (string) ($ticket['public_code'] ?? '');
+            $subject = (string) ($ticket['subject'] ?? '');
+            $ownerId = (int) ($ticket['account_id'] ?? 0);
+            $ownerLogin = (string) ($ticket['account_login'] ?? '');
+
+            if ($isStaff && $ownerId > 0) {
+                $link = '/panel?ticket=' . $ticketId . '&section=destek';
+                NotificationService::push(
+                    $ownerId,
+                    'ticket_replied',
+                    'Ticket yanıtlandı: ' . $code,
+                    $subject,
+                    $link
+                );
+                $contact = self::accountContact($ownerId);
+                if ($contact && $contact['email'] !== '') {
+                    MailService::sendTemplate('ticket_replied', $contact['email'], $ownerLogin, [
+                        'login' => $ownerLogin,
+                        'code' => $code,
+                        'subject' => $subject,
+                        'link' => $link,
+                    ]);
+                }
+            } elseif (!$isStaff) {
+                $linkAdmin = '/admin?section=destekler&ticket=' . $ticketId;
+                NotificationService::pushStaff(
+                    'ticket_replied',
+                    'Ticket yanıtı: ' . $code,
+                    $ownerLogin . ' · ' . $subject,
+                    $linkAdmin
+                );
+            }
+
             return ['ok' => true, 'errors' => []];
         } catch (\Throwable) {
             return ['ok' => false, 'errors' => ['Yanıt kaydedilemedi.']];
@@ -319,13 +372,63 @@ final class TicketService
         if ($statusId === null) {
             return ['ok' => false, 'errors' => ['Kapalı durumu yok.']];
         }
+        $ticket = self::getTicket($ticketId);
         try {
             Database::web()->prepare(
                 'UPDATE tickets SET status_id=?, closed_at=NOW(), updated_at=NOW() WHERE id=?'
             )->execute([$statusId, $ticketId]);
+
+            if ($ticket) {
+                $ownerId = (int) ($ticket['account_id'] ?? 0);
+                $code = (string) ($ticket['public_code'] ?? '');
+                $subject = (string) ($ticket['subject'] ?? '');
+                $ownerLogin = (string) ($ticket['account_login'] ?? '');
+                if ($ownerId > 0) {
+                    $link = '/panel?ticket=' . $ticketId . '&section=destek';
+                    NotificationService::push(
+                        $ownerId,
+                        'ticket_closed',
+                        'Ticket kapatıldı: ' . $code,
+                        $subject,
+                        $link
+                    );
+                    $contact = self::accountContact($ownerId);
+                    if ($contact && $contact['email'] !== '') {
+                        MailService::sendTemplate('ticket_closed', $contact['email'], $ownerLogin, [
+                            'login' => $ownerLogin,
+                            'code' => $code,
+                            'subject' => $subject,
+                            'link' => $link,
+                        ]);
+                    }
+                }
+            }
+
             return ['ok' => true, 'errors' => []];
         } catch (\Throwable) {
             return ['ok' => false, 'errors' => ['Kapatılamadı.']];
+        }
+    }
+
+    /** @return array{login:string, email:string}|null */
+    private static function accountContact(int $accountId): ?array
+    {
+        if ($accountId <= 0) {
+            return null;
+        }
+        try {
+            $stmt = Database::account()->prepare('SELECT login, email FROM account WHERE id = ? LIMIT 1');
+            $stmt->execute([$accountId]);
+            $row = $stmt->fetch();
+            if (!$row) {
+                return null;
+            }
+            return [
+                'login' => (string) ($row['login'] ?? ''),
+                'email' => trim((string) ($row['email'] ?? '')),
+            ];
+        } catch (\Throwable) {
+            return null;
         }
     }
 

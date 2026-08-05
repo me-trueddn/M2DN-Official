@@ -47,15 +47,33 @@ final class Theme
         $data['appVersion'] = (string) Config::get('app.version', '1.0.0');
         $data['theme'] = self::active();
         $data['themeUrl'] = self::assetUrl();
-        // Oranlar: DB settings öncelikli
+        // Oranlar + marka: DB settings öncelikli
         if (class_exists(\App\Services\SiteContentService::class)) {
             try {
                 $data['rates'] = \App\Services\SiteContentService::rates();
             } catch (\Throwable) {
                 $data['rates'] = Config::get('rates', []);
             }
+            try {
+                if (!isset($data['siteBrand']) || !is_array($data['siteBrand'])) {
+                    $data['siteBrand'] = \App\Services\SiteContentService::branding();
+                }
+            } catch (\Throwable) {
+                $data['siteBrand'] = \App\Services\SiteContentService::brandingDefaults();
+            }
         } else {
             $data['rates'] = Config::get('rates', []);
+            $data['siteBrand'] = [
+                'logo_url' => self::assetUrl('img/logo-nav.svg'),
+                'icon_url' => self::assetUrl('img/logo-mark.svg'),
+                'logo_path' => '',
+                'icon_path' => '',
+                'home_size' => 48,
+                'user_size' => 36,
+                'admin_size' => 36,
+                'has_custom_logo' => false,
+                'has_custom_icon' => false,
+            ];
         }
         $data['servers'] = ServerManager::all();
         $data['currentServer'] = ServerManager::current();
@@ -104,3 +122,4 @@ final class Theme
         return $themes;
     }
 }
+

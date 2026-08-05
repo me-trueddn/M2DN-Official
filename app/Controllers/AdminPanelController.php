@@ -12,8 +12,10 @@ use App\Services\AdminPlayerService;
 use App\Services\AdminStatsService;
 use App\Services\AnnouncementService;
 use App\Services\AuthService;
+use App\Services\MailService;
 use App\Services\PenaltyService;
 use App\Services\PermissionService;
+use App\Services\PasswordResetService;
 use App\Services\SiteContentService;
 use App\Services\TicketService;
 
@@ -22,6 +24,9 @@ final class AdminPanelController
     public function index(): void
     {
         $user = AuthService::requireAdmin();
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
         PenaltyService::liftExpired();
 
         $stats = AdminStatsService::overview();
@@ -34,6 +39,7 @@ final class AdminPanelController
         $ticketQ = trim((string) ($_GET['ticket_q'] ?? ''));
         $logQ = trim((string) ($_GET['log_q'] ?? ''));
         $logPage = (int) ($_GET['log_page'] ?? 1);
+        $mailQ = trim((string) ($_GET['mail_q'] ?? ''));
 
         $section = (string) ($_GET['section'] ?? 'ozet');
         if ($ticketQ !== '' || isset($_GET['ticket'])) {
@@ -44,12 +50,14 @@ final class AdminPanelController
             }
         } elseif ($q !== '' || $status !== '' || isset($_GET['page']) || isset($_GET['per'])) {
             $section = 'oyuncular';
+        } elseif ($mailQ !== '' || isset($_GET['mail_tab'])) {
+            $section = 'mail-ayarlari';
         }
         $allowed = [
             'ozet', 'oyuncular', 'banlar', 'duyurular', 'destekler', 'sunucu', 'loglar',
             'ceza-ayarlari', 'patch-linkleri', 'ozellikler-ayarlari', 'siniflar-ayarlari',
             'oranlar-ayarlari', 'siradaki-bolum', 'galeri-ayarlari', 'footer-ayarlari',
-            'yetki-gruplari', 'ticket-ayarlari', 'duyuru-turleri',
+            'logo-ayarlari', 'mail-ayarlari', 'yetki-gruplari', 'ticket-ayarlari', 'duyuru-turleri',
         ];
         if (!in_array($section, $allowed, true)) {
             $section = 'ozet';
@@ -68,7 +76,7 @@ final class AdminPanelController
         $settingsSections = [
             'ceza-ayarlari', 'patch-linkleri', 'ozellikler-ayarlari', 'siniflar-ayarlari',
             'oranlar-ayarlari', 'siradaki-bolum', 'galeri-ayarlari', 'footer-ayarlari',
-            'yetki-gruplari', 'ticket-ayarlari', 'duyuru-turleri',
+            'logo-ayarlari', 'mail-ayarlari', 'yetki-gruplari', 'ticket-ayarlari', 'duyuru-turleri',
         ];
         if (in_array($section, $settingsSections, true) && empty($permFlags[PermissionService::FLAG_SITE_SETTINGS])) {
             Session::flash('panel_errors', ['Ayarlara erişim yetkin yok.']);
@@ -147,6 +155,23 @@ final class AdminPanelController
             'announcements' => AnnouncementService::list(false, 80),
             'overviewAnnouncements' => AnnouncementService::list(true, 8),
             'openTicketCount' => TicketService::openCountAll(),
+            'mailServers' => !empty($permFlags[PermissionService::FLAG_SITE_SETTINGS]) ? MailService::servers() : [],
+            'mailPresets' => MailService::presets(),
+            'mailTemplates' => !empty($permFlags[PermissionService::FLAG_SITE_SETTINGS]) ? MailService::templates() : [],
+            'mailLogs' => !empty($permFlags[PermissionService::FLAG_SITE_SETTINGS]) ? MailService::logs(10, $mailQ) : [],
+            'mailLogSearch' => $mailQ,
+            'mailTab' => (static function () use ($mailQ): string {
+                $flash = Session::flash('mail_tab');
+                if (is_string($flash) && $flash !== '') {
+                    return $flash;
+                }
+                $get = trim((string) ($_GET['mail_tab'] ?? ''));
+                if ($mailQ !== '' || $get === 'loglar') {
+                    return 'loglar';
+                }
+                return in_array($get, ['sunucu', 'bildirimler', 'test', 'loglar'], true) ? $get : 'sunucu';
+            })(),
+            'authPermission' => AuthService::normalizePermission($user['permission'] ?? 0),
         ]);
     }
 
@@ -184,6 +209,62 @@ final class AdminPanelController
             return;
         }
         echo json_encode(['ok' => true, 'data' => $detail], JSON_UNESCAPED_UNICODE);
+    }
+
+    public function playerSearch(): void
+    {
+        $user = AuthService::requireAdmin();
+        header('Content-Type: application/json; charset=utf-8');
+        $canSearch = PermissionService::userHasFlag($user, PermissionService::FLAG_PLAYER_DETAIL)
+            || PermissionService::userHasFlag($user, PermissionService::FLAG_MENU_OYUNCULAR);
+        if (!$canSearch) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'error' => 'Yetkin yok.', 'results' => []], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        $q = trim((string) ($_GET['q'] ?? ''));
+        $results = AdminPlayerService::searchSuggest($q, 12);
+        echo json_encode(['ok' => true, 'results' => $results, 'q' => $q], JSON_UNESCAPED_UNICODE);
+    }
+
+    public function changeEmail(): void
+    {
+        $user = PermissionService::requireFlag(PermissionService::FLAG_PLAYER_DETAIL);
+        Security::requireCsrf('login');
+        $accountId = (int) ($_POST['account_id'] ?? 0);
+        $email = (string) ($_POST['email'] ?? '');
+        $result = PasswordResetService::changeEmail($accountId, $email, $user);
+        $this->flashResult($result, 'E-posta güncellendi.', 'oyuncular');
+        redirect('/admin?section=oyuncular');
+    }
+
+    public function sendPasswordReset(): void
+    {
+        $user = PermissionService::requireFlag(PermissionService::FLAG_PLAYER_DETAIL);
+        Security::requireCsrf('login');
+        $accountId = (int) ($_POST['account_id'] ?? 0);
+        $result = PasswordResetService::adminSendLink($accountId, [
+            'account_id' => (int) $user['account_id'],
+            'login' => (string) $user['login'],
+            'permission' => AuthService::normalizePermission($user['permission'] ?? 0),
+        ]);
+        $this->flashResult($result, 'Şifre sıfırlama bağlantısı gönderildi.', 'oyuncular');
+        redirect('/admin?section=oyuncular');
+    }
+
+    public function setPassword(): void
+    {
+        $user = PermissionService::requireFlag(PermissionService::FLAG_PLAYER_DETAIL);
+        Security::requireCsrf('login');
+        $accountId = (int) ($_POST['account_id'] ?? 0);
+        $password = (string) ($_POST['password'] ?? '');
+        $result = PasswordResetService::adminSetPassword($accountId, $password, [
+            'account_id' => (int) $user['account_id'],
+            'login' => (string) $user['login'],
+            'permission' => AuthService::normalizePermission($user['permission'] ?? 0),
+        ]);
+        $this->flashResult($result, 'Şifre güncellendi.', 'oyuncular');
+        redirect('/admin?section=oyuncular');
     }
 
     public function ban(): void

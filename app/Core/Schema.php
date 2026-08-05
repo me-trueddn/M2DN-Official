@@ -217,6 +217,7 @@ final class Schema
         self::seedPermissionAndTickets($pdo);
         self::ensureAdminActionLogs($pdo);
         self::ensureAnnouncementTables($pdo);
+        self::ensureMailAndNotificationTables($pdo);
 
         $seed = $pdo->prepare(
             "INSERT INTO `settings` (`group_key`, `setting_key`, `setting_value`) VALUES
@@ -756,6 +757,158 @@ final class Schema
               KEY `idx_aal_created` (`created_at`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
         );
+    }
+
+    private static function ensureMailAndNotificationTables(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `mail_servers` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `name` VARCHAR(120) NOT NULL,
+              `provider` VARCHAR(32) NOT NULL DEFAULT 'custom',
+              `host` VARCHAR(190) NOT NULL,
+              `port` INT UNSIGNED NOT NULL DEFAULT 587,
+              `encryption` VARCHAR(16) NOT NULL DEFAULT 'tls',
+              `username` VARCHAR(190) NOT NULL DEFAULT '',
+              `password_enc` TEXT NOT NULL,
+              `from_email` VARCHAR(190) NOT NULL DEFAULT '',
+              `from_name` VARCHAR(120) NOT NULL DEFAULT '',
+              `is_active` TINYINT(1) NOT NULL DEFAULT 0,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_mail_active` (`is_active`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `mail_templates` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `code` VARCHAR(40) NOT NULL,
+              `name` VARCHAR(120) NOT NULL,
+              `subject` VARCHAR(200) NOT NULL DEFAULT '',
+              `body_html` MEDIUMTEXT NOT NULL,
+              `is_enabled` TINYINT(1) NOT NULL DEFAULT 0,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `uq_mail_tpl_code` (`code`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `mail_logs` (
+              `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `template_code` VARCHAR(40) NOT NULL DEFAULT '',
+              `to_email` VARCHAR(190) NOT NULL DEFAULT '',
+              `to_login` VARCHAR(30) NOT NULL DEFAULT '',
+              `subject` VARCHAR(200) NOT NULL DEFAULT '',
+              `body_html` MEDIUMTEXT NULL,
+              `status` VARCHAR(20) NOT NULL DEFAULT 'ok',
+              `error` VARCHAR(500) NOT NULL DEFAULT '',
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_ml_created` (`created_at`),
+              KEY `idx_ml_to_email` (`to_email`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+
+        self::ensureColumn($pdo, 'mail_logs', 'body_html', 'MEDIUMTEXT NULL AFTER `subject`');
+        try {
+            $pdo->exec('ALTER TABLE `mail_logs` ADD KEY `idx_ml_to_email` (`to_email`)');
+        } catch (\Throwable) {
+            // index already exists
+        }
+
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `password_resets` (
+              `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `account_id` INT UNSIGNED NOT NULL,
+              `account_login` VARCHAR(30) NOT NULL DEFAULT '',
+              `token_hash` CHAR(64) NOT NULL,
+              `expires_at` DATETIME NOT NULL,
+              `used_at` DATETIME NULL DEFAULT NULL,
+              `created_by_id` INT UNSIGNED NOT NULL DEFAULT 0,
+              `created_by_login` VARCHAR(30) NOT NULL DEFAULT '',
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `uq_pr_token` (`token_hash`),
+              KEY `idx_pr_account` (`account_id`),
+              KEY `idx_pr_expires` (`expires_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `notifications` (
+              `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `recipient_account_id` INT UNSIGNED NOT NULL,
+              `type` VARCHAR(40) NOT NULL DEFAULT '',
+              `title` VARCHAR(200) NOT NULL DEFAULT '',
+              `body` VARCHAR(1000) NOT NULL DEFAULT '',
+              `link` VARCHAR(500) NOT NULL DEFAULT '',
+              `is_read` TINYINT(1) NOT NULL DEFAULT 0,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_notif_recipient` (`recipient_account_id`, `is_read`, `created_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+
+        self::seedMailTemplates($pdo);
+    }
+
+    private static function seedMailTemplates(PDO $pdo): void
+    {
+        $bodies = \App\Services\MailService::defaultBodies();
+        $defaults = [
+            ['register', 'Kayıt bildirimi', 'Hoş geldin {{login}}', $bodies['register']],
+            ['password_reset', 'Şifre sıfırlama', 'Şifre sıfırlama talebi', $bodies['password_reset']],
+            ['ban', 'Banlandınız bildirimi', 'Hesabın banlandı', $bodies['ban']],
+            ['unban', 'Ban açıldı bildirimi', 'Banın kaldırıldı', $bodies['unban']],
+            ['ticket_created', 'Ticket oluştu', 'Yeni destek talebi {{code}}', $bodies['ticket_created']],
+            ['ticket_replied', 'Ticket cevaplandı', 'Ticket {{code}} yanıtlandı', $bodies['ticket_replied']],
+            ['ticket_closed', 'Ticket kapandı', 'Ticket {{code}} kapatıldı', $bodies['ticket_closed']],
+        ];
+        $insert = $pdo->prepare(
+            'INSERT IGNORE INTO mail_templates (code, name, subject, body_html, is_enabled)
+             VALUES (?,?,?,?,0)'
+        );
+        foreach ($defaults as $row) {
+            $insert->execute($row);
+        }
+
+        // Kart tabanı v2: eski / açık-arka-planlı / bozuk şablonları senkronla
+        try {
+            $upd = $pdo->prepare(
+                'UPDATE mail_templates SET subject=?, body_html=?, updated_at=NOW() WHERE code=?'
+            );
+            $subjects = [
+                'register' => 'Hoş geldin {{login}}',
+                'password_reset' => 'Şifre sıfırlama talebi',
+                'ban' => 'Hesabın banlandı',
+                'unban' => 'Banın kaldırıldı',
+                'ticket_created' => 'Yeni destek talebi {{code}}',
+                'ticket_replied' => 'Ticket {{code}} yanıtlandı',
+                'ticket_closed' => 'Ticket {{code}} kapatıldı',
+            ];
+            foreach ($bodies as $code => $body) {
+                $stmt = $pdo->prepare('SELECT body_html FROM mail_templates WHERE code=? LIMIT 1');
+                $stmt->execute([$code]);
+                $current = (string) ($stmt->fetchColumn() ?: '');
+                $needsSync = $current === ''
+                    || !str_contains($current, 'm2dn-mail-card-v2')
+                    || str_contains($current, '#f4efe6')
+                    || str_contains($current, '127.0.0.1')
+                    || \App\Services\MailService::isBrokenEmailHtml($current);
+                if ($needsSync) {
+                    $upd->execute([
+                        $subjects[$code] ?? 'Bildirim',
+                        $body,
+                        $code,
+                    ]);
+                }
+            }
+        } catch (\Throwable) {
+            // ignore
+        }
     }
 
     private static function ensureAccountWebPermission(PDO $pdo): void

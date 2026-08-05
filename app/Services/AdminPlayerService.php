@@ -152,6 +152,34 @@ final class AdminPlayerService
     }
 
     /**
+     * Üst çubuk anlık arama (hesap / e-posta / karakter).
+     *
+     * @return list<array{id:int, login:string, email:string, character_name:string, status_label:string, status_badge:string, role_label:string}>
+     */
+    public static function searchSuggest(string $q, int $limit = 12, ?string $serverKey = null): array
+    {
+        $q = trim($q);
+        if (mb_strlen($q) < 2) {
+            return [];
+        }
+        $limit = max(1, min(30, $limit));
+        $result = self::listAccounts($q, '', 1, $limit, $serverKey);
+        $out = [];
+        foreach ($result['accounts'] as $acc) {
+            $out[] = [
+                'id' => (int) $acc['id'],
+                'login' => (string) $acc['login'],
+                'email' => (string) $acc['email'],
+                'character_name' => (string) ($acc['character_name'] ?? '—'),
+                'status_label' => (string) ($acc['status_label'] ?? ''),
+                'status_badge' => (string) ($acc['status_badge'] ?? ''),
+                'role_label' => (string) ($acc['role_label'] ?? 'Oyuncu'),
+            ];
+        }
+        return $out;
+    }
+
+    /**
      * @return array{
      *   account: array,
      *   characters: list<array>,

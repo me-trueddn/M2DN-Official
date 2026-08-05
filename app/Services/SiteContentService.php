@@ -405,4 +405,77 @@ final class SiteContentService
             return [];
         }
     }
+
+    /**
+     * Logo / ikon ayarları (Ayarlar → Logo).
+     *
+     * @return array{
+     *   logo_url:string, icon_url:string,
+     *   logo_path:string, icon_path:string,
+     *   home_size:int, user_size:int, admin_size:int,
+     *   has_custom_logo:bool, has_custom_icon:bool
+     * }
+     */
+    public static function branding(): array
+    {
+        $defaults = self::brandingDefaults();
+        $logoPath = trim((string) (self::get('logo', 'logo_path', '') ?? ''));
+        $iconPath = trim((string) (self::get('logo', 'icon_path', '') ?? ''));
+        $home = (int) (self::get('logo', 'home_size', (string) $defaults['home_size']) ?? $defaults['home_size']);
+        $user = (int) (self::get('logo', 'user_size', (string) $defaults['user_size']) ?? $defaults['user_size']);
+        $admin = (int) (self::get('logo', 'admin_size', (string) $defaults['admin_size']) ?? $defaults['admin_size']);
+
+        return [
+            'logo_path' => $logoPath,
+            'icon_path' => $iconPath,
+            'logo_url' => self::resolveBrandUrl($logoPath, $defaults['logo_url']),
+            'icon_url' => self::resolveBrandUrl($iconPath, $defaults['icon_url']),
+            'home_size' => max(16, min(160, $home > 0 ? $home : $defaults['home_size'])),
+            'user_size' => max(16, min(120, $user > 0 ? $user : $defaults['user_size'])),
+            'admin_size' => max(16, min(120, $admin > 0 ? $admin : $defaults['admin_size'])),
+            'has_custom_logo' => $logoPath !== '',
+            'has_custom_icon' => $iconPath !== '',
+        ];
+    }
+
+    /** @return array{logo_url:string, icon_url:string, logo_path:string, icon_path:string, home_size:int, user_size:int, admin_size:int, has_custom_logo:bool, has_custom_icon:bool} */
+    public static function brandingDefaults(): array
+    {
+        return [
+            'logo_url' => \App\Core\Theme::assetUrl('img/logo-nav.svg'),
+            'icon_url' => \App\Core\Theme::assetUrl('img/logo-mark.svg'),
+            'logo_path' => '',
+            'icon_path' => '',
+            'home_size' => 48,
+            'user_size' => 36,
+            'admin_size' => 36,
+            'has_custom_logo' => false,
+            'has_custom_icon' => false,
+        ];
+    }
+
+    public static function clearBrandFile(string $which): void
+    {
+        $key = $which === 'icon' ? 'icon_path' : 'logo_path';
+        $path = trim((string) (self::get('logo', $key, '') ?? ''));
+        if ($path !== '' && str_starts_with($path, '/uploads/branding/')) {
+            $full = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . str_replace('/', DIRECTORY_SEPARATOR, $path);
+            if (is_file($full)) {
+                @unlink($full);
+            }
+        }
+        self::set('logo', $key, '');
+    }
+
+    private static function resolveBrandUrl(string $stored, string $fallback): string
+    {
+        $stored = trim($stored);
+        if ($stored === '') {
+            return $fallback;
+        }
+        if (str_starts_with($stored, 'http://') || str_starts_with($stored, 'https://') || str_starts_with($stored, '/')) {
+            return $stored;
+        }
+        return $fallback;
+    }
 }

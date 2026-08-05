@@ -5,10 +5,17 @@
 /** @var list<string>|mixed $errors */
 /** @var array|mixed $old */
 /** @var mixed $success */
+/** @var array $siteBrand */
 
 $errors = is_array($errors ?? null) ? $errors : [];
 $old = is_array($old ?? null) ? $old : [];
 $success = is_string($success ?? null) ? $success : null;
+if (!isset($siteBrand) || !is_array($siteBrand)) {
+    $siteBrand = \App\Services\SiteContentService::brandingDefaults();
+}
+$brandIcon = (string) ($siteBrand['icon_url'] ?? asset('img/logo-mark.svg'));
+$brandLogo = (string) ($siteBrand['logo_url'] ?? asset('img/logo-nav.svg'));
+$brandHomeSize = (int) ($siteBrand['home_size'] ?? 48);
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -16,9 +23,9 @@ $success = is_string($success ?? null) ? $success : null;
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kayıt Ol | <?= e($appName) ?></title>
-<link rel="icon" href="<?= e(asset('img/logo-mark.svg')) ?>" type="image/svg+xml">
-<link rel="shortcut icon" href="<?= e(asset('img/logo-mark.svg')) ?>">
-<link rel="apple-touch-icon" href="<?= e(asset('img/logo-mark.svg')) ?>">
+<link rel="icon" href="<?= e($brandIcon) ?>">
+<link rel="shortcut icon" href="<?= e($brandIcon) ?>">
+<link rel="apple-touch-icon" href="<?= e($brandIcon) ?>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=Ma+Shan+Zheng&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -54,7 +61,7 @@ $success = is_string($success ?? null) ? $success : null;
     margin-bottom:22px; line-height:0;
   }
   .brand:hover{opacity:.92;}
-  .brand-logo{height:52px; width:auto; display:block;}
+  .brand-logo{height:<?= max(32, $brandHomeSize) ?>px; width:auto; display:block; object-fit:contain;}
 
   .card{
     background:var(--obsidian-2);
@@ -114,7 +121,7 @@ $success = is_string($success ?? null) ? $success : null;
 <body>
   <div class="wrap">
     <a href="<?= e(url('/')) ?>" class="brand" aria-label="<?= e($appName) ?> Anasayfa">
-      <img class="brand-logo" src="<?= e(asset('img/logo-nav.svg')) ?>" alt="<?= e($appName) ?>">
+      <img class="brand-logo" src="<?= e($brandLogo) ?>" alt="<?= e($appName) ?>">
     </a>
 
     <div class="card">

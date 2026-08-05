@@ -22,6 +22,7 @@
 /** @var array $siteRates */
 /** @var array $siteChapter */
 /** @var string $appVersion */
+/** @var array $siteBrand */
 /** @var array<string, bool> $permFlags */
 /** @var array<string, string> $permFlagDefs */
 /** @var list<array> $permissionGroups */
@@ -37,6 +38,13 @@
 /** @var list<array> $announcements */
 /** @var list<array> $overviewAnnouncements */
 /** @var int $openTicketCount */
+/** @var list<array> $mailServers */
+/** @var array<string, array{label:string, host:string, port:int, encryption:string}> $mailPresets */
+/** @var list<array> $mailTemplates */
+/** @var list<array> $mailLogs */
+/** @var string $mailLogSearch */
+/** @var string $mailTab */
+/** @var int $authPermission */
 
 $appName = $appName ?? 'M2DN';
 $appTagline = $appTagline ?? '';
@@ -99,6 +107,27 @@ $overviewAnnouncements = is_array($overviewAnnouncements ?? null) ? $overviewAnn
 $latestOverviewAnn = $overviewAnnouncements[0] ?? null;
 $pastOverviewAnn = array_slice($overviewAnnouncements, 1);
 $openTicketCount = (int) ($openTicketCount ?? 0);
+if (!isset($mailServers) || !is_array($mailServers)) {
+    $mailServers = [];
+}
+if (!isset($mailPresets) || !is_array($mailPresets)) {
+    $mailPresets = [];
+}
+if (!isset($mailTemplates) || !is_array($mailTemplates)) {
+    $mailTemplates = [];
+}
+if (!isset($mailLogs) || !is_array($mailLogs)) {
+    $mailLogs = [];
+}
+$mailLogSearch = isset($mailLogSearch) && is_string($mailLogSearch) ? $mailLogSearch : '';
+$mailTabRaw = isset($mailTab) && is_string($mailTab) ? $mailTab : '';
+$mailTab = in_array($mailTabRaw, ['sunucu', 'bildirimler', 'test', 'loglar'], true) ? $mailTabRaw : 'sunucu';
+$authPermission = (int) (isset($authPermission) ? $authPermission : ($authUser['permission'] ?? 0));if (!isset($siteBrand) || !is_array($siteBrand)) {
+    $siteBrand = \App\Services\SiteContentService::brandingDefaults();
+}
+$brandIcon = (string) ($siteBrand['icon_url'] ?? asset('img/logo-mark.svg'));
+$brandLogo = (string) ($siteBrand['logo_url'] ?? asset('img/logo-nav.svg'));
+$brandAdminSize = (int) ($siteBrand['admin_size'] ?? 36);
 $can = static function (string $flag) use ($permFlags): bool {
     return !empty($permFlags[$flag]);
 };
@@ -109,9 +138,9 @@ $can = static function (string $flag) use ($permFlags): bool {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Yönetim Paneli | <?= e($appName) ?></title>
-<link rel="icon" href="<?= e(asset('img/logo-mark.svg')) ?>" type="image/svg+xml">
-<link rel="shortcut icon" href="<?= e(asset('img/logo-mark.svg')) ?>">
-<link rel="apple-touch-icon" href="<?= e(asset('img/logo-mark.svg')) ?>">
+<link rel="icon" href="<?= e($brandIcon) ?>">
+<link rel="shortcut icon" href="<?= e($brandIcon) ?>">
+<link rel="apple-touch-icon" href="<?= e($brandIcon) ?>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=Ma+Shan+Zheng&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -141,7 +170,7 @@ $can = static function (string $flag) use ($permFlags): bool {
   /* ===== SIDEBAR ===== */
   .sidebar{background:var(--obsidian-2); border-right:1px solid var(--line); padding:26px 18px; display:flex; flex-direction:column; gap:6px; position:sticky; top:0; height:100vh; overflow-y:auto;}
   .sidebar-brand{display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:800; font-size:1.15rem; letter-spacing:.06em; color:var(--gold-light); padding:0 10px 10px; margin-bottom:6px; border-bottom:1px solid var(--line); text-decoration:none;}
-  .sidebar-brand img{width:36px; height:36px; flex-shrink:0; display:block;}
+  .sidebar-brand img{width:<?= $brandAdminSize ?>px; height:<?= $brandAdminSize ?>px; object-fit:contain; flex-shrink:0; display:block;}
   .sidebar-brand span{color:var(--blood-light);}
   .sidebar-brand small{display:block; font-family:var(--font-body); font-weight:600; font-size:.6rem; letter-spacing:.16em; color:var(--blood-light); text-transform:uppercase; margin-top:2px;}
   .sidebar-brand:hover{opacity:.92;}
@@ -167,10 +196,79 @@ $can = static function (string $flag) use ($permFlags): bool {
   .topbar h1{font-size:1.5rem; color:var(--parchment);}
   .topbar .sub{color:var(--ash); font-size:.85rem; margin-top:4px; font-family:var(--font-body);}
   .top-actions{display:flex; align-items:center; gap:16px;}
-  .search-box{display:flex; align-items:center; gap:8px; background:var(--obsidian-2); border:1px solid var(--line); padding:9px 14px; font-size:.82rem; color:var(--ash); min-width:240px;}
+  .search-wrap{position:relative; min-width:260px;}
+  .search-box{display:flex; align-items:center; gap:8px; background:var(--obsidian-2); border:1px solid var(--line); padding:9px 14px; font-size:.82rem; color:var(--ash); width:100%;}
   .search-box input{background:none; border:none; outline:none; color:var(--parchment); font-size:.82rem; width:100%;}
-  .icon-btn{position:relative; width:38px; height:38px; display:flex; align-items:center; justify-content:center; background:var(--obsidian-2); border:1px solid var(--line); color:var(--gold-light); font-size:.9rem;}
-  .icon-btn .dot{position:absolute; top:6px; right:7px; width:6px; height:6px; border-radius:50%; background:var(--blood-light);}
+  .search-drop{display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; background:var(--obsidian-2); border:1px solid var(--line); z-index:80; max-height:340px; overflow:auto; box-shadow:0 16px 40px rgba(0,0,0,.45);}
+  .search-drop.open{display:block;}
+  .search-drop .empty{padding:12px 14px; font-size:.8rem; color:var(--ash);}
+  .search-drop button{
+    display:flex; flex-direction:column; align-items:flex-start; gap:3px; width:100%;
+    padding:11px 14px; background:none; border:none; border-bottom:1px solid rgba(201,151,74,.08);
+    color:inherit; cursor:pointer; text-align:left; font:inherit;
+  }
+  .search-drop button:last-child{border-bottom:none;}
+  .search-drop button:hover{background:rgba(201,151,74,.08);}
+  .search-drop .s-login{font-size:.88rem; color:var(--gold-light); font-weight:600;}
+  .search-drop .s-meta{font-size:.72rem; color:var(--ash); display:flex; flex-wrap:wrap; gap:6px 10px;}
+  .icon-btn{position:relative; width:38px; height:38px; display:flex; align-items:center; justify-content:center; background:var(--obsidian-2); border:1px solid var(--line); color:var(--gold-light); font-size:.9rem; cursor:pointer;}
+  .icon-btn .dot{position:absolute; top:6px; right:7px; width:6px; height:6px; border-radius:50%; background:var(--blood-light); display:none;}
+  .icon-btn.has-unread .dot{display:block;}
+  .icon-btn.empty-bell{color:var(--ash); opacity:.75;}
+  .notif-wrap{position:relative;}
+  .notif-drop{display:none; position:absolute; right:0; top:calc(100% + 8px); width:340px; max-height:420px; overflow:auto; background:var(--obsidian-2); border:1px solid var(--line); z-index:80; box-shadow:0 12px 40px rgba(0,0,0,.45);}
+  .notif-drop.open{display:block;}
+  .notif-drop .notif-head{display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid var(--line); font-size:.8rem; color:var(--ash);}
+  .notif-drop .notif-item{display:block; width:100%; text-align:left; padding:12px 14px; border:0; border-bottom:1px solid rgba(201,151,74,.08); background:transparent; color:inherit; cursor:pointer; font:inherit;}
+  .notif-drop .notif-item:hover{background:rgba(201,151,74,.06);}
+  .notif-drop .notif-item.unread{background:rgba(201,151,74,.04);}
+  .notif-drop .notif-item .t{font-size:.88rem; color:var(--gold-light); font-weight:600; margin-bottom:4px;}
+  .notif-drop .notif-item .b{font-size:.78rem; color:var(--ash); margin-bottom:4px;}
+  .notif-drop .notif-item .d{font-size:.7rem; color:var(--ash); opacity:.8;}
+  .notif-drop .notif-empty{padding:28px 16px; text-align:center; color:var(--ash); font-size:.85rem;}
+  .notif-modal-body{font-size:.9rem; color:var(--ash); line-height:1.5;}
+  .mail-tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px;}
+  .mail-tabs button{padding:8px 14px; background:var(--obsidian); border:1px solid var(--line); color:var(--ash); cursor:pointer; font:inherit; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em;}
+  .mail-tabs button.active{color:var(--gold-light); border-color:rgba(201,151,74,.45); background:rgba(201,151,74,.08);}
+  .mail-pane{display:none;}
+  .mail-pane.active{display:block;}
+  .html-editor{min-height:160px; padding:12px; background:var(--obsidian); border:1px solid var(--line); color:var(--parchment); outline:none;}
+  .html-toolbar{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;}
+  .html-toolbar button{padding:6px 10px; background:var(--obsidian); border:1px solid var(--line); color:var(--gold-light); cursor:pointer; font-size:.75rem;}
+  .mail-tpl-wrap{border:1px solid var(--line); background:var(--obsidian); margin-top:6px;}
+  .mail-tpl-toolbar{display:flex; flex-wrap:wrap; gap:6px; padding:10px; background:var(--obsidian-2); border-bottom:1px solid var(--line); align-items:center;}
+  .mail-tpl-toolbar button,.mail-tpl-toolbar label.mail-tool{
+    min-width:32px; height:32px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center;
+    background:var(--obsidian); border:1px solid var(--line); color:var(--gold-light); cursor:pointer; font:inherit; font-size:.78rem;
+  }
+  .mail-tpl-toolbar button:hover,.mail-tpl-toolbar label.mail-tool:hover{background:rgba(201,151,74,.14); border-color:rgba(201,151,74,.4);}
+  .mail-tpl-toolbar button.active-mode{background:rgba(201,151,74,.18); border-color:rgba(201,151,74,.45);}
+  .mail-tpl-toolbar .sep{width:1px; align-self:stretch; background:var(--line); margin:0 2px;}
+  .mail-tpl-toolbar input[type="color"]{width:28px; height:28px; padding:0; border:1px solid var(--line); background:transparent; cursor:pointer;}
+  .mail-tpl-toolbar select.mail-var{
+    height:32px; background:var(--obsidian); border:1px solid var(--line); color:var(--gold-light);
+    font:inherit; font-size:.72rem; padding:0 8px; max-width:160px;
+  }
+  .mail-tpl-editor{
+    min-height:200px; max-height:420px; overflow:auto; padding:14px; color:var(--parchment); outline:none; line-height:1.55;
+  }
+  .mail-tpl-editor:empty:before{content:attr(data-placeholder); color:var(--ash);}
+  .mail-tpl-editor.html-mode{display:none;}
+  .mail-tpl-editor a{color:var(--gold-light);}
+  .mail-tpl-editor table{width:100%; border-collapse:collapse; margin:.5em 0;}
+  .mail-tpl-editor th,.mail-tpl-editor td{border:1px solid var(--line); padding:6px 8px;}
+  .mail-tpl-source{
+    display:none; width:100%; min-height:220px; max-height:420px; border:none; border-top:1px solid var(--line);
+    background:#0e0c09; color:#d6c8a8; font-family:Consolas,Monaco,monospace; font-size:.82rem; line-height:1.45; padding:14px; resize:vertical;
+  }
+  .mail-tpl-source.open{display:block;}
+  .mail-preview-frame{width:100%; min-height:320px; max-height:60vh; border:1px solid var(--line); background:#fff; border-radius:0;}
+  .mail-preview-meta{font-size:.82rem; color:var(--ash); margin-bottom:12px; padding:10px 12px; background:var(--obsidian); border:1px solid var(--line);}
+  .mail-preview-meta b{color:var(--gold-light); font-weight:600;}
+  .detail-ops{margin-top:18px; padding-top:14px; border-top:1px solid var(--line);}
+  .detail-ops h4{margin:0 0 12px; font-size:.9rem; color:var(--parchment);}
+  .detail-ops .form-row{margin-bottom:10px;}
+  .detail-ops .ops-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;}
   .status-pill{display:flex; align-items:center; gap:8px; padding:8px 14px; background:rgba(51,89,74,.15); border:1px solid rgba(79,138,113,.3); font-size:.78rem; color:var(--jade-light); text-transform:uppercase; letter-spacing:.05em;}
   .status-pill .pulse{width:7px; height:7px; border-radius:50%; background:var(--jade-light); animation:pulse 2s infinite;}
   .session-timer{display:flex; align-items:center; gap:8px; padding:8px 14px; background:rgba(201,151,74,.1); border:1px solid rgba(201,151,74,.28); font-size:.78rem; color:var(--gold-light); letter-spacing:.04em; font-variant-numeric:tabular-nums;}
@@ -423,7 +521,7 @@ $can = static function (string $flag) use ($permFlags): bool {
   <!-- ============ SIDEBAR ============ -->
   <aside class="sidebar" id="sidebar">
     <a href="<?= e(url('/')) ?>" class="sidebar-brand" aria-label="<?= e($appName) ?> Anasayfa">
-      <img src="<?= e(asset('img/logo-mark.svg')) ?>" alt="<?= e($appName) ?>">
+      <img src="<?= e($brandIcon) ?>" alt="<?= e($appName) ?>">
       <div>M2<span>DN</span><small>Yönetim Paneli</small></div>
     </a>
 
@@ -477,6 +575,8 @@ $can = static function (string $flag) use ($permFlags): bool {
     <a class="nav-item<?= $panelSection === 'oranlar-ayarlari' ? ' active' : '' ?>" data-target="oranlar-ayarlari"><i class="fa-solid fa-percent"></i> Sunucu Oranları</a>
     <a class="nav-item<?= $panelSection === 'siradaki-bolum' ? ' active' : '' ?>" data-target="siradaki-bolum"><i class="fa-solid fa-clock"></i> Sıradaki Bölüm</a>
     <a class="nav-item<?= $panelSection === 'galeri-ayarlari' ? ' active' : '' ?>" data-target="galeri-ayarlari"><i class="fa-solid fa-images"></i> Galeri</a>
+    <a class="nav-item<?= $panelSection === 'logo-ayarlari' ? ' active' : '' ?>" data-target="logo-ayarlari"><i class="fa-solid fa-image"></i> Logo</a>
+    <a class="nav-item<?= $panelSection === 'mail-ayarlari' ? ' active' : '' ?>" data-target="mail-ayarlari"><i class="fa-solid fa-envelope"></i> Mail</a>
     <a class="nav-item<?= $panelSection === 'footer-ayarlari' ? ' active' : '' ?>" data-target="footer-ayarlari"><i class="fa-solid fa-shoe-prints"></i> Footer / Border</a>
     <a class="nav-item<?= $panelSection === 'ceza-ayarlari' ? ' active' : '' ?>" data-target="ceza-ayarlari"><i class="fa-solid fa-scale-balanced"></i> Ceza Ayarları</a>
     <a class="nav-item<?= $panelSection === 'yetki-gruplari' ? ' active' : '' ?>" data-target="yetki-gruplari"><i class="fa-solid fa-shield-halved"></i> Yetki Grupları</a>
@@ -514,8 +614,27 @@ $can = static function (string $flag) use ($permFlags): bool {
           <span>Oturum</span>
           <span class="t" id="sessionTimerValue">--:--</span>
         </div>
-        <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Oyuncu, IP, karakter ara..."></div>
-        <button class="icon-btn"><i class="fa-solid fa-bell"></i><span class="dot"></span></button>
+        <?php if ($can('player_detail') || $can('menu_oyuncular')): ?>
+        <div class="search-wrap" id="topSearchWrap">
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input id="topSearchInput" type="search" autocomplete="off" placeholder="Hesap, e-posta veya karakter ara..." minlength="2">
+          </div>
+          <div class="search-drop" id="topSearchDrop" role="listbox" aria-label="Arama sonuçları"></div>
+        </div>
+        <?php endif; ?>
+        <div class="notif-wrap">
+          <button type="button" class="icon-btn empty-bell" id="notifBellBtn" aria-label="Bildirimler" aria-expanded="false">
+            <i class="fa-solid fa-bell-slash" id="notifBellIcon"></i><span class="dot"></span>
+          </button>
+          <div class="notif-drop" id="notifDrop" role="dialog" aria-label="Bildirimler">
+            <div class="notif-head">
+              <span>Bildirimler</span>
+              <button type="button" class="btn btn-ghost btn-sm" id="notifMarkAll" style="padding:4px 8px;font-size:.68rem;">Tümünü okundu</button>
+            </div>
+            <div id="notifList"><div class="notif-empty">Yükleniyor…</div></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -655,7 +774,19 @@ $can = static function (string $flag) use ($permFlags): bool {
       <div class="card">
         <div class="card-head">
           <h3>Oyuncu Yönetimi</h3>
-          <span style="font-size:.8rem; color:var(--ash);"><?= number_format($playerTotal, 0, ',', '.') ?> kayıtlı hesap</span>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span style="font-size:.8rem; color:var(--ash);"><?= number_format($playerTotal, 0, ',', '.') ?> kayıtlı hesap · canlı DB</span>
+            <?php
+              $refreshQs = http_build_query(array_filter([
+                  'section' => 'oyuncular',
+                  'q' => $playerQ !== '' ? $playerQ : null,
+                  'status' => $playerStatus !== '' ? $playerStatus : null,
+                  'per' => $playerPerPage !== 10 ? $playerPerPage : null,
+                  'page' => $playerPage > 1 ? $playerPage : null,
+              ], static fn($v) => $v !== null && $v !== ''));
+            ?>
+            <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?' . $refreshQs)) ?>" title="Veritabanından yenile"><i class="fa-solid fa-arrows-rotate"></i> Yenile</a>
+          </div>
         </div>
         <form class="filters" method="get" action="<?= e(url('/admin')) ?>">
           <input type="hidden" name="section" value="oyuncular">
@@ -861,13 +992,14 @@ $can = static function (string $flag) use ($permFlags): bool {
         <div class="card">
           <div class="card-head"><h3>Yetki Grupları</h3><span style="font-size:.8rem;color:var(--ash);">web değeri sistemde sabit</span></div>
           <table>
-            <thead><tr><th>Yetki Tanımı</th><th>Web</th><th>Tür</th><th></th></tr></thead>
+            <thead><tr><th>ID</th><th>Yetki Tanımı</th><th>Web</th><th>Tür</th><th></th></tr></thead>
             <tbody>
               <?php if ($permissionGroups === []): ?>
-                <tr><td colspan="4" style="color:var(--ash);">Grup yok.</td></tr>
+                <tr><td colspan="5" style="color:var(--ash);">Grup yok.</td></tr>
               <?php else: ?>
                 <?php foreach ($permissionGroups as $g): ?>
                 <tr>
+                  <td><code>#<?= (int) $g['id'] ?></code></td>
                   <td><?= e((string) $g['name']) ?></td>
                   <td><code><?= (int) $g['web_permission'] ?></code></td>
                   <td><?= !empty($g['is_system']) ? 'Sistem' : 'Özel' ?></td>
@@ -1238,6 +1370,300 @@ $can = static function (string $flag) use ($permFlags): bool {
       </div>
     </section>
 
+    <!-- ===================== LOGO ===================== -->
+    <section class="section<?= $panelSection === 'logo-ayarlari' ? ' active' : '' ?>" id="logo-ayarlari">
+      <div class="card" style="max-width:720px;">
+        <div class="card-head"><h3>Logo &amp; İkon</h3></div>
+        <form method="post" action="<?= e(url('/admin/ayarlar/logo')) ?>" enctype="multipart/form-data">
+          <?= $csrf ?>
+          <div class="grid grid-2" style="margin-bottom:18px;">
+            <div>
+              <div class="form-row"><label>Logo (anasayfa / geniş)</label>
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;padding:12px;border:1px solid var(--line);background:var(--obsidian);">
+                  <img src="<?= e($brandLogo) ?>" alt="Logo" style="max-height:56px;max-width:180px;object-fit:contain;">
+                  <span style="font-size:.75rem;color:var(--ash);"><?= !empty($siteBrand['has_custom_logo']) ? 'Özel logo' : 'Varsayılan tema logosu' ?></span>
+                </div>
+                <input type="file" name="logo" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg">
+                <?php if (!empty($siteBrand['has_custom_logo'])): ?>
+                <label style="display:flex;align-items:center;gap:8px;margin-top:10px;text-transform:none;letter-spacing:0;cursor:pointer;font-size:.82rem;color:var(--ash);">
+                  <input type="checkbox" name="remove_logo" value="1" style="width:auto;"> Özel logoyu kaldır (varsayılana dön)
+                </label>
+                <?php endif; ?>
+              </div>
+            </div>
+            <div>
+              <div class="form-row"><label>İkon / Favicon (paneller)</label>
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;padding:12px;border:1px solid var(--line);background:var(--obsidian);">
+                  <img src="<?= e($brandIcon) ?>" alt="İkon" style="height:48px;width:48px;object-fit:contain;">
+                  <span style="font-size:.75rem;color:var(--ash);"><?= !empty($siteBrand['has_custom_icon']) ? 'Özel ikon' : 'Varsayılan tema ikonu' ?></span>
+                </div>
+                <input type="file" name="icon" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,image/x-icon,.ico,.svg">
+                <?php if (!empty($siteBrand['has_custom_icon'])): ?>
+                <label style="display:flex;align-items:center;gap:8px;margin-top:10px;text-transform:none;letter-spacing:0;cursor:pointer;font-size:.82rem;color:var(--ash);">
+                  <input type="checkbox" name="remove_icon" value="1" style="width:auto;"> Özel ikonu kaldır (varsayılana dön)
+                </label>
+                <?php endif; ?>
+              </div>
+            </div>
+          </div>
+          <div class="card-head" style="margin-top:8px;"><h3 style="font-size:.95rem;">Boyutlar (px)</h3></div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+            <div class="form-row"><label>Ana sayfa logo yüksekliği</label><input type="number" name="home_size" min="16" max="160" value="<?= (int) ($siteBrand['home_size'] ?? 48) ?>"></div>
+            <div class="form-row"><label>Kullanıcı paneli ikon</label><input type="number" name="user_size" min="16" max="120" value="<?= (int) ($siteBrand['user_size'] ?? 36) ?>"></div>
+            <div class="form-row"><label>Admin paneli ikon</label><input type="number" name="admin_size" min="16" max="120" value="<?= (int) ($siteBrand['admin_size'] ?? 36) ?>"></div>
+          </div>
+          <p style="font-size:.75rem;color:var(--ash);margin:4px 0 16px;">Boş bırakılan yüklemeler mevcut dosyayı korur. Kaldır seçenekleri varsayılan tema görsellerine döner.</p>
+          <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===================== MAIL ===================== -->
+    <section class="section<?= $panelSection === 'mail-ayarlari' ? ' active' : '' ?>" id="mail-ayarlari">
+      <div class="mail-tabs" id="mailTabs">
+        <button type="button" data-mail-tab="sunucu" class="<?= $mailTab === 'sunucu' ? 'active' : '' ?>">1. Sunucu</button>
+        <button type="button" data-mail-tab="bildirimler" class="<?= $mailTab === 'bildirimler' ? 'active' : '' ?>">2. Bildirimler</button>
+        <button type="button" data-mail-tab="test" class="<?= $mailTab === 'test' ? 'active' : '' ?>">3. Test</button>
+        <button type="button" data-mail-tab="loglar" class="<?= $mailTab === 'loglar' ? 'active' : '' ?>">4. Gönderim</button>
+      </div>
+
+      <div class="mail-pane<?= $mailTab === 'sunucu' ? ' active' : '' ?>" data-mail-pane="sunucu">
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-head"><h3>Mail sunucusu ekle / düzenle</h3></div>
+            <form method="post" action="<?= e(url('/admin/ayarlar/mail')) ?>" id="mailServerForm">
+              <?= $csrf ?>
+              <input type="hidden" name="mail_tab" value="sunucu">
+              <input type="hidden" name="id" id="mailServerId" value="">
+              <div class="form-row"><label>Ad</label><input name="name" id="mailServerName" required placeholder="Örn. Gmail hesap"></div>
+              <div class="form-row"><label>Sağlayıcı</label>
+                <select name="provider" id="mailProvider">
+                  <?php foreach ($mailPresets as $pkey => $preset): ?>
+                    <option value="<?= e((string) $pkey) ?>"><?= e((string) ($preset['label'] ?? $pkey)) ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <div id="mailCustomFields" style="display:none;">
+                <div class="form-row"><label>Host</label><input name="host" id="mailHost" placeholder="smtp.ornek.com"></div>
+                <div class="grid grid-2">
+                  <div class="form-row"><label>Port</label><input type="number" name="port" id="mailPort" value="587"></div>
+                  <div class="form-row"><label>Şifreleme</label>
+                    <select name="encryption" id="mailEnc">
+                      <option value="tls">TLS</option>
+                      <option value="ssl">SSL</option>
+                      <option value="none">Yok</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="form-row"><label>Hesap (kullanıcı / e-posta)</label><input name="username" id="mailUser" required autocomplete="off"></div>
+              <div class="form-row"><label>Parola</label><input type="password" name="password" id="mailPass" autocomplete="new-password" placeholder="Düzenlemede boş bırak = değişmez"></div>
+              <div class="form-row"><label>Gönderen e-posta</label><input name="from_email" id="mailFrom" type="email" required></div>
+              <div class="form-row"><label>Gönderen adı</label><input name="from_name" id="mailFromName" value="<?= e($appName) ?>"></div>
+              <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:.82rem;color:var(--ash);cursor:pointer;">
+                <input type="checkbox" name="activate" value="1" checked style="width:auto;"> Aktif sunucu yap
+              </label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="mailServerReset">Formu temizle</button>
+              </div>
+              <p style="font-size:.75rem;color:var(--ash);margin-top:12px;">Parola veritabanında şifreli saklanır.</p>
+              <div id="mailProviderHint" style="display:none;font-size:.78rem;color:var(--gold-light);margin-top:10px;padding:12px;border:1px solid rgba(201,151,74,.25);background:rgba(201,151,74,.06);line-height:1.45;"></div>
+            </form>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Kayıtlı sunucular</h3></div>
+            <?php if ($mailServers === []): ?>
+              <p style="color:var(--ash);font-size:.88rem;">Henüz sunucu yok.</p>
+            <?php else: ?>
+              <table>
+                <thead><tr><th>Ad</th><th>Sağlayıcı</th><th>Hesap</th><th></th></tr></thead>
+                <tbody>
+                  <?php foreach ($mailServers as $ms): ?>
+                  <tr>
+                    <td><?= e((string) $ms['name']) ?><?php if (!empty($ms['is_active'])): ?> <span class="badge ok">Aktif</span><?php endif; ?></td>
+                    <td><?= e((string) $ms['provider']) ?></td>
+                    <td style="font-size:.78rem;"><?= e((string) $ms['username']) ?></td>
+                    <td class="actions-cell" style="white-space:nowrap;">
+                      <button type="button" class="btn btn-ghost btn-sm" data-edit-mail
+                        data-id="<?= (int) $ms['id'] ?>"
+                        data-name="<?= e((string) $ms['name']) ?>"
+                        data-provider="<?= e((string) $ms['provider']) ?>"
+                        data-host="<?= e((string) $ms['host']) ?>"
+                        data-port="<?= (int) $ms['port'] ?>"
+                        data-encryption="<?= e((string) $ms['encryption']) ?>"
+                        data-username="<?= e((string) $ms['username']) ?>"
+                        data-from="<?= e((string) $ms['from_email']) ?>"
+                        data-from-name="<?= e((string) $ms['from_name']) ?>">Düzenle</button>
+                      <?php if (empty($ms['is_active'])): ?>
+                      <form method="post" action="<?= e(url('/admin/ayarlar/mail/aktif')) ?>" style="display:inline;">
+                        <?= $csrf ?><input type="hidden" name="mail_tab" value="sunucu"><input type="hidden" name="id" value="<?= (int) $ms['id'] ?>">
+                        <button type="submit" class="btn btn-jade btn-sm">Aktif</button>
+                      </form>
+                      <?php endif; ?>
+                      <form method="post" action="<?= e(url('/admin/ayarlar/mail/sil')) ?>" style="display:inline;" onsubmit="return confirm('Silinsin mi?');">
+                        <?= $csrf ?><input type="hidden" name="mail_tab" value="sunucu"><input type="hidden" name="id" value="<?= (int) $ms['id'] ?>">
+                        <button type="submit" class="btn btn-ghost btn-sm">Sil</button>
+                      </form>
+                    </td>
+                  </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
+
+      <div class="mail-pane<?= $mailTab === 'bildirimler' ? ' active' : '' ?>" data-mail-pane="bildirimler">
+        <div class="card">
+          <div class="card-head"><h3>E-posta bildirim şablonları</h3>
+            <span style="font-size:.78rem;color:var(--ash);">Varsayılan: kapalı · Değişkenler: {{login}} {{email}} {{link}} {{reason}} {{code}} {{subject}} {{app}}</span>
+          </div>
+          <?php if ($mailTemplates === []): ?>
+            <p style="color:var(--ash);">Şablon bulunamadı.</p>
+          <?php else: ?>
+            <?php foreach ($mailTemplates as $tpl): ?>
+              <form method="post" action="<?= e(url('/admin/ayarlar/mail/sablon')) ?>" style="margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--line);">
+                <?= $csrf ?>
+                <input type="hidden" name="mail_tab" value="bildirimler">
+                <input type="hidden" name="code" value="<?= e((string) $tpl['code']) ?>">
+                <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+                  <strong style="color:var(--gold-light);"><?= e((string) $tpl['name']) ?> <span style="color:var(--ash);font-weight:400;font-size:.78rem;">(<?= e((string) $tpl['code']) ?>)</span></strong>
+                  <label style="display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--ash);cursor:pointer;">
+                    <input type="checkbox" name="is_enabled" value="1" <?= !empty($tpl['is_enabled']) ? 'checked' : '' ?> style="width:auto;"> Aktif
+                  </label>
+                </div>
+                <div class="form-row"><label>Konu</label><input name="subject" value="<?= e((string) $tpl['subject']) ?>" required></div>
+                <div class="form-row"><label>HTML içerik</label>
+                  <div class="mail-tpl-wrap" data-mail-tpl-wrap>
+                    <div class="mail-tpl-toolbar" data-mail-toolbar role="toolbar" aria-label="Mail şablon araçları">
+                      <button type="button" data-cmd="bold" title="Kalın"><b>B</b></button>
+                      <button type="button" data-cmd="italic" title="İtalik"><i>I</i></button>
+                      <button type="button" data-cmd="underline" title="Altı çizili"><u>U</u></button>
+                      <span class="sep"></span>
+                      <label class="mail-tool" title="Yazı rengi"><input type="color" data-fore-color value="#eccd8e" aria-label="Yazı rengi"></label>
+                      <span class="sep"></span>
+                      <button type="button" data-cmd="insertUnorderedList" title="Liste"><i class="fa-solid fa-list-ul"></i></button>
+                      <button type="button" data-cmd="insertOrderedList" title="Numaralı"><i class="fa-solid fa-list-ol"></i></button>
+                      <button type="button" data-cmd="createLink" title="Link"><i class="fa-solid fa-link"></i></button>
+                      <button type="button" data-cmd="insertTable" title="Tablo"><i class="fa-solid fa-table"></i></button>
+                      <span class="sep"></span>
+                      <button type="button" data-cmd="formatBlock" data-value="h2" title="Başlık">H2</button>
+                      <button type="button" data-cmd="formatBlock" data-value="p" title="Paragraf">P</button>
+                      <button type="button" data-cmd="removeFormat" title="Biçimi temizle"><i class="fa-solid fa-eraser"></i></button>
+                      <span class="sep"></span>
+                      <select class="mail-var" data-insert-var title="Değişken ekle" aria-label="Değişken ekle">
+                        <option value="">+ Değişken</option>
+                        <option value="{{login}}">{{login}}</option>
+                        <option value="{{email}}">{{email}}</option>
+                        <option value="{{link}}">{{link}}</option>
+                        <option value="{{logo}}">{{logo}}</option>
+                        <option value="{{reason}}">{{reason}}</option>
+                        <option value="{{code}}">{{code}}</option>
+                        <option value="{{subject}}">{{subject}}</option>
+                        <option value="{{app}}">{{app}}</option>
+                      </select>
+                      <button type="button" data-cmd="toggleHtml" title="HTML kaynak kodu" data-html-toggle><i class="fa-solid fa-code"></i> HTML</button>
+                    </div>
+                    <?php
+                      $tplBodyNorm = \App\Services\MailService::repairTemplateIfBroken(
+                          (string) $tpl['code'],
+                          (string) $tpl['body_html']
+                      );
+                    ?>
+                    <div class="mail-tpl-editor" contenteditable="true" data-html-editor data-placeholder="Mail HTML içeriğini yaz veya HTML modunda yapıştır…"><?= $tplBodyNorm ?></div>
+                    <textarea class="mail-tpl-source" data-html-source spellcheck="false" aria-label="HTML kaynak"><?= e($tplBodyNorm) ?></textarea>
+                    <textarea name="body_html" hidden><?= e($tplBodyNorm) ?></textarea>
+                  </div>
+                  <p style="font-size:.72rem;color:var(--ash);margin-top:8px;">Tam HTML şablon için <b style="color:var(--gold-light);">HTML</b> moduna geçip yapıştır (görsel moda alma — bozulur). Açık arka planlı şablonlar Gmail/Outlook’ta daha güvenilir.</p>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <button type="submit" class="btn btn-primary btn-sm">Şablonu kaydet</button>
+                  <button type="button" class="btn btn-ghost btn-sm" data-mail-preview>Önizle</button>
+                </div>
+              </form>
+            <?php endforeach; ?>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <div class="mail-pane<?= $mailTab === 'test' ? ' active' : '' ?>" data-mail-pane="test">
+        <div class="card" style="max-width:480px;">
+          <div class="card-head"><h3>Test maili gönder</h3></div>
+          <form method="post" action="<?= e(url('/admin/ayarlar/mail/test')) ?>">
+            <?= $csrf ?>
+            <input type="hidden" name="mail_tab" value="test">
+            <div class="form-row"><label>Alıcı e-posta</label><input type="email" name="to_email" required placeholder="ornek@mail.com"></div>
+            <button type="submit" class="btn btn-primary btn-sm">Gönder</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="mail-pane<?= $mailTab === 'loglar' ? ' active' : '' ?>" data-mail-pane="loglar">
+        <div class="card">
+          <div class="card-head" style="flex-wrap:wrap;gap:10px;">
+            <h3>Son gönderimler</h3>
+            <span style="font-size:.78rem;color:var(--ash);">Son 10 kayıt</span>
+          </div>
+          <form method="get" action="<?= e(url('/admin')) ?>" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;">
+            <input type="hidden" name="section" value="mail-ayarlari">
+            <input type="hidden" name="mail_tab" value="loglar">
+            <input type="search" name="mail_q" value="<?= e($mailLogSearch) ?>" placeholder="Alıcı e-posta / login / konu…" style="flex:1;min-width:200px;max-width:360px;" autocomplete="off">
+            <button type="submit" class="btn btn-ghost btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Ara</button>
+            <?php if ($mailLogSearch !== ''): ?>
+              <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?section=mail-ayarlari&mail_tab=loglar')) ?>">Temizle</a>
+            <?php endif; ?>
+          </form>
+          <?php if ($mailLogs === []): ?>
+            <p style="color:var(--ash);"><?= $mailLogSearch !== '' ? 'Arama sonucu bulunamadı.' : 'Kayıt yok.' ?></p>
+          <?php else: ?>
+            <table>
+              <thead>
+                <tr>
+                  <th>Zaman</th>
+                  <th>Şablon</th>
+                  <th>Alıcı</th>
+                  <th>Konu</th>
+                  <th>Durum</th>
+                  <th>İşlemler</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($mailLogs as $ml): ?>
+                <tr>
+                  <td style="font-size:.75rem;"><?= e((string) ($ml['created_at'] ?? '')) ?></td>
+                  <td><?= e((string) ($ml['template_code'] ?? '')) ?></td>
+                  <td style="font-size:.78rem;"><?= e((string) ($ml['to_email'] ?? '')) ?><br><span style="color:var(--ash);"><?= e((string) ($ml['to_login'] ?? '')) ?></span></td>
+                  <td><?= e((string) ($ml['subject'] ?? '')) ?></td>
+                  <td>
+                    <?php if (($ml['status'] ?? '') === 'ok'): ?>
+                      <span class="badge ok">OK</span>
+                    <?php else: ?>
+                      <span class="badge ban" title="<?= e((string) ($ml['error'] ?? '')) ?>">Hata</span>
+                    <?php endif; ?>
+                  </td>
+                  <td class="actions-cell">
+                    <?php if (!empty($ml['has_body'])): ?>
+                      <form method="post" action="<?= e(url('/admin/ayarlar/mail/tekrar')) ?>" style="display:inline;" onsubmit="return confirm('Bu mail aynı içerikle tekrar gönderilsin mi?');">
+                        <?= $csrf ?>
+                        <input type="hidden" name="mail_tab" value="loglar">
+                        <input type="hidden" name="id" value="<?= (int) ($ml['id'] ?? 0) ?>">
+                        <button type="submit" title="Tekrar gönder"><i class="fa-solid fa-paper-plane"></i></button>
+                      </form>
+                    <?php else: ?>
+                      <button type="button" disabled title="Eski kayıt — içerik yok" style="opacity:.35;cursor:not-allowed;"><i class="fa-solid fa-paper-plane"></i></button>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          <?php endif; ?>
+        </div>
+      </div>
+    </section>
+
     <!-- ===================== FOOTER ===================== -->
     <section class="section<?= $panelSection === 'footer-ayarlari' ? ' active' : '' ?>" id="footer-ayarlari">
       <div class="card" style="margin-bottom:16px;">
@@ -1363,10 +1789,11 @@ $can = static function (string $flag) use ($permFlags): bool {
             ?>
             <script>window.__annBodies = <?= json_encode($annBodiesMap, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
             <table>
-              <thead><tr><th>Başlık</th><th>Tür</th><th>Durum</th><th>Tarih</th><th></th></tr></thead>
+              <thead><tr><th>ID</th><th>Başlık</th><th>Tür</th><th>Durum</th><th>Tarih</th><th></th></tr></thead>
               <tbody>
                 <?php foreach ($announcements as $ann): ?>
                 <tr>
+                  <td><code>#<?= (int) $ann['id'] ?></code></td>
                   <td><?= e((string) $ann['title']) ?></td>
                   <td style="color:var(--ash);"><?= e((string) $ann['type_name']) ?></td>
                   <td><span class="badge <?= !empty($ann['is_active']) ? 'pending' : 'closed' ?>"><?= !empty($ann['is_active']) ? 'Aktif' : 'Pasif' ?></span></td>
@@ -1477,13 +1904,14 @@ $can = static function (string $flag) use ($permFlags): bool {
         <div class="card">
           <div class="card-head"><h3>Duyuru Türleri</h3></div>
           <table>
-            <thead><tr><th>Ad</th><th>Durum</th><th></th></tr></thead>
+            <thead><tr><th>ID</th><th>Ad</th><th>Durum</th><th></th></tr></thead>
             <tbody>
               <?php if ($announcementTypes === []): ?>
-                <tr><td colspan="3" style="color:var(--ash);">Tür yok.</td></tr>
+                <tr><td colspan="4" style="color:var(--ash);">Tür yok.</td></tr>
               <?php else: ?>
                 <?php foreach ($announcementTypes as $t): ?>
                 <tr>
+                  <td><code>#<?= (int) $t['id'] ?></code></td>
                   <td><?= e((string) $t['name']) ?></td>
                   <td><?= !empty($t['is_active']) ? 'Aktif' : 'Pasif' ?></td>
                   <td class="actions-cell">
@@ -1770,7 +2198,7 @@ $can = static function (string $flag) use ($permFlags): bool {
               }
           ?>
             <option value="<?= (int) $g['id'] ?>" data-web="<?= $gWeb ?>">
-              <?= e((string) $g['name']) ?> (web=<?= $gWeb ?>)
+              #<?= (int) $g['id'] ?> · <?= e((string) $g['name']) ?> (web=<?= $gWeb ?>)
             </option>
           <?php endforeach; ?>
         </select>
@@ -1816,12 +2244,50 @@ $can = static function (string $flag) use ($permFlags): bool {
   </div>
 </div>
 
+<!-- ============ BİLDİRİM DETAY ============ -->
+<div class="modal-overlay" id="notifDetailModal">
+  <div class="modal">
+    <h3 id="notifDetailTitle">Bildirim</h3>
+    <div class="notif-modal-body" id="notifDetailBody"></div>
+    <div class="modal-actions" style="margin-top:18px;display:flex;gap:8px;flex-wrap:wrap;">
+      <a class="btn btn-primary btn-sm" id="notifDetailGo" href="#" style="display:none;">Git</a>
+      <button type="button" class="btn btn-ghost btn-sm" id="notifDetailClose">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MAIL ŞABLON ÖNİZLEME ============ -->
+<div class="modal-overlay" id="mailPreviewModal">
+  <div class="modal modal-lg">
+    <h3><i class="fa-solid fa-eye"></i> Şablon önizleme</h3>
+    <div class="mail-preview-meta" id="mailPreviewMeta">—</div>
+    <iframe class="mail-preview-frame" id="mailPreviewFrame" title="Mail önizleme"></iframe>
+    <p style="font-size:.75rem;color:var(--ash);margin:10px 0 0;">Örnek değişkenlerle render edilir (kayıt edilmez).</p>
+    <div class="modal-actions" style="margin-top:18px;">
+      <button type="button" class="btn btn-ghost btn-sm" id="mailPreviewClose">Kapat</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
   const navItems = document.querySelectorAll('.nav-item[data-target]');
   const sections = document.querySelectorAll('.section');
   const initialSection = <?= json_encode($panelSection, JSON_UNESCAPED_UNICODE) ?>;
   const playerJsonUrl = <?= json_encode(url('/admin/oyuncu/json'), JSON_UNESCAPED_UNICODE) ?>;
+  const playerSearchUrl = <?= json_encode(url('/admin/oyuncu/ara'), JSON_UNESCAPED_UNICODE) ?>;
+  const canPlayerDetail = <?= !empty($permFlags['player_detail']) ? 'true' : 'false' ?>;
+  const oyuncularUrl = <?= json_encode(url('/admin?section=oyuncular'), JSON_UNESCAPED_UNICODE) ?>;
+  const csrfToken = <?= json_encode(\App\Core\Security::csrfToken(), JSON_UNESCAPED_UNICODE) ?>;
+  const emailChangeUrl = <?= json_encode(url('/admin/oyuncu/email'), JSON_UNESCAPED_UNICODE) ?>;
+  const resetLinkUrl = <?= json_encode(url('/admin/oyuncu/sifre-link'), JSON_UNESCAPED_UNICODE) ?>;
+  const setPasswordUrl = <?= json_encode(url('/admin/oyuncu/sifre'), JSON_UNESCAPED_UNICODE) ?>;
+  const notifListUrl = <?= json_encode(url('/bildirimler/json'), JSON_UNESCAPED_UNICODE) ?>;
+  const notifReadUrl = <?= json_encode(url('/bildirimler/okundu'), JSON_UNESCAPED_UNICODE) ?>;
+  const isSuperAdmin = <?= $authPermission === 2 ? 'true' : 'false' ?>;
+  const canMailOps = <?= !empty($permFlags['player_detail']) ? 'true' : 'false' ?>;
+  const adminIndexUrl = <?= json_encode(url('/admin'), JSON_UNESCAPED_UNICODE) ?>;
+  const mailPresetsJs = <?= json_encode($mailPresets, JSON_UNESCAPED_UNICODE) ?>;
   const annModalMap = <?= json_encode(array_reduce($overviewAnnouncements, static function (array $map, array $ann): array {
       $map[(string) (int) $ann['id']] = [
           'id' => (int) $ann['id'],
@@ -1834,13 +2300,26 @@ $can = static function (string $flag) use ($permFlags): bool {
       return $map;
   }, []), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 
+  /** DB'den taze veri için sekme değişiminde tam sayfa yükle */
+  function navigateSection(target, extraParams) {
+    if (!target) return;
+    const params = new URLSearchParams();
+    params.set('section', target);
+    if (extraParams && typeof extraParams === 'object') {
+      Object.keys(extraParams).forEach((k) => {
+        if (extraParams[k] != null && extraParams[k] !== '') params.set(k, String(extraParams[k]));
+      });
+    }
+    window.location.assign(adminIndexUrl + '?' + params.toString());
+  }
+
   function showSection(target) {
     if (!target) return;
     document.querySelectorAll('.nav-item').forEach(n => {
       if (n.dataset.target) n.classList.toggle('active', n.dataset.target === target);
     });
     sections.forEach(s => s.classList.toggle('active', s.id === target));
-    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar')?.classList.remove('open');
   }
 
   if (initialSection) showSection(initialSection);
@@ -1850,14 +2329,19 @@ $can = static function (string $flag) use ($permFlags): bool {
       const target = item.dataset.target;
       if (!target) return;
       e.preventDefault();
-      showSection(target);
+      // Her menü tıklamasında sunucudan yeniden çek (SPA stale data engeli)
+      if (target === initialSection) {
+        window.location.reload();
+        return;
+      }
+      navigateSection(target);
     });
   });
 
   document.querySelectorAll('[data-jump-section]').forEach(el => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
-      showSection(el.dataset.jumpSection || el.dataset.target);
+      navigateSection(el.dataset.jumpSection || el.dataset.target);
     });
   });
 
@@ -2164,6 +2648,29 @@ $can = static function (string $flag) use ($permFlags): bool {
           html += '</tbody></table>';
         }
         html += '</div>';
+
+        if (canMailOps && a.id) {
+          html += '<div class="detail-ops"><h4>İşlemler</h4>';
+          html += '<form method="post" action="' + esc(emailChangeUrl) + '">';
+          html += '<input type="hidden" name="csrf_token" value="' + esc(csrfToken) + '">';
+          html += '<input type="hidden" name="account_id" value="' + esc(String(a.id)) + '">';
+          html += '<div class="form-row"><label>E-posta değiştir</label><input name="email" type="email" maxlength="64" required value="' + esc(a.email || '') + '"></div>';
+          html += '<button type="submit" class="btn btn-primary btn-sm">E-postayı kaydet</button></form>';
+          html += '<div class="ops-row">';
+          html += '<form method="post" action="' + esc(resetLinkUrl) + '" onsubmit="return confirm(\'Sıfırlama bağlantısı e-postaya gönderilsin mi?\');">';
+          html += '<input type="hidden" name="csrf_token" value="' + esc(csrfToken) + '">';
+          html += '<input type="hidden" name="account_id" value="' + esc(String(a.id)) + '">';
+          html += '<button type="submit" class="btn btn-ghost btn-sm">Şifre sıfırlama linki gönder</button></form>';
+          if (isSuperAdmin) {
+            html += '<form method="post" action="' + esc(setPasswordUrl) + '" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">';
+            html += '<input type="hidden" name="csrf_token" value="' + esc(csrfToken) + '">';
+            html += '<input type="hidden" name="account_id" value="' + esc(String(a.id)) + '">';
+            html += '<div class="form-row" style="margin:0;"><label>Yeni şifre (süper admin)</label><input name="password" type="password" maxlength="16" minlength="4" required></div>';
+            html += '<button type="submit" class="btn btn-jade btn-sm">Şifreyi sıfırla</button></form>';
+          }
+          html += '</div></div>';
+        }
+
         detailBody.innerHTML = html;
       })
       .catch(() => {
@@ -2175,6 +2682,97 @@ $can = static function (string $flag) use ($permFlags): bool {
   });
   document.getElementById('detailClose').addEventListener('click', () => detailModal.classList.remove('open'));
   detailModal.addEventListener('click', (e) => { if (e.target === detailModal) detailModal.classList.remove('open'); });
+
+  // Üst arama (hesap / e-posta / karakter)
+  (function topPlayerSearch() {
+    const input = document.getElementById('topSearchInput');
+    const drop = document.getElementById('topSearchDrop');
+    const wrap = document.getElementById('topSearchWrap');
+    if (!input || !drop || !wrap) return;
+    let timer = null;
+    let lastQ = '';
+
+    const render = (rows, q) => {
+      if (!rows.length) {
+        drop.innerHTML = '<div class="empty">“' + esc(q) + '” için sonuç yok.</div>';
+        drop.classList.add('open');
+        return;
+      }
+      drop.innerHTML = rows.map(r => {
+        const meta = [];
+        if (r.email && r.email !== '—') meta.push(esc(r.email));
+        if (r.character_name && r.character_name !== '—') meta.push('Karakter: ' + esc(r.character_name));
+        meta.push(esc(r.role_label || 'Oyuncu'));
+        meta.push(esc(r.status_label || ''));
+        return '<button type="button" data-acc-id="' + esc(String(r.id)) + '" data-acc-login="' + esc(r.login || '') + '">'
+          + '<span class="s-login">' + esc(r.login || '') + ' <span style="color:var(--ash);font-weight:500;">#' + esc(String(r.id)) + '</span></span>'
+          + '<span class="s-meta">' + meta.join(' · ') + '</span>'
+          + '</button>';
+      }).join('');
+      drop.classList.add('open');
+      drop.querySelectorAll('[data-acc-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.accId;
+          drop.classList.remove('open');
+          input.blur();
+          if (canPlayerDetail) {
+            openDetail(id);
+          } else {
+            window.location.href = oyuncularUrl + '&q=' + encodeURIComponent(btn.dataset.accLogin || '');
+          }
+        });
+      });
+    };
+
+    const run = () => {
+      const q = input.value.trim();
+      if (q.length < 2) {
+        drop.classList.remove('open');
+        drop.innerHTML = '';
+        return;
+      }
+      if (q === lastQ) return;
+      lastQ = q;
+      drop.innerHTML = '<div class="empty">Aranıyor…</div>';
+      drop.classList.add('open');
+      fetch(playerSearchUrl + '?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(res => {
+          if (input.value.trim() !== q) return;
+          if (!res.ok) {
+            drop.innerHTML = '<div class="empty">' + esc(res.error || 'Arama başarısız') + '</div>';
+            return;
+          }
+          render(res.results || [], q);
+        })
+        .catch(() => {
+          drop.innerHTML = '<div class="empty">Arama başarısız.</div>';
+        });
+    };
+
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(run, 220);
+    });
+    input.addEventListener('focus', () => {
+      if (drop.innerHTML) drop.classList.add('open');
+      else if (input.value.trim().length >= 2) run();
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        drop.classList.remove('open');
+        input.blur();
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const first = drop.querySelector('[data-acc-id]');
+        if (first) first.click();
+      }
+    });
+    document.addEventListener('click', (e) => {
+      if (!wrap.contains(e.target)) drop.classList.remove('open');
+    });
+  })();
 
   // Penalty form edit
   const penaltyFormTitle = document.getElementById('penaltyFormTitle');
@@ -2426,6 +3024,397 @@ $can = static function (string $flag) use ($permFlags): bool {
         }
       }
     });
+  })();
+</script>
+<script>
+  // Mail ayarları sekmeleri + HTML editör
+  (function mailSettings() {
+    const tabs = document.querySelectorAll('#mailTabs [data-mail-tab]');
+    const panes = document.querySelectorAll('[data-mail-pane]');
+    tabs.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.mailTab;
+        tabs.forEach(b => b.classList.toggle('active', b === btn));
+        panes.forEach(p => p.classList.toggle('active', p.dataset.mailPane === key));
+      });
+    });
+    const provider = document.getElementById('mailProvider');
+    const custom = document.getElementById('mailCustomFields');
+    const syncProvider = () => {
+      if (!provider || !custom) return;
+      custom.style.display = provider.value === 'custom' ? 'block' : 'none';
+      const preset = mailPresetsJs[provider.value];
+      if (preset && provider.value !== 'custom') {
+        const host = document.getElementById('mailHost');
+        const port = document.getElementById('mailPort');
+        const enc = document.getElementById('mailEnc');
+        if (host) host.value = preset.host || '';
+        if (port) port.value = preset.port || 587;
+        if (enc) enc.value = preset.encryption || 'tls';
+      }
+      const hint = document.getElementById('mailProviderHint');
+      if (hint) {
+        const hints = {
+          yandex: 'Yandex / Yandex 360: Host otomatik smtp.yandex.com:465 SSL. smtp.yandex.com.tr kullanma. Hesap=gönderen tam adres (ör. m2dn@trueddn.com.tr). Parola=uygulama şifresi. mail.yandex.com → Posta istemcileri açık olmalı. Kurumsal kutuda Yandex 360 admin izni gerekir.',
+          gmail: 'Gmail: Google hesabında 2FA açıkken Uygulama şifresi oluşturun. SMTP: smtp.gmail.com:587 TLS.',
+          microsoft: 'Microsoft: SMTP AUTH açık kutu + uygulama şifresi gerekebilir. SMTP: smtp.office365.com:587 TLS.',
+          custom: ''
+        };
+        const text = hints[provider.value] || '';
+        hint.style.display = text ? 'block' : 'none';
+        hint.textContent = text;
+      }
+    };
+    provider?.addEventListener('change', syncProvider);
+    syncProvider();
+    document.querySelectorAll('[data-edit-mail]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('mailServerId').value = btn.dataset.id || '';
+        document.getElementById('mailServerName').value = btn.dataset.name || '';
+        document.getElementById('mailProvider').value = btn.dataset.provider || 'custom';
+        document.getElementById('mailHost').value = btn.dataset.host || '';
+        document.getElementById('mailPort').value = btn.dataset.port || '587';
+        document.getElementById('mailEnc').value = btn.dataset.encryption || 'tls';
+        document.getElementById('mailUser').value = btn.dataset.username || '';
+        document.getElementById('mailPass').value = '';
+        document.getElementById('mailFrom').value = btn.dataset.from || '';
+        document.getElementById('mailFromName').value = btn.dataset.fromName || '';
+        syncProvider();
+        showSection('mail-ayarlari');
+        document.querySelector('#mailTabs [data-mail-tab="sunucu"]')?.click();
+      });
+    });
+    document.getElementById('mailServerReset')?.addEventListener('click', () => {
+      document.getElementById('mailServerForm')?.reset();
+      document.getElementById('mailServerId').value = '';
+      syncProvider();
+    });
+    document.querySelectorAll('form[action*="mail/sablon"]').forEach(form => {
+      const wrap = form.querySelector('[data-mail-tpl-wrap]');
+      const editor = form.querySelector('[data-html-editor]');
+      const source = form.querySelector('[data-html-source]');
+      const hidden = form.querySelector('textarea[name="body_html"]');
+      const toggleBtn = form.querySelector('[data-html-toggle]');
+      let htmlMode = false;
+
+      const decodeEntities = (str) => {
+        const ta = document.createElement('textarea');
+        ta.innerHTML = String(str || '');
+        return ta.value;
+      };
+      const normalizeBodyHtml = (raw) => {
+        let html = String(raw || '');
+        const asTextMatch = () => {
+          // Görsel editör: HTML kodu metin olarak yapıştırıldıysa
+          if (!editor) return html;
+          const asText = (editor.textContent || '').trim();
+          const asHtml = editor.innerHTML || '';
+          if (/<\/?[a-z][\s\S]*>/i.test(asText) && /&lt;\/?[a-z!]/i.test(asHtml)) {
+            return asText;
+          }
+          return asHtml;
+        };
+        if (htmlMode && source) {
+          html = source.value || '';
+        } else {
+          html = asTextMatch();
+        }
+        let guard = 0;
+        while (guard < 3 && /&lt;\/?[a-z!]/i.test(html)) {
+          const next = decodeEntities(html);
+          if (next === html) break;
+          html = next;
+          guard += 1;
+        }
+        return html;
+      };
+      const syncHidden = () => {
+        if (!hidden) return;
+        hidden.value = normalizeBodyHtml();
+      };
+      const getBodyHtml = () => normalizeBodyHtml();
+
+      form.addEventListener('submit', () => { syncHidden(); });
+
+      form.querySelectorAll('[data-mail-toolbar] button[data-cmd]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const cmd = btn.dataset.cmd || '';
+          if (cmd === 'toggleHtml') {
+            htmlMode = !htmlMode;
+            if (htmlMode) {
+              if (source && editor) {
+                const asText = (editor.textContent || '').trim();
+                const asHtml = editor.innerHTML || '';
+                // Görsel alana HTML kodu metin olarak yapıştırıldıysa kaynakta gerçek HTML göster
+                if (/<\/?[a-z][\s\S]*>/i.test(asText) && /&lt;\/?[a-z]/i.test(asHtml)) {
+                  source.value = asText;
+                } else {
+                  source.value = asHtml;
+                }
+              }
+              editor?.classList.add('html-mode');
+              source?.classList.add('open');
+              toggleBtn?.classList.add('active-mode');
+              source?.focus();
+            } else {
+              if (source && editor) {
+                const raw = source.value || '';
+                // Tam HTML / tablo şablonları görsel moda geçince <p> ile parçalanır
+                if (/<!DOCTYPE|<\s*html[\s>]/i.test(raw) || (/<\s*table[\s>]/i.test(raw) && /<\s*tr[\s>]/i.test(raw) && raw.length > 600)) {
+                  alert('Tam HTML şablonlar görsel modda bozulur. HTML modunda düzenleyip kaydedin.');
+                  return;
+                }
+                editor.innerHTML = raw;
+              }
+              editor?.classList.remove('html-mode');
+              source?.classList.remove('open');
+              toggleBtn?.classList.remove('active-mode');
+              editor?.focus();
+            }
+            syncHidden();
+            return;
+          }
+          if (htmlMode) return;
+          if (!editor) return;
+          editor.focus();
+          if (cmd === 'createLink') {
+            const url = prompt('Link URL', 'https://');
+            if (url) document.execCommand('createLink', false, url);
+            syncHidden();
+            return;
+          }
+          if (cmd === 'insertTable') {
+            document.execCommand('insertHTML', false, '<table><tr><th>Başlık</th><th>Başlık</th></tr><tr><td>Hücre</td><td>Hücre</td></tr></table><p></p>');
+            syncHidden();
+            return;
+          }
+          if (cmd === 'formatBlock') {
+            document.execCommand('formatBlock', false, btn.dataset.value || 'p');
+            syncHidden();
+            return;
+          }
+          document.execCommand(cmd, false, null);
+          syncHidden();
+        });
+      });
+
+      form.querySelector('[data-fore-color]')?.addEventListener('input', (e) => {
+        if (htmlMode || !editor) return;
+        editor.focus();
+        document.execCommand('foreColor', false, e.target.value);
+        syncHidden();
+      });
+
+      form.querySelector('[data-insert-var]')?.addEventListener('change', (e) => {
+        const val = e.target.value;
+        e.target.value = '';
+        if (!val) return;
+        if (htmlMode && source) {
+          const start = source.selectionStart || 0;
+          const end = source.selectionEnd || 0;
+          const text = source.value || '';
+          source.value = text.slice(0, start) + val + text.slice(end);
+          source.focus();
+          source.selectionStart = source.selectionEnd = start + val.length;
+        } else if (editor) {
+          editor.focus();
+          document.execCommand('insertText', false, val);
+        }
+        syncHidden();
+      });
+
+      editor?.addEventListener('input', syncHidden);
+      source?.addEventListener('input', syncHidden);
+      form._mailGetBodyHtml = getBodyHtml;
+    });
+
+    const previewModal = document.getElementById('mailPreviewModal');
+    const previewMeta = document.getElementById('mailPreviewMeta');
+    const previewFrame = document.getElementById('mailPreviewFrame');
+    const previewClose = document.getElementById('mailPreviewClose');
+    const sampleVars = {
+      app: <?= json_encode($appName, JSON_UNESCAPED_UNICODE) ?>,
+      login: 'ornek_oyuncu',
+      email: 'ornek@mail.com',
+      link: <?= json_encode(rtrim((string) (\App\Core\Config::get('app.url', 'http://127.0.0.1:8080')), '/'), JSON_UNESCAPED_UNICODE) ?>,
+      logo: <?= json_encode(\App\Services\MailService::logoUrl(), JSON_UNESCAPED_UNICODE) ?>,
+      reason: 'Kural ihlali örneği',
+      code: 'M2DN-4821',
+      subject: 'Destek konusu örneği',
+    };
+    const renderMailTpl = (text, vars) => String(text || '').replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, k) => (vars[k] != null ? String(vars[k]) : ''));
+    const decodeHtmlEntities = (str) => {
+      const ta = document.createElement('textarea');
+      ta.innerHTML = String(str || '');
+      return ta.value;
+    };
+    const resolvePreviewHtml = (raw, editorEl, sourceEl, htmlMode) => {
+      let html = '';
+      if (htmlMode && sourceEl) {
+        html = sourceEl.value || '';
+      } else if (editorEl) {
+        // Görsel editörde HTML kodu düz metin olarak yapıştırıldıysa textContent kullan
+        const asText = (editorEl.textContent || '').trim();
+        const asHtml = editorEl.innerHTML || '';
+        if (/<\/?[a-z][\s\S]*>/i.test(asText) && /&lt;\/?[a-z]/i.test(asHtml)) {
+          html = asText;
+        } else {
+          html = asHtml;
+        }
+      } else {
+        html = String(raw || '');
+      }
+      // Entity kaçışlı HTML'i çöz (&lt;p&gt; → <p>)
+      let guard = 0;
+      while (guard < 3 && /&lt;\/?[a-z!]/i.test(html)) {
+        const next = decodeHtmlEntities(html);
+        if (next === html) break;
+        html = next;
+        guard += 1;
+      }
+      return html;
+    };
+    const writePreviewDoc = (frame, bodyHtml) => {
+      const full = '<!DOCTYPE html><html><head><meta charset="utf-8">'
+        + '<style>body{font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:1.55;color:#222;margin:16px;background:#fff;}'
+        + 'a{color:#0b57d0;} table{border-collapse:collapse;width:100%;} th,td{border:1px solid #ccc;padding:6px 8px;}'
+        + 'img{max-width:100%;height:auto;}</style></head><body>' + bodyHtml + '</body></html>';
+      try {
+        const doc = frame.contentDocument || frame.contentWindow?.document;
+        if (doc) {
+          doc.open();
+          doc.write(full);
+          doc.close();
+          return;
+        }
+      } catch (err) {}
+      frame.srcdoc = full;
+    };
+    document.querySelectorAll('[data-mail-preview]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const form = btn.closest('form');
+        if (!form || !previewModal || !previewFrame) return;
+        const subjectInput = form.querySelector('input[name="subject"]');
+        const nameEl = form.querySelector('strong');
+        const editorEl = form.querySelector('[data-html-editor]');
+        const sourceEl = form.querySelector('[data-html-source]');
+        const htmlMode = !!(sourceEl && sourceEl.classList.contains('open'));
+        const subjectRaw = subjectInput ? subjectInput.value : '';
+        const bodyRaw = resolvePreviewHtml('', editorEl, sourceEl, htmlMode);
+        const subject = renderMailTpl(subjectRaw, sampleVars);
+        const body = renderMailTpl(bodyRaw, sampleVars);
+        if (previewMeta) {
+          previewMeta.innerHTML = '<div><b>Şablon:</b> ' + (nameEl ? nameEl.textContent.trim() : '—') + '</div>'
+            + '<div style="margin-top:6px;"><b>Konu:</b> ' + String(subject).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) + '</div>';
+        }
+        writePreviewDoc(previewFrame, body);
+        previewModal.classList.add('open');
+      });
+    });
+    previewClose?.addEventListener('click', () => previewModal?.classList.remove('open'));
+    previewModal?.addEventListener('click', (e) => { if (e.target === previewModal) previewModal.classList.remove('open'); });
+  })();
+
+  // Bildirim zili
+  (function notificationsBell() {
+    const btn = document.getElementById('notifBellBtn');
+    const icon = document.getElementById('notifBellIcon');
+    const drop = document.getElementById('notifDrop');
+    const list = document.getElementById('notifList');
+    const markAll = document.getElementById('notifMarkAll');
+    const detailModal = document.getElementById('notifDetailModal');
+    const detailTitle = document.getElementById('notifDetailTitle');
+    const detailBody = document.getElementById('notifDetailBody');
+    const detailGo = document.getElementById('notifDetailGo');
+    const detailClose = document.getElementById('notifDetailClose');
+    if (!btn || !drop || !list) return;
+
+    const escLocal = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    const setBellState = (unread, hasAny) => {
+      btn.classList.toggle('has-unread', unread > 0);
+      btn.classList.toggle('empty-bell', !hasAny);
+      if (icon) {
+        icon.className = hasAny ? 'fa-solid fa-bell' : 'fa-solid fa-bell-slash';
+      }
+    };
+
+    const render = (items, unread) => {
+      setBellState(unread, items.length > 0);
+      if (!items.length) {
+        list.innerHTML = '<div class="notif-empty"><i class="fa-solid fa-bell-slash" style="display:block;font-size:1.4rem;margin-bottom:8px;"></i>Bildirim yok</div>';
+        return;
+      }
+      list.innerHTML = items.map(it => (
+        '<button type="button" class="notif-item' + (it.is_read ? '' : ' unread') + '" data-nid="' + escLocal(String(it.id)) + '" data-title="' + escLocal(it.title) + '" data-body="' + escLocal(it.body || '') + '" data-link="' + escLocal(it.link || '') + '">'
+        + '<div class="t">' + escLocal(it.title) + '</div>'
+        + (it.body ? '<div class="b">' + escLocal(it.body) + '</div>' : '')
+        + '<div class="d">' + escLocal(it.created_label || '') + '</div>'
+        + '</button>'
+      )).join('');
+    };
+
+    const load = () => fetch(notifListUrl, { credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(res => {
+        if (!res.ok) return;
+        render(res.items || [], Number(res.unread || 0));
+      })
+      .catch(() => {});
+
+    const markRead = (id) => {
+      const body = new URLSearchParams();
+      body.set('csrf_token', csrfToken);
+      if (id) body.set('id', String(id));
+      return fetch(notifReadUrl, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': csrfToken },
+        body: body.toString(),
+      }).then(r => r.json()).catch(() => null);
+    };
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = drop.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) load();
+    });
+    document.addEventListener('click', () => drop.classList.remove('open'));
+    drop.addEventListener('click', (e) => e.stopPropagation());
+
+    markAll?.addEventListener('click', () => {
+      markRead(null).then(() => load());
+    });
+
+    list.addEventListener('click', (e) => {
+      const item = e.target.closest('.notif-item');
+      if (!item) return;
+      const id = item.dataset.nid;
+      const title = item.dataset.title || 'Bildirim';
+      const body = item.dataset.body || '';
+      const link = item.dataset.link || '';
+      markRead(id).then(() => load());
+      drop.classList.remove('open');
+      if (detailTitle) detailTitle.textContent = title;
+      if (detailBody) detailBody.textContent = body || 'Detay yok.';
+      if (detailGo) {
+        if (link) {
+          detailGo.href = link;
+          detailGo.style.display = '';
+        } else {
+          detailGo.style.display = 'none';
+        }
+      }
+      detailModal?.classList.add('open');
+    });
+    detailClose?.addEventListener('click', () => detailModal?.classList.remove('open'));
+    detailModal?.addEventListener('click', (e) => { if (e.target === detailModal) detailModal.classList.remove('open'); });
+    detailGo?.addEventListener('click', () => detailModal?.classList.remove('open'));
+
+    load();
+    setInterval(load, 60000);
   })();
 </script>
 </body>

@@ -13,6 +13,10 @@
 /** @var mixed $loginSuccess */
 /** @var mixed $openLogin */
 /** @var mixed $open2fa */
+/** @var mixed $openForgot */
+/** @var mixed $forgotErrors */
+/** @var mixed $forgotOld */
+/** @var mixed $forgotSuccess */
 /** @var array|null $authUser */
 /** @var string $appVersion */
 /** @var list<array> $siteFeatures */
@@ -24,6 +28,7 @@
 /** @var array $siteFooter */
 /** @var array $nextChapter */
 /** @var array|null $homeAnnouncement */
+/** @var array $siteBrand */
 
 $registerErrors = is_array($registerErrors ?? null) ? $registerErrors : [];
 $registerOld = is_array($registerOld ?? null) ? $registerOld : [];
@@ -34,7 +39,11 @@ $loginErrors = is_array($loginErrors ?? null) ? $loginErrors : [];
 $loginOld = is_array($loginOld ?? null) ? $loginOld : [];
 $loginSuccess = is_string($loginSuccess ?? null) ? $loginSuccess : null;
 $open2fa = !empty($open2fa);
-$openLogin = (!$open2fa) && (!empty($openLogin) || $loginErrors !== [] || $loginSuccess !== null);
+$forgotErrors = is_array($forgotErrors ?? null) ? $forgotErrors : [];
+$forgotOld = is_array($forgotOld ?? null) ? $forgotOld : [];
+$forgotSuccess = is_string($forgotSuccess ?? null) ? $forgotSuccess : null;
+$openForgot = !empty($openForgot) || $forgotErrors !== [] || $forgotSuccess !== null;
+$openLogin = (!$open2fa && !$openForgot) && (!empty($openLogin) || $loginErrors !== [] || $loginSuccess !== null);
 $authUser = is_array($authUser ?? null) ? $authUser : null;
 $appVersion = (string) ($appVersion ?? '1.10.2');
 $siteFeatures = is_array($siteFeatures ?? null) ? $siteFeatures : [];
@@ -46,6 +55,12 @@ $siteFooterLinks = is_array($siteFooterLinks ?? null) ? $siteFooterLinks : [];
 $siteFooter = is_array($siteFooter ?? null) ? $siteFooter : [];
 $nextChapter = is_array($nextChapter ?? null) ? $nextChapter : [];
 $homeAnnouncement = is_array($homeAnnouncement ?? null) ? $homeAnnouncement : null;
+if (!isset($siteBrand) || !is_array($siteBrand)) {
+    $siteBrand = \App\Services\SiteContentService::brandingDefaults();
+}
+$brandIcon = (string) ($siteBrand['icon_url'] ?? asset('img/logo-mark.svg'));
+$brandLogo = (string) ($siteBrand['logo_url'] ?? asset('img/logo-nav.svg'));
+$brandHomeSize = (int) ($siteBrand['home_size'] ?? 48);
 $isLoggedIn = $authUser !== null;
 $canAdmin = $isLoggedIn && \App\Services\AuthService::canAccessAdmin($authUser);
 
@@ -66,9 +81,9 @@ $mediaUrl = static function (string $path): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= e($appName) ?> | <?= e($appTagline) ?></title>
-<link rel="icon" href="<?= e(asset('img/logo-mark.svg')) ?>" type="image/svg+xml">
-<link rel="shortcut icon" href="<?= e(asset('img/logo-mark.svg')) ?>">
-<link rel="apple-touch-icon" href="<?= e(asset('img/logo-mark.svg')) ?>">
+<link rel="icon" href="<?= e($brandIcon) ?>">
+<link rel="shortcut icon" href="<?= e($brandIcon) ?>">
+<link rel="apple-touch-icon" href="<?= e($brandIcon) ?>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=Ma+Shan+Zheng&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -159,14 +174,14 @@ $mediaUrl = static function (string $path): string {
   }
   .brand:hover{opacity:.92;}
   .brand-logo{
-    height:48px; width:auto; display:block;
+    height:<?= $brandHomeSize ?>px; width:auto; display:block; object-fit:contain;
     filter:drop-shadow(0 2px 10px rgba(0,0,0,.35));
   }
   .brand-mark{
     height:42px; width:42px; display:block;
     filter:drop-shadow(0 2px 8px rgba(0,0,0,.35));
   }
-  .footer-brand .brand-logo{height:56px;}
+  .footer-brand .brand-logo{height:<?= max(24, (int) round($brandHomeSize * 1.15)) ?>px;}
   .footer-brand .brand{margin-bottom:4px;}
 
   .nav-links{display:flex; gap:34px; font-size:.92rem; font-weight:600; letter-spacing:.03em; text-transform:uppercase;}
@@ -587,7 +602,7 @@ $mediaUrl = static function (string $path): string {
   <div class="container">
     <nav>
       <a href="<?= e(url('/')) ?>" class="brand" aria-label="<?= e($appName) ?> Anasayfa">
-        <img class="brand-logo" src="<?= e(asset('img/logo-nav.svg')) ?>" alt="<?= e($appName) ?>">
+        <img class="brand-logo" src="<?= e($brandLogo) ?>" alt="<?= e($appName) ?>">
       </a>
       <ul class="nav-links">
         <li><a href="#anasayfa">Anasayfa</a></li>
@@ -829,7 +844,7 @@ $mediaUrl = static function (string $path): string {
     <div class="footer-top">
       <div class="footer-brand">
         <a href="<?= e(url('/')) ?>" class="brand" aria-label="<?= e($appName) ?> Anasayfa">
-          <img class="brand-logo" src="<?= e(asset('img/logo-nav.svg')) ?>" alt="<?= e($appName) ?>">
+          <img class="brand-logo" src="<?= e($brandLogo) ?>" alt="<?= e($appName) ?>">
         </a>
         <p><?= e((string) ($siteFooter['brand_text'] ?? ($appName . ' — bağımsız Metin2 sunucusu.'))) ?></p>
       </div>
@@ -910,7 +925,47 @@ $mediaUrl = static function (string $path): string {
         <label for="login-pass">Parola</label>
         <input id="login-pass" name="password" type="password" maxlength="16" required>
       </div>
+      <p style="margin:-4px 0 14px;text-align:right;font-size:.82rem;">
+        <button type="button" id="openForgotModal" style="background:none;border:0;color:var(--gold-light,#e8c078);cursor:pointer;font:inherit;text-decoration:underline;padding:0;">Parolamı unuttum</button>
+      </p>
       <button type="submit" class="btn btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Giriş Yap</button>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay<?= $openForgot ? ' open' : '' ?>" id="forgotModal" role="dialog" aria-modal="true" aria-labelledby="forgotTitle">
+  <div class="modal-card">
+    <button type="button" class="modal-close" id="closeForgotModal" aria-label="Kapat"><i class="fa-solid fa-xmark"></i></button>
+    <div class="eyebrow">重置 · Şifre</div>
+    <h2 id="forgotTitle">Parolamı Unuttum</h2>
+    <p class="sub">Hesap adı ve kayıtlı e-posta eşleşirse sıfırlama bağlantısı gönderilir (20 dk).</p>
+
+    <?php if ($forgotSuccess): ?>
+      <div class="modal-alert success"><?= e($forgotSuccess) ?></div>
+    <?php endif; ?>
+    <?php if ($forgotErrors !== []): ?>
+      <div class="modal-alert error">
+        <ul>
+          <?php foreach ($forgotErrors as $err): ?>
+            <li><?= e((string) $err) ?></li>
+          <?php endforeach; ?>
+        </ul>
+      </div>
+    <?php endif; ?>
+
+    <form class="modal-form" method="post" action="<?= e(url('/sifre-unuttum')) ?>" autocomplete="off">
+      <?= $csrf ?>
+      <div class="form-row">
+        <label for="forgot-login">Hesap adı</label>
+        <input id="forgot-login" name="login" type="text" maxlength="16" required
+               value="<?= e((string) ($forgotOld['login'] ?? '')) ?>">
+      </div>
+      <div class="form-row">
+        <label for="forgot-email">E-posta</label>
+        <input id="forgot-email" name="email" type="email" maxlength="64" required
+               value="<?= e((string) ($forgotOld['email'] ?? '')) ?>">
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="fa-solid fa-envelope"></i> Sıfırlama bağlantısı gönder</button>
     </form>
   </div>
 </div>
@@ -1012,6 +1067,7 @@ $mediaUrl = static function (string $path): string {
   const loginModal = document.getElementById('loginModal');
   const registerModal = document.getElementById('registerModal');
   const twoFaModal = document.getElementById('twoFaModal');
+  const forgotModal = document.getElementById('forgotModal');
   const homeAnnModal = document.getElementById('homeAnnModal');
   const homeAnnId = <?= json_encode($homeAnnouncement ? (int) $homeAnnouncement['id'] : 0) ?>;
   const homeAnnStorageKey = 'm2dn_home_ann_read';
@@ -1021,14 +1077,17 @@ $mediaUrl = static function (string $path): string {
   const openRegisterBtn = document.getElementById('openRegisterModal');
   const closeRegisterBtn = document.getElementById('closeRegisterModal');
   const closeTwoFaBtn = document.getElementById('closeTwoFaModal');
+  const openForgotBtn = document.getElementById('openForgotModal');
+  const closeForgotBtn = document.getElementById('closeForgotModal');
 
   function anyAuthModalOpen() {
-    return !!(loginModal?.classList.contains('open') || registerModal?.classList.contains('open') || twoFaModal?.classList.contains('open'));
+    return !!(loginModal?.classList.contains('open') || registerModal?.classList.contains('open') || twoFaModal?.classList.contains('open') || forgotModal?.classList.contains('open'));
   }
   function hideAllModals() {
     loginModal?.classList.remove('open');
     registerModal?.classList.remove('open');
     twoFaModal?.classList.remove('open');
+    forgotModal?.classList.remove('open');
     homeAnnModal?.classList.remove('open');
     document.body.classList.remove('modal-open');
   }
@@ -1071,6 +1130,14 @@ $mediaUrl = static function (string $path): string {
     const first = document.getElementById('twofa-code');
     if (first) setTimeout(() => first.focus(), 50);
   }
+  function showForgotModal() {
+    if (!forgotModal) return;
+    hideAllModals();
+    forgotModal.classList.add('open');
+    document.body.classList.add('modal-open');
+    const first = document.getElementById('forgot-login');
+    if (first) setTimeout(() => first.focus(), 50);
+  }
 
   openLoginBtn?.addEventListener('click', showLoginModal);
   openLoginHero?.addEventListener('click', showLoginModal);
@@ -1078,6 +1145,8 @@ $mediaUrl = static function (string $path): string {
   openRegisterBtn?.addEventListener('click', showRegisterModal);
   closeRegisterBtn?.addEventListener('click', hideAllModals);
   closeTwoFaBtn?.addEventListener('click', hideAllModals);
+  openForgotBtn?.addEventListener('click', showForgotModal);
+  closeForgotBtn?.addEventListener('click', hideAllModals);
   document.getElementById('closeHomeAnnModal')?.addEventListener('click', dismissHomeAnn);
   document.getElementById('homeAnnDismissClose')?.addEventListener('click', dismissHomeAnn);
   document.getElementById('homeAnnDismissRead')?.addEventListener('click', dismissHomeAnn);
@@ -1085,6 +1154,7 @@ $mediaUrl = static function (string $path): string {
   loginModal?.addEventListener('click', (e) => { if (e.target === loginModal) hideAllModals(); });
   registerModal?.addEventListener('click', (e) => { if (e.target === registerModal) hideAllModals(); });
   twoFaModal?.addEventListener('click', (e) => { if (e.target === twoFaModal) hideAllModals(); });
+  forgotModal?.addEventListener('click', (e) => { if (e.target === forgotModal) hideAllModals(); });
   homeAnnModal?.addEventListener('click', (e) => { if (e.target === homeAnnModal) dismissHomeAnn(); });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
@@ -1123,6 +1193,8 @@ $mediaUrl = static function (string $path): string {
 
   <?php if ($open2fa): ?>
   showTwoFaModal();
+  <?php elseif ($openForgot): ?>
+  showForgotModal();
   <?php elseif ($openLogin): ?>
   showLoginModal();
   <?php elseif ($openRegister): ?>

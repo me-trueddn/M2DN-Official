@@ -162,6 +162,54 @@ final class AdminSiteController
         $this->ok('Sosyal medya silindi.', 'footer-ayarlari');
     }
 
+    public function saveLogo(): void
+    {
+        $this->gate();
+
+        SiteContentService::set('logo', 'home_size', (string) max(16, min(160, (int) ($_POST['home_size'] ?? 48))));
+        SiteContentService::set('logo', 'user_size', (string) max(16, min(120, (int) ($_POST['user_size'] ?? 36))));
+        SiteContentService::set('logo', 'admin_size', (string) max(16, min(120, (int) ($_POST['admin_size'] ?? 36))));
+
+        if (!empty($_POST['remove_logo'])) {
+            SiteContentService::clearBrandFile('logo');
+        }
+        if (!empty($_POST['remove_icon'])) {
+            SiteContentService::clearBrandFile('icon');
+        }
+
+        if (!empty($_FILES['logo']['tmp_name']) && is_uploaded_file((string) $_FILES['logo']['tmp_name'])) {
+            $uploaded = $this->storeBrandingUpload($_FILES['logo'], 'logo');
+            if ($uploaded === null) {
+                $this->fail(['Logo yüklenemedi (png/jpg/webp/gif/svg, max 5MB).'], 'logo-ayarlari');
+            }
+            $old = (string) (SiteContentService::get('logo', 'logo_path', '') ?? '');
+            SiteContentService::set('logo', 'logo_path', $uploaded);
+            if ($old !== '' && $old !== $uploaded && str_starts_with($old, '/uploads/branding/')) {
+                $full = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . str_replace('/', DIRECTORY_SEPARATOR, $old);
+                if (is_file($full)) {
+                    @unlink($full);
+                }
+            }
+        }
+
+        if (!empty($_FILES['icon']['tmp_name']) && is_uploaded_file((string) $_FILES['icon']['tmp_name'])) {
+            $uploaded = $this->storeBrandingUpload($_FILES['icon'], 'icon');
+            if ($uploaded === null) {
+                $this->fail(['İkon yüklenemedi (png/jpg/webp/gif/svg/ico, max 2MB).'], 'logo-ayarlari');
+            }
+            $old = (string) (SiteContentService::get('logo', 'icon_path', '') ?? '');
+            SiteContentService::set('logo', 'icon_path', $uploaded);
+            if ($old !== '' && $old !== $uploaded && str_starts_with($old, '/uploads/branding/')) {
+                $full = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . str_replace('/', DIRECTORY_SEPARATOR, $old);
+                if (is_file($full)) {
+                    @unlink($full);
+                }
+            }
+        }
+
+        $this->ok('Logo ayarları kaydedildi.', 'logo-ayarlari');
+    }
+
     /** @param array{ok:bool, errors:list<string>} $result */
     private function fromResult(array $result, string $success, string $section): void
     {
@@ -181,6 +229,7 @@ final class AdminSiteController
             'ozellikler-ayarlari' => 'Özellik kaydedildi',
             'siniflar-ayarlari' => 'Sınıf kaydedildi',
             'galeri-ayarlari' => 'Galeri güncellendi',
+            'logo-ayarlari' => 'Logo ayarları güncellendi',
         ];
         AdminLogService::write(AuthService::user(), $labels[$section] ?? ('Ayar: ' . $section), $msg);
         Session::flash('panel_success', $msg);
@@ -225,5 +274,55 @@ final class AdminSiteController
             return null;
         }
         return '/uploads/gallery/' . $name;
+    }
+
+    /** @param array $file */
+    private function storeBrandingUpload(array $file, string $kind): ?string
+    {
+        $tmp = (string) ($file['tmp_name'] ?? '');
+        $size = (int) ($file['size'] ?? 0);
+        $max = $kind === 'icon' ? 2 * 1024 * 1024 : 5 * 1024 * 1024;
+        if ($tmp === '' || $size <= 0 || $size > $max) {
+            return null;
+        }
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mime = (string) $finfo->file($tmp);
+        $map = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            'image/gif' => 'gif',
+            'image/svg+xml' => 'svg',
+            'image/x-icon' => 'ico',
+            'image/vnd.microsoft.icon' => 'ico',
+            'application/octet-stream' => null,
+        ];
+        $ext = $map[$mime] ?? null;
+        if ($ext === null) {
+            $orig = strtolower((string) ($file['name'] ?? ''));
+            if (str_ends_with($orig, '.svg') && ($mime === 'image/svg+xml' || $mime === 'text/plain' || $mime === 'application/octet-stream')) {
+                $ext = 'svg';
+            } elseif (str_ends_with($orig, '.ico')) {
+                $ext = 'ico';
+            } else {
+                return null;
+            }
+        }
+        if ($kind === 'icon' && !in_array($ext, ['png', 'jpg', 'webp', 'gif', 'svg', 'ico'], true)) {
+            return null;
+        }
+        if ($kind === 'logo' && !in_array($ext, ['png', 'jpg', 'webp', 'gif', 'svg'], true)) {
+            return null;
+        }
+        $dir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'branding';
+        if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+            return null;
+        }
+        $name = ($kind === 'icon' ? 'icon_' : 'logo_') . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        $dest = $dir . DIRECTORY_SEPARATOR . $name;
+        if (!move_uploaded_file($tmp, $dest)) {
+            return null;
+        }
+        return '/uploads/branding/' . $name;
     }
 }

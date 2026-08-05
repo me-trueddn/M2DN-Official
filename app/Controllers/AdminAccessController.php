@@ -15,27 +15,49 @@ final class AdminAccessController
 {
     public function saveGroup(): void
     {
-        PermissionService::requireFlag(PermissionService::FLAG_SITE_SETTINGS);
+        $user = PermissionService::requireFlag(PermissionService::FLAG_SITE_SETTINGS);
         Security::requireCsrf('login');
         $id = (int) ($_POST['id'] ?? 0);
+        $name = trim((string) ($_POST['name'] ?? ''));
         $flags = [];
         foreach (PermissionService::flagDefinitions() as $key => $_) {
             $flags[$key] = !empty($_POST['flags'][$key]);
         }
         $result = PermissionService::saveGroup(
             $id > 0 ? $id : null,
-            (string) ($_POST['name'] ?? ''),
+            $name,
             $flags
         );
-        $this->flash($result, 'Yetki grubu kaydedildi.', 'yetki-gruplari');
+        Session::flash('panel_section', 'yetki-gruplari');
+        if (!empty($result['ok'])) {
+            $gid = (int) ($result['id'] ?? $id);
+            Session::flash('panel_success', 'Yetki grubu kaydedildi.');
+            AdminLogService::write(
+                $user,
+                $id > 0 ? 'Yetki grubu güncellendi' : 'Yetki grubu eklendi',
+                self::groupDetail($gid, $name)
+            );
+        } else {
+            Session::flash('panel_errors', $result['errors'] !== [] ? $result['errors'] : ['İşlem başarısız.']);
+        }
+        redirect('/admin?section=yetki-gruplari');
     }
 
     public function deleteGroup(): void
     {
-        PermissionService::requireFlag(PermissionService::FLAG_SITE_SETTINGS);
+        $user = PermissionService::requireFlag(PermissionService::FLAG_SITE_SETTINGS);
         Security::requireCsrf('login');
-        $result = PermissionService::deleteGroup((int) ($_POST['id'] ?? 0));
-        $this->flash($result, 'Yetki grubu silindi.', 'yetki-gruplari');
+        $id = (int) ($_POST['id'] ?? 0);
+        $name = PermissionService::groupNameById($id);
+        $result = PermissionService::deleteGroup($id);
+        Session::flash('panel_section', 'yetki-gruplari');
+        if (!empty($result['ok'])) {
+            Session::flash('panel_success', 'Yetki grubu silindi.');
+            AdminLogService::write($user, 'Yetki grubu silindi', self::groupDetail($id, $name));
+        } else {
+            Session::flash('panel_errors', $result['errors'] !== [] ? $result['errors'] : ['İşlem başarısız.']);
+        }
+        redirect('/admin?section=yetki-gruplari');
     }
 
     public function assignGroup(): void
@@ -48,7 +70,14 @@ final class AdminAccessController
         Session::flash('panel_section', 'oyuncular');
         if (!empty($result['ok'])) {
             Session::flash('panel_success', 'Yetki grubu atandı.');
-            AdminLogService::write($user, 'Yetki grubu atandı', 'Grup #' . $groupId, $accountId, null);
+            $groupName = PermissionService::groupNameById($groupId);
+            AdminLogService::write(
+                $user,
+                'Yetki grubu atandı',
+                self::groupDetail($groupId, $groupName),
+                $accountId,
+                null
+            );
         } else {
             Session::flash('panel_errors', $result['errors'] !== [] ? $result['errors'] : ['Atama başarısız.']);
         }
@@ -138,5 +167,17 @@ final class AdminAccessController
             Session::flash('panel_errors', $result['errors'] !== [] ? $result['errors'] : ['İşlem başarısız.']);
         }
         redirect('/admin?section=' . $section);
+    }
+
+    private static function groupDetail(int $id, string $name): string
+    {
+        $name = trim($name);
+        if ($id > 0 && $name !== '') {
+            return '#' . $id . ' · ' . $name;
+        }
+        if ($id > 0) {
+            return '#' . $id;
+        }
+        return $name !== '' ? $name : '—';
     }
 }

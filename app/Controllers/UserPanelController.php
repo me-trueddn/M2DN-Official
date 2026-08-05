@@ -21,6 +21,9 @@ final class UserPanelController
     public function index(): void
     {
         $user = AuthService::requireLogin();
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
         $accountId = (int) $user['account_id'];
         PenaltyService::liftExpired();
         $dashboard = PlayerService::dashboard($accountId);
@@ -59,6 +62,7 @@ final class UserPanelController
             'panelErrors' => Session::flash('panel_errors') ?? [],
             'panelSuccess' => Session::flash('panel_success'),
             'panelSection' => Session::flash('panel_section')
+                ?? (isset($_GET['section']) ? (string) $_GET['section'] : null)
                 ?? ((int) ($_GET['ticket'] ?? 0) > 0 ? 'destek' : null)
                 ?? ($searchQuery !== '' ? 'ozet' : null),
             'ticketCategories' => TicketService::categories(true),

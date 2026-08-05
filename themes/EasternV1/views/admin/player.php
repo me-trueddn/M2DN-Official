@@ -8,6 +8,7 @@
 /** @var list<array> $gameLogins */
 /** @var array $security */
 /** @var array $currentServer */
+/** @var array $siteBrand */
 
 $appName = $appName ?? 'M2DN';
 $csrf = $csrf ?? '';
@@ -20,6 +21,11 @@ $security = is_array($security ?? null) ? $security : [];
 $currentServer = is_array($currentServer ?? null) ? $currentServer : [];
 $totpOn = !empty($security['totp_enabled']);
 $ipLockOn = !empty($security['ip_lock_enabled']);
+if (!isset($siteBrand) || !is_array($siteBrand)) {
+    $siteBrand = \App\Services\SiteContentService::brandingDefaults();
+}
+$brandIcon = (string) ($siteBrand['icon_url'] ?? asset('img/logo-mark.svg'));
+$brandAdminSize = (int) ($siteBrand['admin_size'] ?? 36);
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -27,7 +33,7 @@ $ipLockOn = !empty($security['ip_lock_enabled']);
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= e((string) ($account['login'] ?? 'Oyuncu')) ?> · Yönetim | <?= e($appName) ?></title>
-<link rel="icon" href="<?= e(asset('img/logo-mark.svg')) ?>" type="image/svg+xml">
+<link rel="icon" href="<?= e($brandIcon) ?>">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=Ma+Shan+Zheng&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
@@ -47,7 +53,7 @@ $ipLockOn = !empty($security['ip_lock_enabled']);
   .wrap{max-width:1100px; margin:0 auto; padding:28px 22px 80px;}
   .top{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; flex-wrap:wrap;}
   .brand{display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:800; color:var(--gold-light); letter-spacing:.06em;}
-  .brand img{width:34px; height:34px;}
+  .brand img{width:<?= $brandAdminSize ?>px; height:<?= $brandAdminSize ?>px; object-fit:contain;}
   .brand span{color:var(--blood-light);}
   .btn{display:inline-flex; align-items:center; gap:8px; padding:10px 16px; font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; font-weight:700; border:1px solid var(--line); color:var(--gold-light);}
   .btn:hover{background:rgba(201,151,74,.08);}
@@ -73,7 +79,7 @@ $ipLockOn = !empty($security['ip_lock_enabled']);
   <div class="wrap">
     <div class="top">
       <a class="brand" href="<?= e(url('/admin?section=oyuncular')) ?>">
-        <img src="<?= e(asset('img/logo-mark.svg')) ?>" alt="<?= e($appName) ?>">
+        <img src="<?= e($brandIcon) ?>" alt="<?= e($appName) ?>">
         M2<span>DN</span>
       </a>
       <a class="btn" href="<?= e(url('/admin?section=oyuncular')) ?>"><i class="fa-solid fa-arrow-left"></i> Oyuncu Listesi</a>

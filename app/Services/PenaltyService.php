@@ -120,7 +120,7 @@ final class PenaltyService
 
         try {
             $acc = Database::account($serverKey);
-            $stmt = $acc->prepare('SELECT id, login, status, WebPermission FROM account WHERE id = ? LIMIT 1');
+            $stmt = $acc->prepare('SELECT id, login, email, status, WebPermission FROM account WHERE id = ? LIMIT 1');
             $stmt->execute([$targetAccountId]);
             $row = $stmt->fetch();
             if (!$row) {
@@ -181,6 +181,15 @@ final class PenaltyService
                 $evidence
             );
 
+            $email = trim((string) ($row['email'] ?? ''));
+            if ($email !== '') {
+                MailService::sendTemplate('ban', $email, (string) $row['login'], [
+                    'login' => (string) $row['login'],
+                    'reason' => (string) $tpl['reason'],
+                    'email' => $email,
+                ]);
+            }
+
             return ['ok' => true, 'errors' => []];
         } catch (\Throwable) {
             return ['ok' => false, 'errors' => ['Ban uygulanamadı.']];
@@ -211,7 +220,7 @@ final class PenaltyService
 
         try {
             $acc = Database::account($serverKey);
-            $stmt = $acc->prepare('SELECT id, login FROM account WHERE id = ? LIMIT 1');
+            $stmt = $acc->prepare('SELECT id, login, email FROM account WHERE id = ? LIMIT 1');
             $stmt->execute([$targetAccountId]);
             $row = $stmt->fetch();
             if (!$row) {
@@ -232,6 +241,15 @@ final class PenaltyService
                 (string) $admin['login'],
                 $reason
             );
+
+            $email = trim((string) ($row['email'] ?? ''));
+            if ($email !== '') {
+                MailService::sendTemplate('unban', $email, (string) $row['login'], [
+                    'login' => (string) $row['login'],
+                    'reason' => $reason,
+                    'email' => $email,
+                ]);
+            }
 
             return ['ok' => true, 'errors' => []];
         } catch (\Throwable) {

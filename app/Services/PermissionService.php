@@ -114,7 +114,7 @@ final class PermissionService
                 $groupId = $id;
                 // User(0) ve Super(2) bayrakları anlamsız; Admin(1) ve özel gruplar düzenlenir
                 if ((int) $row['web_permission'] === 0) {
-                    return ['ok' => true, 'errors' => []];
+                    return ['ok' => true, 'errors' => [], 'id' => $groupId];
                 }
             } else {
                 $web->prepare(
@@ -125,7 +125,7 @@ final class PermissionService
             }
 
             self::syncFlags($groupId, $enabledFlags);
-            return ['ok' => true, 'errors' => []];
+            return ['ok' => true, 'errors' => [], 'id' => $groupId];
         } catch (\Throwable) {
             return ['ok' => false, 'errors' => ['Grup kaydedilemedi.']];
         }

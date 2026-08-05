@@ -5,6 +5,7 @@
 /** @var array $character */
 /** @var int $maxLevel */
 /** @var array $currentServer */
+/** @var array $siteBrand */
 
 $appName = $appName ?? 'M2DN';
 $csrf = $csrf ?? '';
@@ -12,6 +13,11 @@ $authUser = is_array($authUser ?? null) ? $authUser : null;
 $character = is_array($character ?? null) ? $character : [];
 $maxLevel = max(1, (int) ($maxLevel ?? 99));
 $currentServer = is_array($currentServer ?? null) ? $currentServer : [];
+if (!isset($siteBrand) || !is_array($siteBrand)) {
+    $siteBrand = \App\Services\SiteContentService::brandingDefaults();
+}
+$brandIcon = (string) ($siteBrand['icon_url'] ?? asset('img/logo-mark.svg'));
+$brandUserSize = (int) ($siteBrand['user_size'] ?? 36);
 
 $levelPct = \App\Services\PlayerService::levelProgressPercent(
     (int) ($character['level'] ?? 0),
@@ -33,7 +39,7 @@ if (!empty($character['last_play']) && $character['last_play'] !== '0000-00-00 0
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= e((string) ($character['name'] ?? 'Karakter')) ?> | <?= e($appName) ?></title>
-<link rel="icon" href="<?= e(asset('img/logo-mark.svg')) ?>" type="image/svg+xml">
+<link rel="icon" href="<?= e($brandIcon) ?>">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=Ma+Shan+Zheng&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
@@ -53,7 +59,7 @@ if (!empty($character['last_play']) && $character['last_play'] !== '0000-00-00 0
   .wrap{max-width:960px; margin:0 auto; padding:36px 22px 80px;}
   .top{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:28px;}
   .brand{display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:800; color:var(--gold-light); letter-spacing:.06em;}
-  .brand img{width:34px; height:34px;}
+  .brand img{width:<?= $brandUserSize ?>px; height:<?= $brandUserSize ?>px; object-fit:contain;}
   .brand span{color:var(--blood-light);}
   .btn{display:inline-flex; align-items:center; gap:8px; padding:10px 16px; font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; font-weight:700;}
   .btn-ghost{border:1px solid var(--line); color:var(--gold-light);}
@@ -80,7 +86,7 @@ if (!empty($character['last_play']) && $character['last_play'] !== '0000-00-00 0
   <div class="wrap">
     <div class="top">
       <a class="brand" href="<?= e(url('/panel')) ?>">
-        <img src="<?= e(asset('img/logo-mark.svg')) ?>" alt="<?= e($appName) ?>">
+        <img src="<?= e($brandIcon) ?>" alt="<?= e($appName) ?>">
         M2<span>DN</span>
       </a>
       <a class="btn btn-ghost" href="<?= e(url('/panel')) ?>"><i class="fa-solid fa-arrow-left"></i> Panele Dön</a>

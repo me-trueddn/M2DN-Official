@@ -26,9 +26,12 @@
 /** @var list<array> $ticketFileTypes */
 /** @var list<array> $announcements */
 /** @var list<array> $overviewAnnouncements */
+/** @var array $siteBrand */
+/** @var string $appVersion */
 
 $appName = $appName ?? 'M2DN';
 $appTagline = $appTagline ?? '';
+$appVersion = isset($appVersion) && is_string($appVersion) && $appVersion !== '' ? $appVersion : '2.4.0';
 $currentServer = is_array($currentServer ?? null) ? $currentServer : [];
 $servers = is_array($servers ?? null) ? $servers : [];
 $csrf = $csrf ?? '';
@@ -58,6 +61,11 @@ $latestAnnouncement = $announcements[0] ?? null;
 $pastAnnouncements = array_slice($announcements, 1);
 $latestOverviewAnn = $overviewAnnouncements[0] ?? null;
 $pastOverviewAnn = array_slice($overviewAnnouncements, 1);
+if (!isset($siteBrand) || !is_array($siteBrand)) {
+    $siteBrand = \App\Services\SiteContentService::brandingDefaults();
+}
+$brandIcon = (string) ($siteBrand['icon_url'] ?? asset('img/logo-mark.svg'));
+$brandUserSize = (int) ($siteBrand['user_size'] ?? 36);
 $totpOn = !empty($security['totp_enabled']);
 $ipLockOn = !empty($security['ip_lock_enabled']);
 $notifyOn = !empty($security['login_notify']);
@@ -96,9 +104,9 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Oyuncu Paneli | <?= e($appName) ?></title>
-<link rel="icon" href="<?= e(asset('img/logo-mark.svg')) ?>" type="image/svg+xml">
-<link rel="shortcut icon" href="<?= e(asset('img/logo-mark.svg')) ?>">
-<link rel="apple-touch-icon" href="<?= e(asset('img/logo-mark.svg')) ?>">
+<link rel="icon" href="<?= e($brandIcon) ?>">
+<link rel="shortcut icon" href="<?= e($brandIcon) ?>">
+<link rel="apple-touch-icon" href="<?= e($brandIcon) ?>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=Ma+Shan+Zheng&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -133,7 +141,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
     position:sticky; top:0; height:100vh; overflow-y:auto;
   }
   .sidebar-brand{display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:800; font-size:1.15rem; letter-spacing:.06em; color:var(--gold-light); padding:0 10px 10px; margin-bottom:6px; border-bottom:1px solid var(--line); text-decoration:none;}
-  .sidebar-brand img{width:36px; height:36px; flex-shrink:0; display:block;}
+  .sidebar-brand img{width:<?= $brandUserSize ?>px; height:<?= $brandUserSize ?>px; object-fit:contain; flex-shrink:0; display:block;}
   .sidebar-brand span{color:var(--blood-light);}
   .sidebar-brand small{display:block; font-family:var(--font-body); font-weight:600; font-size:.6rem; letter-spacing:.16em; color:var(--blood-light); text-transform:uppercase; margin-top:2px;}
   .sidebar-brand:hover{opacity:.92;}
@@ -165,8 +173,22 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   .top-actions{display:flex; align-items:center; gap:16px;}
   .search-box{display:flex; align-items:center; gap:8px; background:var(--obsidian-2); border:1px solid var(--line); padding:9px 14px; font-size:.82rem; color:var(--ash); min-width:220px;}
   .search-box input{background:none; border:none; outline:none; color:var(--parchment); font-size:.82rem; width:100%;}
-  .icon-btn{position:relative; width:38px; height:38px; display:flex; align-items:center; justify-content:center; background:var(--obsidian-2); border:1px solid var(--line); color:var(--gold-light); font-size:.9rem;}
-  .icon-btn .dot{position:absolute; top:6px; right:7px; width:6px; height:6px; border-radius:50%; background:var(--blood-light);}
+  .icon-btn{position:relative; width:38px; height:38px; display:flex; align-items:center; justify-content:center; background:var(--obsidian-2); border:1px solid var(--line); color:var(--gold-light); font-size:.9rem; cursor:pointer;}
+  .icon-btn .dot{position:absolute; top:6px; right:7px; width:6px; height:6px; border-radius:50%; background:var(--blood-light); display:none;}
+  .icon-btn.has-unread .dot{display:block;}
+  .icon-btn.empty-bell{color:var(--ash); opacity:.75;}
+  .notif-wrap{position:relative;}
+  .notif-drop{display:none; position:absolute; right:0; top:calc(100% + 8px); width:340px; max-height:420px; overflow:auto; background:var(--obsidian-2); border:1px solid var(--line); z-index:80; box-shadow:0 12px 40px rgba(0,0,0,.45);}
+  .notif-drop.open{display:block;}
+  .notif-drop .notif-head{display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid var(--line); font-size:.8rem; color:var(--ash);}
+  .notif-drop .notif-item{display:block; width:100%; text-align:left; padding:12px 14px; border:0; border-bottom:1px solid rgba(201,151,74,.08); background:transparent; color:inherit; cursor:pointer; font:inherit;}
+  .notif-drop .notif-item:hover{background:rgba(201,151,74,.06);}
+  .notif-drop .notif-item.unread{background:rgba(201,151,74,.04);}
+  .notif-drop .notif-item .t{font-size:.88rem; color:var(--gold-light); font-weight:600; margin-bottom:4px;}
+  .notif-drop .notif-item .b{font-size:.78rem; color:var(--ash); margin-bottom:4px;}
+  .notif-drop .notif-item .d{font-size:.7rem; color:var(--ash); opacity:.8;}
+  .notif-drop .notif-empty{padding:28px 16px; text-align:center; color:var(--ash); font-size:.85rem;}
+  .notif-modal-body{font-size:.9rem; color:var(--ash); line-height:1.5;}
   .status-pill{display:flex; align-items:center; gap:8px; padding:8px 14px; background:rgba(51,89,74,.15); border:1px solid rgba(79,138,113,.3); font-size:.78rem; color:var(--jade-light); text-transform:uppercase; letter-spacing:.05em;}
   .status-pill .pulse{width:7px; height:7px; border-radius:50%; background:var(--jade-light); box-shadow:0 0 0 0 rgba(79,138,113,.6); animation:pulse 2s infinite;}
   .session-timer{display:flex; align-items:center; gap:8px; padding:8px 14px; background:rgba(201,151,74,.1); border:1px solid rgba(201,151,74,.28); font-size:.78rem; color:var(--gold-light); letter-spacing:.04em; font-variant-numeric:tabular-nums;}
@@ -438,7 +460,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   <!-- ============ SIDEBAR ============ -->
   <aside class="sidebar" id="sidebar">
     <a href="<?= e(url('/')) ?>" class="sidebar-brand" aria-label="<?= e($appName) ?> Anasayfa">
-      <img src="<?= e(asset('img/logo-mark.svg')) ?>" alt="<?= e($appName) ?>">
+      <img src="<?= e($brandIcon) ?>" alt="<?= e($appName) ?>">
       <div>M2<span>DN</span><small>Kullanıcı Otomasyonu</small></div>
     </a>
 
@@ -460,10 +482,6 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
     <a class="nav-item<?= $panelSection === 'duyurular' ? ' active' : '' ?>" data-target="duyurular"><i class="fa-solid fa-bullhorn"></i> Duyurular</a>
     <a class="nav-item<?= $panelSection === 'karakterler' ? ' active' : '' ?>" data-target="karakterler"><i class="fa-solid fa-khanda"></i> Karakterlerim</a>
     <a class="nav-item<?= $panelSection === 'kayitlar' ? ' active' : '' ?>" data-target="kayitlar"><i class="fa-solid fa-clock-rotate-left"></i> Hesap Kayıtları</a>
-
-    <div class="nav-group-label">Oyun</div>
-    <a class="nav-item" data-target="magaza"><i class="fa-solid fa-store"></i> Mağaza</a>
-    <a class="nav-item" data-target="oyver"><i class="fa-solid fa-thumbs-up"></i> Oy Ver &amp; Kazan</a>
 
     <div class="nav-group-label">Hesap</div>
     <a class="nav-item" data-target="destek"><i class="fa-solid fa-headset"></i> Destek Talepleri</a>
@@ -529,7 +547,18 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
           </div>
           <?php endif; ?>
         </div>
-        <button class="icon-btn" type="button" aria-label="Bildirimler"><i class="fa-solid fa-bell"></i><span class="dot"></span></button>
+        <div class="notif-wrap">
+          <button type="button" class="icon-btn empty-bell" id="notifBellBtn" aria-label="Bildirimler" aria-expanded="false">
+            <i class="fa-solid fa-bell-slash" id="notifBellIcon"></i><span class="dot"></span>
+          </button>
+          <div class="notif-drop" id="notifDrop" role="dialog" aria-label="Bildirimler">
+            <div class="notif-head">
+              <span>Bildirimler</span>
+              <button type="button" class="btn btn-ghost btn-sm" id="notifMarkAll" style="padding:4px 8px;font-size:.68rem;">Tümünü okundu</button>
+            </div>
+            <div id="notifList"><div class="notif-empty">Yükleniyor…</div></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -821,34 +850,6 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
       </div>
     </section>
 
-    <!-- ===================== MAĞAZA ===================== -->
-    <section class="section" id="magaza">
-      <div class="card">
-        <div class="card-head"><h3>Cash Mağaza</h3><span style="font-size:.8rem; color:var(--ash);">Bakiye: <b style="color:var(--gold-light);">3.450 Puan</b></span></div>
-        <div class="shop-grid">
-          <div class="shop-item"><div class="thumb"><i class="fa-solid fa-hat-wizard"></i></div><h4>Ejderha Miğferi</h4><div class="price">450 Puan</div><a class="btn btn-ghost btn-sm">Satın Al</a></div>
-          <div class="shop-item"><div class="thumb"><i class="fa-solid fa-wand-sparkles"></i></div><h4>Şans Tılsımı x5</h4><div class="price">180 Puan</div><a class="btn btn-ghost btn-sm">Satın Al</a></div>
-          <div class="shop-item"><div class="thumb"><i class="fa-solid fa-horse"></i></div><h4>Kızıl Binek</h4><div class="price">900 Puan</div><a class="btn btn-ghost btn-sm">Satın Al</a></div>
-          <div class="shop-item"><div class="thumb"><i class="fa-solid fa-shirt"></i></div><h4>M2DN Zırh Kostümü</h4><div class="price">650 Puan</div><a class="btn btn-ghost btn-sm">Satın Al</a></div>
-          <div class="shop-item"><div class="thumb"><i class="fa-solid fa-flask"></i></div><h4>Deneyim İksiri</h4><div class="price">120 Puan</div><a class="btn btn-ghost btn-sm">Satın Al</a></div>
-          <div class="shop-item"><div class="thumb"><i class="fa-solid fa-gem"></i></div><h4>+500 Cash Puan</h4><div class="price">₺99</div><a class="btn btn-ghost btn-sm">Yükle</a></div>
-          <div class="shop-item"><div class="thumb"><i class="fa-solid fa-paw"></i></div><h4>Ruh Yoldaşı</h4><div class="price">720 Puan</div><a class="btn btn-ghost btn-sm">Satın Al</a></div>
-          <div class="shop-item"><div class="thumb"><i class="fa-solid fa-box"></i></div><h4>Gizem Sandığı</h4><div class="price">250 Puan</div><a class="btn btn-ghost btn-sm">Satın Al</a></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===================== OY VER ===================== -->
-    <section class="section" id="oyver">
-      <div class="card">
-        <div class="card-head"><h3>Oy Ver &amp; Kazan</h3><span style="font-size:.8rem; color:var(--ash);">Her oy +50 Cash Puan</span></div>
-        <div class="vote-item"><div><div class="name">Metin2Top100</div><div class="cooldown">Son oy: 6 saat önce</div></div><a class="btn btn-ghost btn-sm">18:22'de hazır</a></div>
-        <div class="vote-item"><div><div class="name">Oyunsunucular.net</div><div class="cooldown">Kullanılabilir</div></div><a class="btn btn-primary btn-sm">Oy Ver</a></div>
-        <div class="vote-item"><div><div class="name">MTliste</div><div class="cooldown">Kullanılabilir</div></div><a class="btn btn-primary btn-sm">Oy Ver</a></div>
-        <div class="vote-item"><div><div class="name">M2Rank</div><div class="cooldown">Son oy: 20 saat önce</div></div><a class="btn btn-ghost btn-sm">2:10'da hazır</a></div>
-      </div>
-    </section>
-
     <!-- ===================== DESTEK ===================== -->
     <section class="section<?= ($panelSection ?? '') === 'destek' ? ' active' : '' ?>" id="destek">
       <?php
@@ -1093,6 +1094,17 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   </div>
 </div>
 
+<div class="modal-overlay" id="notifDetailModal">
+  <div class="modal">
+    <h3 id="notifDetailTitle">Bildirim</h3>
+    <div class="notif-modal-body" id="notifDetailBody"></div>
+    <div class="modal-actions" style="margin-top:18px;display:flex;gap:8px;flex-wrap:wrap;">
+      <a class="btn btn-primary btn-sm" id="notifDetailGo" href="#" style="display:none;">Git</a>
+      <button type="button" class="btn btn-ghost btn-sm" id="notifDetailClose">Kapat</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const navItems = document.querySelectorAll('.nav-item');
   const sections = document.querySelectorAll('.section');
@@ -1101,11 +1113,21 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   const annModalMap = <?= json_encode($annModalMap, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
   const ticketJsonUrl = <?= json_encode(url('/panel/ticket'), JSON_UNESCAPED_UNICODE) ?>;
   const openTicketId = <?= (int) ($_GET['ticket'] ?? 0) ?>;
+  const panelIndexUrl = <?= json_encode(url('/panel'), JSON_UNESCAPED_UNICODE) ?>;
+  const csrfToken = <?= json_encode(\App\Core\Security::csrfToken(), JSON_UNESCAPED_UNICODE) ?>;
+  const notifListUrl = <?= json_encode(url('/bildirimler/json'), JSON_UNESCAPED_UNICODE) ?>;
+  const notifReadUrl = <?= json_encode(url('/bildirimler/okundu'), JSON_UNESCAPED_UNICODE) ?>;
+
+  function navigatePanelSection(target) {
+    if (!target) return;
+    window.location.assign(panelIndexUrl + '?section=' + encodeURIComponent(target));
+  }
+
   function showSection(target) {
     if (!target) return;
     navItems.forEach(n => n.classList.toggle('active', n.dataset.target === target));
     sections.forEach(s => s.classList.toggle('active', s.id === target));
-    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar')?.classList.remove('open');
   }
 
   if (initialSection) showSection(initialSection);
@@ -1114,15 +1136,24 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
     item.addEventListener('click', (e) => {
       const target = item.dataset.target;
       if (!target) return;
+      // Admin panele giden gerçek linklere dokunma
+      if (item.getAttribute('href') && item.getAttribute('href') !== '#') {
+        const href = item.getAttribute('href') || '';
+        if (href.indexOf('/admin') !== -1 || href.indexOf('/cikis') !== -1) return;
+      }
       e.preventDefault();
-      showSection(target);
+      if (target === initialSection) {
+        window.location.reload();
+        return;
+      }
+      navigatePanelSection(target);
     });
   });
 
   document.querySelectorAll('[data-jump]').forEach(el => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
-      showSection(el.dataset.jump);
+      navigatePanelSection(el.dataset.jump);
     });
   });
 
@@ -1386,6 +1417,97 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
       setTimeout(tick, 1000);
     };
     tick();
+  })();
+
+  (function notificationsBell() {
+    const btn = document.getElementById('notifBellBtn');
+    const icon = document.getElementById('notifBellIcon');
+    const drop = document.getElementById('notifDrop');
+    const list = document.getElementById('notifList');
+    const markAll = document.getElementById('notifMarkAll');
+    const detailModal = document.getElementById('notifDetailModal');
+    const detailTitle = document.getElementById('notifDetailTitle');
+    const detailBody = document.getElementById('notifDetailBody');
+    const detailGo = document.getElementById('notifDetailGo');
+    const detailClose = document.getElementById('notifDetailClose');
+    if (!btn || !drop || !list) return;
+
+    const escLocal = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    const setBellState = (unread, hasAny) => {
+      btn.classList.toggle('has-unread', unread > 0);
+      btn.classList.toggle('empty-bell', !hasAny);
+      if (icon) icon.className = hasAny ? 'fa-solid fa-bell' : 'fa-solid fa-bell-slash';
+    };
+
+    const render = (items, unread) => {
+      setBellState(unread, items.length > 0);
+      if (!items.length) {
+        list.innerHTML = '<div class="notif-empty"><i class="fa-solid fa-bell-slash" style="display:block;font-size:1.4rem;margin-bottom:8px;"></i>Bildirim yok</div>';
+        return;
+      }
+      list.innerHTML = items.map(it => (
+        '<button type="button" class="notif-item' + (it.is_read ? '' : ' unread') + '" data-nid="' + escLocal(String(it.id)) + '" data-title="' + escLocal(it.title) + '" data-body="' + escLocal(it.body || '') + '" data-link="' + escLocal(it.link || '') + '">'
+        + '<div class="t">' + escLocal(it.title) + '</div>'
+        + (it.body ? '<div class="b">' + escLocal(it.body) + '</div>' : '')
+        + '<div class="d">' + escLocal(it.created_label || '') + '</div>'
+        + '</button>'
+      )).join('');
+    };
+
+    const load = () => fetch(notifListUrl, { credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(res => {
+        if (!res.ok) return;
+        render(res.items || [], Number(res.unread || 0));
+      })
+      .catch(() => {});
+
+    const markRead = (id) => {
+      const body = new URLSearchParams();
+      body.set('csrf_token', csrfToken);
+      if (id) body.set('id', String(id));
+      return fetch(notifReadUrl, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': csrfToken },
+        body: body.toString(),
+      }).then(r => r.json()).catch(() => null);
+    };
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = drop.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) load();
+    });
+    document.addEventListener('click', () => drop.classList.remove('open'));
+    drop.addEventListener('click', (e) => e.stopPropagation());
+    markAll?.addEventListener('click', () => { markRead(null).then(() => load()); });
+
+    list.addEventListener('click', (e) => {
+      const item = e.target.closest('.notif-item');
+      if (!item) return;
+      const id = item.dataset.nid;
+      const title = item.dataset.title || 'Bildirim';
+      const bodyTxt = item.dataset.body || '';
+      const link = item.dataset.link || '';
+      markRead(id).then(() => load());
+      drop.classList.remove('open');
+      if (detailTitle) detailTitle.textContent = title;
+      if (detailBody) detailBody.textContent = bodyTxt || 'Detay yok.';
+      if (detailGo) {
+        if (link) { detailGo.href = link; detailGo.style.display = ''; }
+        else { detailGo.style.display = 'none'; }
+      }
+      detailModal?.classList.add('open');
+    });
+    detailClose?.addEventListener('click', () => detailModal?.classList.remove('open'));
+    detailModal?.addEventListener('click', (e) => { if (e.target === detailModal) detailModal.classList.remove('open'); });
+    detailGo?.addEventListener('click', () => detailModal?.classList.remove('open'));
+
+    load();
+    setInterval(load, 60000);
   })();
 </script>
 </body>

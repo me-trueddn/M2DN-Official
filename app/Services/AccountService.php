@@ -88,6 +88,16 @@ final class AccountService
         $accountId = (int) $pdo->lastInsertId();
         ActivityLogService::log($accountId, ActivityLogService::ACTION_REGISTER, 'Yeni hesap kaydı', $login);
 
+        try {
+            MailService::sendTemplate('register', $email, $login, [
+                'login' => $login,
+                'email' => $email,
+                'link' => rtrim((string) \App\Core\Config::get('app.url', ''), '/'),
+            ]);
+        } catch (\Throwable) {
+            // ignore
+        }
+
         return [
             'ok' => true,
             'errors' => [],

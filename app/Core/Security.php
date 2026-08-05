@@ -118,6 +118,35 @@ final class Security
         return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
     }
 
+    /** Ayar şifreleri için AES-256-CBC (app_key ile). Dönüş: base64(iv).base64(cipher) */
+    public static function encryptSecret(string $plain): string
+    {
+        $key = hash('sha256', (string) Config::get('security.app_key', 'm2dn'), true);
+        $iv = random_bytes(16);
+        $cipher = openssl_encrypt($plain, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
+        if ($cipher === false) {
+            return '';
+        }
+        return base64_encode($iv) . '.' . base64_encode($cipher);
+    }
+
+    public static function decryptSecret(string $payload): string
+    {
+        $payload = trim($payload);
+        if ($payload === '' || !str_contains($payload, '.')) {
+            return '';
+        }
+        [$ivB64, $cipherB64] = explode('.', $payload, 2);
+        $iv = base64_decode($ivB64, true);
+        $cipher = base64_decode($cipherB64, true);
+        if ($iv === false || $cipher === false || strlen($iv) !== 16) {
+            return '';
+        }
+        $key = hash('sha256', (string) Config::get('security.app_key', 'm2dn'), true);
+        $plain = openssl_decrypt($cipher, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
+        return is_string($plain) ? $plain : '';
+    }
+
     public static function applyHeaders(): void
     {
         header('X-Content-Type-Options: nosniff');
