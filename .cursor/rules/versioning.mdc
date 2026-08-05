@@ -1,0 +1,16 @@
+---
+description: After completing feature work, ask how to bump the app version (build / minor / patch).
+alwaysApply: true
+---
+
+# Version bump after changes
+
+When you finish a set of user-requested changes (feature, content, or fix), **ask before ending**:
+
+1. Bu bir **build** mi? (büyük sürüm — `x.0.0`)
+2. **Minor** değişiklik mi? (yeni özellik — `x.Y.0`)
+3. **Patch / fix / yama** mı? (`x.y.Z`)
+
+Then bump `config/config.php` → `app.version` accordingly and ensure the version is shown in footer, user panel, and admin panel (`$appVersion` from Theme).
+
+Current baseline at ship of this rule: **1.10.2**.

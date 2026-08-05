@@ -211,6 +211,8 @@ final class Schema
         );
 
         self::seedPenaltyTemplates($pdo);
+        self::ensureSiteContentTables($pdo);
+        self::seedSiteContent($pdo);
 
         $seed = $pdo->prepare(
             "INSERT INTO `settings` (`group_key`, `setting_key`, `setting_value`) VALUES
@@ -220,17 +222,203 @@ final class Schema
               ('site', 'theme', ?),
               ('rates', 'exp', ?),
               ('rates', 'drop', ?),
-              ('rates', 'yang', ?)
+              ('rates', 'yang', ?),
+              ('rates', 'metin_label', 'Yüksek'),
+              ('rates', 'metin_pct', '85'),
+              ('chapter', 'title', 'Yeni harita & boss güncellemesi'),
+              ('footer', 'copyright', ?),
+              ('footer', 'brand_text', ?)
              ON DUPLICATE KEY UPDATE `setting_key` = `setting_key`"
         );
+        $appName = (string) Config::get('app.name', 'M2DN');
+        $year = date('Y');
         $seed->execute([
-            (string) Config::get('app.name', 'M2DN'),
+            $appName,
             (string) Config::get('app.tagline', 'Metin2 Sunucusu'),
             (string) Config::get('theme.active', 'EasternV1'),
             (string) (Config::get('rates.exp') ?? 100),
             (string) (Config::get('rates.drop') ?? 50),
             (string) (Config::get('rates.yang') ?? 30),
+            "© {$year} {$appName}. Tüm hakları saklıdır.",
+            "{$appName} — oyuncusuyla birlikte büyüyen bağımsız bir Metin2 sunucusu. Resmi Metin2 markasıyla bağlantısı yoktur; hayran yapımı bir projedir.",
         ]);
+    }
+
+    private static function ensureSiteContentTables(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `site_downloads` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `title` VARCHAR(160) NOT NULL,
+              `url` VARCHAR(500) NOT NULL,
+              `description` VARCHAR(500) NOT NULL DEFAULT '',
+              `pack_type` VARCHAR(64) NOT NULL DEFAULT 'normal',
+              `sort_order` INT NOT NULL DEFAULT 0,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `site_features` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `icon` VARCHAR(80) NOT NULL DEFAULT 'fa-solid fa-star',
+              `title` VARCHAR(160) NOT NULL,
+              `body` VARCHAR(500) NOT NULL,
+              `sort_order` INT NOT NULL DEFAULT 0,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `site_classes` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `slug` VARCHAR(32) NOT NULL,
+              `name` VARCHAR(80) NOT NULL,
+              `body` VARCHAR(500) NOT NULL DEFAULT '',
+              `rank_glyph` VARCHAR(16) NOT NULL DEFAULT '',
+              `glow_color` VARCHAR(20) NOT NULL DEFAULT '#8f1c29',
+              `icon` VARCHAR(80) NOT NULL DEFAULT 'fa-solid fa-star',
+              `gif_path` VARCHAR(255) NOT NULL DEFAULT '',
+              `stat1_label` VARCHAR(40) NOT NULL DEFAULT '',
+              `stat1_value` TINYINT UNSIGNED NOT NULL DEFAULT 80,
+              `stat2_label` VARCHAR(40) NOT NULL DEFAULT '',
+              `stat2_value` TINYINT UNSIGNED NOT NULL DEFAULT 80,
+              `sort_order` INT NOT NULL DEFAULT 0,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `uq_site_classes_slug` (`slug`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `site_gallery` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `title` VARCHAR(160) NOT NULL DEFAULT '',
+              `image_path` VARCHAR(500) NOT NULL,
+              `sort_order` INT NOT NULL DEFAULT 0,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `site_footer_links` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `column_key` VARCHAR(40) NOT NULL DEFAULT 'community',
+              `label` VARCHAR(120) NOT NULL,
+              `url` VARCHAR(500) NOT NULL,
+              `sort_order` INT NOT NULL DEFAULT 0,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `site_social_links` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `name` VARCHAR(80) NOT NULL,
+              `icon` VARCHAR(80) NOT NULL DEFAULT 'fa-brands fa-link',
+              `url` VARCHAR(500) NOT NULL,
+              `sort_order` INT NOT NULL DEFAULT 0,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+    }
+
+    private static function seedSiteContent(PDO $pdo): void
+    {
+        if (!(int) $pdo->query('SELECT COUNT(*) FROM site_features')->fetchColumn()) {
+            $features = [
+                ['fa-solid fa-map-location-dot', 'Özgün Haritalar', 'Orijinal oyunda olmayan, sıfırdan tasarlanmış metin bölgeleri ve gizli alanlar.', 1],
+                ['fa-solid fa-shield-halved', 'Sıfır Pay-to-Win', 'Mağazada sadece kozmetik ürünler. Güç her zaman emekle ve stratejiyle kazanılır.', 2],
+                ['fa-solid fa-headset', '7/24 GM Desteği', 'Discord üzerinden anında destek, şeffaf yönetim ve haftalık geliştirici günlükleri.', 3],
+                ['fa-solid fa-dragon', 'Haftalık Etkinlikler', 'Klan savaşları, ejderha avı ve özel boss rushlar her hafta sonu sizi bekliyor.', 4],
+                ['fa-solid fa-lock', 'Gelişmiş Anti-Cheat', 'Özel geliştirilmiş koruma sistemiyle bot ve hileye karşı sıfır tolerans.', 5],
+                ['fa-solid fa-users', 'Canlı Topluluk', 'Binlerce aktif oyuncu, düzenli forum içerikleri ve aktif bir klan ekosistemi.', 6],
+            ];
+            $stmt = $pdo->prepare(
+                'INSERT INTO site_features (icon, title, body, sort_order, is_active, created_at, updated_at)
+                 VALUES (?,?,?,?,1,NOW(),NOW())'
+            );
+            foreach ($features as $f) {
+                $stmt->execute($f);
+            }
+        }
+
+        if (!(int) $pdo->query('SELECT COUNT(*) FROM site_classes')->fetchColumn()) {
+            $classes = [
+                ['warrior', 'Savaşçı', 'Ham güç ve çelik disiplini. Ön saflarda durur, düşmanın kalbine yürür.', '壹', '#8f1c29', 'fa-solid fa-khanda', 'img/classes/warrior_m.gif', 'Güç', 92, 'Savunma', 80, 1],
+                ['ninja', 'Ninja', 'Gölgelerin çevikliği. Görünmeden vurur, iz bırakmadan kaybolur.', '貳', '#33594a', 'fa-solid fa-wind', 'img/classes/ninja_m.gif', 'Çeviklik', 95, 'Kritik', 88, 2],
+                ['sura', 'Sura', 'Karanlığın büyüsüyle konuşur. Ölümü kendi silahına çevirir.', '參', '#4a1f66', 'fa-solid fa-skull', 'img/classes/sura_f.gif', 'Büyü Gücü', 90, 'Can Emme', 84, 3],
+                ['shaman', 'Şaman', 'Doğanın dengesini korur. İyileştirir, güçlendirir, savaşı yönlendirir.', '肆', '#1f5a3d', 'fa-solid fa-leaf', 'img/classes/shaman_f.gif', 'İyileştirme', 93, 'Destek', 87, 4],
+            ];
+            $stmt = $pdo->prepare(
+                'INSERT INTO site_classes
+                  (slug, name, body, rank_glyph, glow_color, icon, gif_path, stat1_label, stat1_value, stat2_label, stat2_value, sort_order, is_active, created_at, updated_at)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,NOW(),NOW())'
+            );
+            foreach ($classes as $c) {
+                $stmt->execute($c);
+            }
+        }
+
+        if (!(int) $pdo->query('SELECT COUNT(*) FROM site_downloads')->fetchColumn()) {
+            $pdo->prepare(
+                'INSERT INTO site_downloads (title, url, description, pack_type, sort_order, is_active, created_at, updated_at)
+                 VALUES (?,?,?,?,1,1,NOW(),NOW())'
+            )->execute([
+                'Ana İndirme',
+                '#',
+                'Resmi istemci paketi',
+                'normal',
+            ]);
+        }
+
+        if (!(int) $pdo->query('SELECT COUNT(*) FROM site_footer_links')->fetchColumn()) {
+            $links = [
+                ['server', 'Özellikler', '#ozellikler', 1],
+                ['server', 'Sınıflar', '#siniflar', 2],
+                ['server', 'Oranlar', '#oranlar', 3],
+                ['server', 'Galeri', '#galeri', 4],
+                ['community', 'Forum', '#', 1],
+                ['community', 'Kurallar', '#', 2],
+                ['community', 'Destek Talebi', '#', 3],
+                ['community', 'Bağış', '#', 4],
+            ];
+            $stmt = $pdo->prepare(
+                'INSERT INTO site_footer_links (column_key, label, url, sort_order, is_active, created_at, updated_at)
+                 VALUES (?,?,?,?,1,NOW(),NOW())'
+            );
+            foreach ($links as $l) {
+                $stmt->execute($l);
+            }
+        }
+
+        if (!(int) $pdo->query('SELECT COUNT(*) FROM site_social_links')->fetchColumn()) {
+            $socials = [
+                ['Discord', 'fa-brands fa-discord', '#', 1, 1],
+                ['YouTube', 'fa-brands fa-youtube', '#', 2, 1],
+                ['Instagram', 'fa-brands fa-instagram', '#', 3, 1],
+                ['X', 'fa-brands fa-x-twitter', '#', 4, 1],
+            ];
+            $stmt = $pdo->prepare(
+                'INSERT INTO site_social_links (name, icon, url, sort_order, is_active, created_at, updated_at)
+                 VALUES (?,?,?,?,?,NOW(),NOW())'
+            );
+            foreach ($socials as $s) {
+                $stmt->execute($s);
+            }
+        }
     }
 
     private static function ensureAccountWebPermission(PDO $pdo): void

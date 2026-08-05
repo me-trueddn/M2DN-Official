@@ -11,6 +11,7 @@ use App\Services\AdminPlayerService;
 use App\Services\AdminStatsService;
 use App\Services\AuthService;
 use App\Services\PenaltyService;
+use App\Services\SiteContentService;
 
 final class AdminPanelController
 {
@@ -31,7 +32,11 @@ final class AdminPanelController
         if ($q !== '' || $status !== '' || isset($_GET['page']) || isset($_GET['per'])) {
             $section = 'oyuncular';
         }
-        $allowed = ['ozet', 'oyuncular', 'banlar', 'duyurular', 'destekler', 'sunucu', 'loglar', 'ceza-ayarlari'];
+        $allowed = [
+            'ozet', 'oyuncular', 'banlar', 'duyurular', 'destekler', 'sunucu', 'loglar',
+            'ceza-ayarlari', 'patch-linkleri', 'ozellikler-ayarlari', 'siniflar-ayarlari',
+            'oranlar-ayarlari', 'siradaki-bolum', 'galeri-ayarlari', 'footer-ayarlari',
+        ];
         if (!in_array($section, $allowed, true)) {
             $section = 'ozet';
         }
@@ -40,6 +45,9 @@ final class AdminPanelController
         if (is_string($flashSection) && in_array($flashSection, $allowed, true)) {
             $section = $flashSection;
         }
+
+        $chapter = SiteContentService::nextChapter();
+        $chapterDt = $chapter['target_at'] !== '' ? strtotime($chapter['target_at']) : false;
 
         Theme::render('admin/panel', [
             'authUser' => $user,
@@ -50,6 +58,19 @@ final class AdminPanelController
             'activeBans' => PenaltyService::listActiveBans(100),
             'panelErrors' => Session::flash('panel_errors') ?? [],
             'panelSuccess' => Session::flash('panel_success'),
+            'siteDownloads' => SiteContentService::downloads(false),
+            'siteFeatures' => SiteContentService::features(false),
+            'siteClasses' => SiteContentService::classes(false),
+            'siteGallery' => SiteContentService::gallery(false),
+            'siteFooterLinks' => SiteContentService::footerLinks(false),
+            'siteSocials' => SiteContentService::socialLinks(false),
+            'siteFooter' => SiteContentService::footerMeta(),
+            'siteRates' => SiteContentService::rates(),
+            'siteChapter' => [
+                'title' => $chapter['title'],
+                'date' => $chapterDt ? date('Y-m-d', $chapterDt) : '',
+                'time' => $chapterDt ? date('H:i', $chapterDt) : '20:00',
+            ],
         ]);
     }
 

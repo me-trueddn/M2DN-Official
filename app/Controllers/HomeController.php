@@ -7,11 +7,22 @@ namespace App\Controllers;
 use App\Core\Session;
 use App\Core\Theme;
 use App\Services\AuthService;
+use App\Services\SiteContentService;
 
 final class HomeController
 {
     public function index(): void
     {
+        $footerLinks = SiteContentService::footerLinks();
+        $groupedFooter = ['server' => [], 'community' => []];
+        foreach ($footerLinks as $link) {
+            $col = (string) ($link['column_key'] ?? 'community');
+            if (!isset($groupedFooter[$col])) {
+                $groupedFooter[$col] = [];
+            }
+            $groupedFooter[$col][] = $link;
+        }
+
         Theme::render('home', [
             'registerErrors' => Session::flash('register_errors') ?? [],
             'registerOld' => Session::flash('register_old') ?? [],
@@ -23,6 +34,14 @@ final class HomeController
             'openLogin' => (bool) Session::flash('open_login'),
             'open2fa' => (bool) Session::flash('open_2fa'),
             'authUser' => AuthService::user(),
+            'siteFeatures' => SiteContentService::features(),
+            'siteClasses' => SiteContentService::classes(),
+            'siteDownloads' => SiteContentService::downloads(),
+            'siteGallery' => SiteContentService::gallery(),
+            'siteSocials' => SiteContentService::socialLinks(),
+            'siteFooterLinks' => $groupedFooter,
+            'siteFooter' => SiteContentService::footerMeta(),
+            'nextChapter' => SiteContentService::nextChapter(),
         ]);
     }
 }

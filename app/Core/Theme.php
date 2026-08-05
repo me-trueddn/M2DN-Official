@@ -44,9 +44,19 @@ final class Theme
     {
         $data['appName'] = Config::get('app.name', 'M2DN');
         $data['appTagline'] = Config::get('app.tagline', 'Metin2 Sunucusu');
+        $data['appVersion'] = (string) Config::get('app.version', '1.0.0');
         $data['theme'] = self::active();
         $data['themeUrl'] = self::assetUrl();
-        $data['rates'] = Config::get('rates', []);
+        // Oranlar: DB settings öncelikli
+        if (class_exists(\App\Services\SiteContentService::class)) {
+            try {
+                $data['rates'] = \App\Services\SiteContentService::rates();
+            } catch (\Throwable) {
+                $data['rates'] = Config::get('rates', []);
+            }
+        } else {
+            $data['rates'] = Config::get('rates', []);
+        }
         $data['servers'] = ServerManager::all();
         $data['currentServer'] = ServerManager::current();
         $data['csrf'] = Security::csrfField();

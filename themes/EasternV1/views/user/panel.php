@@ -368,7 +368,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
             <?php
               $p = (int) ($authUser['permission'] ?? 0);
               echo $p === 2 ? 'Süper Admin' : ($p === 1 ? 'Yönetici' : 'Oyuncu');
-            ?>
+            ?> · v<?= e((string) ($appVersion ?? '1.10.2')) ?>
           </div>
         </div>
       </div>

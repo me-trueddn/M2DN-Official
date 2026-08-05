@@ -12,9 +12,20 @@
 /** @var list<array> $activeBans */
 /** @var list<string> $panelErrors */
 /** @var string|null $panelSuccess */
+/** @var list<array> $siteDownloads */
+/** @var list<array> $siteFeatures */
+/** @var list<array> $siteClasses */
+/** @var list<array> $siteGallery */
+/** @var list<array> $siteFooterLinks */
+/** @var list<array> $siteSocials */
+/** @var array $siteFooter */
+/** @var array $siteRates */
+/** @var array $siteChapter */
+/** @var string $appVersion */
 
 $appName = $appName ?? 'M2DN';
 $appTagline = $appTagline ?? '';
+$appVersion = (string) ($appVersion ?? '1.10.2');
 $currentServer = is_array($currentServer ?? null) ? $currentServer : [];
 $servers = is_array($servers ?? null) ? $servers : [];
 $csrf = $csrf ?? '';
@@ -42,7 +53,19 @@ $penalties = is_array($penalties ?? null) ? $penalties : [];
 $activeBans = is_array($activeBans ?? null) ? $activeBans : [];
 $panelErrors = is_array($panelErrors ?? null) ? $panelErrors : [];
 $panelSuccess = is_string($panelSuccess ?? null) ? $panelSuccess : null;
-$settingsOpen = in_array($panelSection, ['ceza-ayarlari'], true);
+$siteDownloads = is_array($siteDownloads ?? null) ? $siteDownloads : [];
+$siteFeatures = is_array($siteFeatures ?? null) ? $siteFeatures : [];
+$siteClasses = is_array($siteClasses ?? null) ? $siteClasses : [];
+$siteGallery = is_array($siteGallery ?? null) ? $siteGallery : [];
+$siteFooterLinks = is_array($siteFooterLinks ?? null) ? $siteFooterLinks : [];
+$siteSocials = is_array($siteSocials ?? null) ? $siteSocials : [];
+$siteFooter = is_array($siteFooter ?? null) ? $siteFooter : [];
+$siteRates = is_array($siteRates ?? null) ? $siteRates : [];
+$siteChapter = is_array($siteChapter ?? null) ? $siteChapter : [];
+$settingsOpen = in_array($panelSection, [
+    'ceza-ayarlari', 'patch-linkleri', 'ozellikler-ayarlari', 'siniflar-ayarlari',
+    'oranlar-ayarlari', 'siradaki-bolum', 'galeri-ayarlari', 'footer-ayarlari',
+], true);
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -298,6 +321,13 @@ $settingsOpen = in_array($panelSection, ['ceza-ayarlari'], true);
       <i class="fa-solid fa-chevron-right chev"></i>
     </div>
     <div class="nav-sub<?= $settingsOpen ? ' open' : '' ?>" id="settingsSub">
+      <a class="nav-item<?= $panelSection === 'patch-linkleri' ? ' active' : '' ?>" data-target="patch-linkleri"><i class="fa-solid fa-download"></i> Patch Linkleri</a>
+      <a class="nav-item<?= $panelSection === 'ozellikler-ayarlari' ? ' active' : '' ?>" data-target="ozellikler-ayarlari"><i class="fa-solid fa-star"></i> Özellikler</a>
+      <a class="nav-item<?= $panelSection === 'siniflar-ayarlari' ? ' active' : '' ?>" data-target="siniflar-ayarlari"><i class="fa-solid fa-khanda"></i> Sınıflar</a>
+      <a class="nav-item<?= $panelSection === 'oranlar-ayarlari' ? ' active' : '' ?>" data-target="oranlar-ayarlari"><i class="fa-solid fa-percent"></i> Sunucu Oranları</a>
+      <a class="nav-item<?= $panelSection === 'siradaki-bolum' ? ' active' : '' ?>" data-target="siradaki-bolum"><i class="fa-solid fa-clock"></i> Sıradaki Bölüm</a>
+      <a class="nav-item<?= $panelSection === 'galeri-ayarlari' ? ' active' : '' ?>" data-target="galeri-ayarlari"><i class="fa-solid fa-images"></i> Galeri</a>
+      <a class="nav-item<?= $panelSection === 'footer-ayarlari' ? ' active' : '' ?>" data-target="footer-ayarlari"><i class="fa-solid fa-shoe-prints"></i> Footer / Border</a>
       <a class="nav-item<?= $panelSection === 'ceza-ayarlari' ? ' active' : '' ?>" data-target="ceza-ayarlari"><i class="fa-solid fa-scale-balanced"></i> Ceza Ayarları</a>
     </div>
 
@@ -306,7 +336,7 @@ $settingsOpen = in_array($panelSection, ['ceza-ayarlari'], true);
         <div class="avatar-ring"><i class="fa-solid fa-crown"></i></div>
         <div>
           <div class="who"><?= e((string) ($authUser['login'] ?? 'Admin')) ?></div>
-          <div class="role"><?= ((int)($authUser['permission'] ?? 0) === 2) ? 'Süper Admin' : 'Yönetici' ?></div>
+          <div class="role"><?= ((int)($authUser['permission'] ?? 0) === 2) ? 'Süper Admin' : 'Yönetici' ?> · v<?= e($appVersion) ?></div>
         </div>
       </div>
       <a href="<?= e(url('/cikis')) ?>" class="logout-link"><i class="fa-solid fa-right-from-bracket"></i> Çıkış Yap</a>
@@ -607,7 +637,268 @@ $settingsOpen = in_array($panelSection, ['ceza-ayarlari'], true);
       </div>
     </section>
 
+    <!-- ===================== PATCH LİNKLERİ ===================== -->
+    <section class="section<?= $panelSection === 'patch-linkleri' ? ' active' : '' ?>" id="patch-linkleri">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-head"><h3>İndirme Linkleri</h3><a href="<?= e(url('/#indir')) ?>" target="_blank">Ana sayfada gör</a></div>
+          <table>
+            <thead><tr><th>Ad</th><th>Tür</th><th>URL</th><th></th></tr></thead>
+            <tbody>
+              <?php foreach ($siteDownloads as $dl): ?>
+              <tr>
+                <td><?= e((string) $dl['title']) ?><div style="font-size:.72rem;color:var(--ash);"><?= e((string) $dl['description']) ?></div></td>
+                <td><?= e((string) $dl['pack_type']) ?></td>
+                <td style="font-size:.75rem;word-break:break-all;color:var(--ash);"><?= e((string) $dl['url']) ?></td>
+                <td class="actions-cell">
+                  <form method="post" action="<?= e(url('/admin/ayarlar/patch/sil')) ?>" onsubmit="return confirm('Silinsin mi?');"><?= $csrf ?><input type="hidden" name="id" value="<?= (int)$dl['id'] ?>"><button type="submit" class="danger"><i class="fa-solid fa-trash"></i></button></form>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Yeni Link</h3></div>
+          <form method="post" action="<?= e(url('/admin/ayarlar/patch')) ?>">
+            <?= $csrf ?>
+            <div class="form-row"><label>Link adı</label><input name="title" required placeholder="Mega Otopack"></div>
+            <div class="form-row"><label>URL</label><input name="url" required placeholder="https://..."></div>
+            <div class="form-row"><label>Açıklama</label><input name="description" placeholder="Dosya upload / kısa not"></div>
+            <div class="form-row"><label>Paket türü</label>
+              <select name="pack_type">
+                <option value="normal">Normal Pack</option>
+                <option value="otopack">Otopack</option>
+                <option value="lite">Lite</option>
+                <option value="full">Full</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ÖZELLİKLER ===================== -->
+    <section class="section<?= $panelSection === 'ozellikler-ayarlari' ? ' active' : '' ?>" id="ozellikler-ayarlari">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-head"><h3>Özellik Kartları</h3></div>
+          <table>
+            <thead><tr><th>Başlık</th><th>İkon</th><th></th></tr></thead>
+            <tbody>
+              <?php foreach ($siteFeatures as $f): ?>
+              <tr>
+                <td><?= e((string)$f['title']) ?><div style="font-size:.75rem;color:var(--ash);"><?= e((string)$f['body']) ?></div></td>
+                <td style="font-size:.75rem;"><?= e((string)$f['icon']) ?></td>
+                <td class="actions-cell">
+                  <button type="button" data-edit-feature
+                    data-id="<?= (int)$f['id'] ?>" data-icon="<?= e((string)$f['icon']) ?>"
+                    data-title="<?= e((string)$f['title']) ?>" data-body="<?= e((string)$f['body']) ?>"><i class="fa-solid fa-pen"></i></button>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3 id="featureFormTitle">Özellik Düzenle / Ekle</h3></div>
+          <form method="post" action="<?= e(url('/admin/ayarlar/ozellik')) ?>" id="featureForm">
+            <?= $csrf ?>
+            <input type="hidden" name="id" id="featureId" value="">
+            <div class="form-row"><label>İkon (FA class)</label><input name="icon" id="featureIcon" value="fa-solid fa-star"></div>
+            <div class="form-row"><label>Başlık</label><input name="title" id="featureTitle" required></div>
+            <div class="form-row"><label>Metin</label><textarea name="body" id="featureBody" required style="min-height:80px;"></textarea></div>
+            <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== SINIFLAR ===================== -->
+    <section class="section<?= $panelSection === 'siniflar-ayarlari' ? ' active' : '' ?>" id="siniflar-ayarlari">
+      <?php foreach ($siteClasses as $cls): ?>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-head"><h3><?= e((string)$cls['name']) ?></h3><span style="font-size:.8rem;color:var(--ash);"><?= e((string)$cls['slug']) ?></span></div>
+        <form method="post" action="<?= e(url('/admin/ayarlar/sinif')) ?>" class="grid grid-2">
+          <?= $csrf ?>
+          <input type="hidden" name="id" value="<?= (int)$cls['id'] ?>">
+          <div>
+            <div class="form-row"><label>Ad</label><input name="name" value="<?= e((string)$cls['name']) ?>" required></div>
+            <div class="form-row"><label>Açıklama</label><textarea name="body" style="min-height:70px;"><?= e((string)$cls['body']) ?></textarea></div>
+            <div class="form-row"><label>GIF yolu</label>
+              <select name="gif_path">
+                <?php
+                  $gifs = [
+                    'img/classes/warrior_m.gif' => 'Savaşçı Erkek',
+                    'img/classes/warrior_f.gif' => 'Savaşçı Kız',
+                    'img/classes/ninja_m.gif' => 'Ninja Erkek',
+                    'img/classes/ninja_f.gif' => 'Ninja Kız',
+                    'img/classes/sura_m.gif' => 'Sura Erkek',
+                    'img/classes/sura_f.gif' => 'Sura Kız',
+                    'img/classes/shaman_m.gif' => 'Şaman Erkek',
+                    'img/classes/shaman_f.gif' => 'Şaman Kız',
+                  ];
+                  $cur = (string) ($cls['gif_path'] ?? '');
+                ?>
+                <?php foreach ($gifs as $path => $label): ?>
+                  <option value="<?= e($path) ?>"<?= $cur === $path ? ' selected' : '' ?>><?= e($label) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+          </div>
+          <div>
+            <div class="form-row"><label>İkon</label><input name="icon" value="<?= e((string)$cls['icon']) ?>"></div>
+            <div class="form-row"><label>Glow rengi</label><input name="glow_color" value="<?= e((string)$cls['glow_color']) ?>"></div>
+            <div class="form-row"><label>Rank glifi</label><input name="rank_glyph" value="<?= e((string)$cls['rank_glyph']) ?>"></div>
+            <div class="form-row"><label>Stat 1</label><input name="stat1_label" value="<?= e((string)$cls['stat1_label']) ?>" style="margin-bottom:8px;"><input type="number" name="stat1_value" min="0" max="100" value="<?= (int)$cls['stat1_value'] ?>"></div>
+            <div class="form-row"><label>Stat 2</label><input name="stat2_label" value="<?= e((string)$cls['stat2_label']) ?>" style="margin-bottom:8px;"><input type="number" name="stat2_value" min="0" max="100" value="<?= (int)$cls['stat2_value'] ?>"></div>
+            <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+          </div>
+        </form>
+      </div>
+      <?php endforeach; ?>
+    </section>
+
+    <!-- ===================== ORANLAR ===================== -->
+    <section class="section<?= $panelSection === 'oranlar-ayarlari' ? ' active' : '' ?>" id="oranlar-ayarlari">
+      <div class="card" style="max-width:560px;">
+        <div class="card-head"><h3>Sunucu Oranları (DNWeb.settings)</h3></div>
+        <form method="post" action="<?= e(url('/admin/ayarlar/oranlar')) ?>">
+          <?= $csrf ?>
+          <div class="form-row"><label>EXP</label><input type="number" name="exp" min="0" value="<?= (int)($siteRates['exp'] ?? 100) ?>"></div>
+          <div class="form-row"><label>Drop</label><input type="number" name="drop" min="0" value="<?= (int)($siteRates['drop'] ?? 50) ?>"></div>
+          <div class="form-row"><label>Yang</label><input type="number" name="yang" min="0" value="<?= (int)($siteRates['yang'] ?? 30) ?>"></div>
+          <div class="form-row"><label>Metin yoğunluğu etiketi</label><input name="metin_label" value="<?= e((string)($siteRates['metin_label'] ?? 'Yüksek')) ?>"></div>
+          <div class="form-row"><label>Metin bar %</label><input type="number" name="metin_pct" min="0" max="100" value="<?= (int)($siteRates['metin_pct'] ?? 85) ?>"></div>
+          <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===================== SIRADAKI BÖLÜM ===================== -->
+    <section class="section<?= $panelSection === 'siradaki-bolum' ? ' active' : '' ?>" id="siradaki-bolum">
+      <div class="card" style="max-width:560px;">
+        <div class="card-head"><h3>Sıradaki Bölüm</h3></div>
+        <form method="post" action="<?= e(url('/admin/ayarlar/bolum')) ?>">
+          <?= $csrf ?>
+          <div class="form-row"><label>Ne oluyor?</label><input name="title" required value="<?= e((string)($siteChapter['title'] ?? '')) ?>"></div>
+          <div class="form-row"><label>Tarih</label><input type="date" name="date" required value="<?= e((string)($siteChapter['date'] ?? '')) ?>"></div>
+          <div class="form-row"><label>Saat</label><input type="time" name="time" required value="<?= e((string)($siteChapter['time'] ?? '20:00')) ?>"></div>
+          <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===================== GALERİ ===================== -->
+    <section class="section<?= $panelSection === 'galeri-ayarlari' ? ' active' : '' ?>" id="galeri-ayarlari">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-head"><h3>Galeri</h3></div>
+          <table>
+            <thead><tr><th>Önizleme</th><th>Başlık</th><th></th></tr></thead>
+            <tbody>
+              <?php foreach ($siteGallery as $g): ?>
+              <tr>
+                <td><img src="<?= e((string)$g['image_path']) ?>" alt="" style="width:64px;height:40px;object-fit:cover;"></td>
+                <td><?= e((string)$g['title']) ?></td>
+                <td class="actions-cell">
+                  <form method="post" action="<?= e(url('/admin/ayarlar/galeri/sil')) ?>" onsubmit="return confirm('Silinsin mi?');"><?= $csrf ?><input type="hidden" name="id" value="<?= (int)$g['id'] ?>"><button type="submit" class="danger"><i class="fa-solid fa-trash"></i></button></form>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Görsel Yükle</h3></div>
+          <form method="post" action="<?= e(url('/admin/ayarlar/galeri')) ?>" enctype="multipart/form-data">
+            <?= $csrf ?>
+            <div class="form-row"><label>Başlık</label><input name="title" placeholder="Yükseliş Vadisi"></div>
+            <div class="form-row"><label>Dosya</label><input type="file" name="image" accept="image/*" required></div>
+            <button type="submit" class="btn btn-primary btn-sm">Yükle</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== FOOTER ===================== -->
+    <section class="section<?= $panelSection === 'footer-ayarlari' ? ' active' : '' ?>" id="footer-ayarlari">
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-head"><h3>Footer Metinleri</h3><span style="font-size:.8rem;color:var(--ash);">v<?= e($appVersion) ?></span></div>
+        <form method="post" action="<?= e(url('/admin/ayarlar/footer-meta')) ?>">
+          <?= $csrf ?>
+          <div class="form-row"><label>Copyright</label><input name="copyright" value="<?= e((string)($siteFooter['copyright'] ?? '')) ?>"></div>
+          <div class="form-row"><label>Marka açıklaması</label><textarea name="brand_text" style="min-height:80px;"><?= e((string)($siteFooter['brand_text'] ?? '')) ?></textarea></div>
+          <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+        </form>
+      </div>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-head"><h3>Footer Linkleri</h3></div>
+          <table>
+            <thead><tr><th>Kolon</th><th>Etiket</th><th>URL</th><th></th></tr></thead>
+            <tbody>
+              <?php foreach ($siteFooterLinks as $fl): ?>
+              <tr>
+                <td><?= e((string)$fl['column_key']) ?></td>
+                <td><?= e((string)$fl['label']) ?></td>
+                <td style="font-size:.75rem;"><?= e((string)$fl['url']) ?></td>
+                <td class="actions-cell">
+                  <form method="post" action="<?= e(url('/admin/ayarlar/footer-link/sil')) ?>" onsubmit="return confirm('Silinsin mi?');"><?= $csrf ?><input type="hidden" name="id" value="<?= (int)$fl['id'] ?>"><button type="submit" class="danger"><i class="fa-solid fa-trash"></i></button></form>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+          <form method="post" action="<?= e(url('/admin/ayarlar/footer-link')) ?>" style="margin-top:14px;">
+            <?= $csrf ?>
+            <div class="form-row"><label>Kolon</label>
+              <select name="column_key"><option value="server">Sunucu</option><option value="community">Topluluk</option></select>
+            </div>
+            <div class="form-row"><label>Etiket</label><input name="label" required></div>
+            <div class="form-row"><label>URL</label><input name="url" required></div>
+            <button type="submit" class="btn btn-primary btn-sm">Link Ekle</button>
+          </form>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Sosyal Medya</h3></div>
+          <table>
+            <thead><tr><th>Ad</th><th>Durum</th><th></th></tr></thead>
+            <tbody>
+              <?php foreach ($siteSocials as $soc): ?>
+              <tr>
+                <td><i class="<?= e((string)$soc['icon']) ?>"></i> <?= e((string)$soc['name']) ?><div style="font-size:.72rem;color:var(--ash);"><?= e((string)$soc['url']) ?></div></td>
+                <td><?= !empty($soc['is_active']) ? 'Aktif' : 'Pasif' ?></td>
+                <td class="actions-cell">
+                  <form method="post" action="<?= e(url('/admin/ayarlar/sosyal')) ?>" style="display:inline;"><?= $csrf ?>
+                    <input type="hidden" name="id" value="<?= (int)$soc['id'] ?>">
+                    <input type="hidden" name="name" value="<?= e((string)$soc['name']) ?>">
+                    <input type="hidden" name="icon" value="<?= e((string)$soc['icon']) ?>">
+                    <input type="hidden" name="url" value="<?= e((string)$soc['url']) ?>">
+                    <input type="hidden" name="is_active" value="<?= !empty($soc['is_active']) ? '0' : '1' ?>">
+                    <button type="submit" title="Aktif/Pasif"><?= !empty($soc['is_active']) ? '<i class="fa-solid fa-toggle-on"></i>' : '<i class="fa-solid fa-toggle-off"></i>' ?></button>
+                  </form>
+                  <form method="post" action="<?= e(url('/admin/ayarlar/sosyal/sil')) ?>" onsubmit="return confirm('Silinsin mi?');"><?= $csrf ?><input type="hidden" name="id" value="<?= (int)$soc['id'] ?>"><button type="submit" class="danger"><i class="fa-solid fa-trash"></i></button></form>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+          <form method="post" action="<?= e(url('/admin/ayarlar/sosyal')) ?>" style="margin-top:14px;">
+            <?= $csrf ?>
+            <input type="hidden" name="is_active" value="1">
+            <div class="form-row"><label>Ad</label><input name="name" required placeholder="Discord"></div>
+            <div class="form-row"><label>İkon</label><input name="icon" value="fa-brands fa-discord"></div>
+            <div class="form-row"><label>URL</label><input name="url" required placeholder="https://..."></div>
+            <button type="submit" class="btn btn-primary btn-sm">Sosyal Ekle</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
     <!-- ===================== DUYURULAR ===================== -->
+
     <section class="section" id="duyurular">
       <div class="grid grid-3">
         <div class="card">
@@ -779,7 +1070,7 @@ $settingsOpen = in_array($panelSection, ['ceza-ayarlari'], true);
       if (n.dataset.target) n.classList.toggle('active', n.dataset.target === target);
     });
     if (settingsParent) {
-      const isSettings = target === 'ceza-ayarlari';
+      const isSettings = ['ceza-ayarlari','patch-linkleri','ozellikler-ayarlari','siniflar-ayarlari','oranlar-ayarlari','siradaki-bolum','galeri-ayarlari','footer-ayarlari'].includes(target);
       settingsParent.classList.toggle('active', isSettings);
       if (isSettings) {
         settingsParent.classList.add('open');
@@ -955,6 +1246,17 @@ $settingsOpen = in_array($panelSection, ['ceza-ayarlari'], true);
     });
   });
   document.getElementById('penaltyReset')?.addEventListener('click', resetPenaltyForm);
+
+  document.querySelectorAll('[data-edit-feature]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('featureFormTitle').textContent = 'Özellik Düzenle';
+      document.getElementById('featureId').value = btn.dataset.id || '';
+      document.getElementById('featureIcon').value = btn.dataset.icon || '';
+      document.getElementById('featureTitle').value = btn.dataset.title || '';
+      document.getElementById('featureBody').value = btn.dataset.body || '';
+      showSection('ozellikler-ayarlari');
+    });
+  });
 
   (function sessionCountdown() {
     const el = document.getElementById('sessionTimer');

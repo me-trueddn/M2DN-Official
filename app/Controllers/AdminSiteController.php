@@ -1,0 +1,224 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers;
+
+use App\Core\Security;
+use App\Core\Session;
+use App\Services\AuthService;
+use App\Services\SiteContentService;
+
+final class AdminSiteController
+{
+    public function saveRates(): void
+    {
+        AuthService::requireAdmin();
+        Security::requireCsrf('login');
+        SiteContentService::set('rates', 'exp', (string) max(0, (int) ($_POST['exp'] ?? 0)));
+        SiteContentService::set('rates', 'drop', (string) max(0, (int) ($_POST['drop'] ?? 0)));
+        SiteContentService::set('rates', 'yang', (string) max(0, (int) ($_POST['yang'] ?? 0)));
+        SiteContentService::set('rates', 'metin_label', trim((string) ($_POST['metin_label'] ?? 'Yüksek')));
+        SiteContentService::set('rates', 'metin_pct', (string) max(0, min(100, (int) ($_POST['metin_pct'] ?? 85))));
+        $this->ok('Sunucu oranları kaydedildi.', 'oranlar-ayarlari');
+    }
+
+    public function saveChapter(): void
+    {
+        AuthService::requireAdmin();
+        Security::requireCsrf('login');
+        $title = trim((string) ($_POST['title'] ?? ''));
+        $date = trim((string) ($_POST['date'] ?? ''));
+        $time = trim((string) ($_POST['time'] ?? '20:00'));
+        if ($title === '' || $date === '') {
+            $this->fail(['Başlık ve tarih zorunlu.'], 'siradaki-bolum');
+        }
+        $target = $date . ' ' . (preg_match('/^\d{2}:\d{2}$/', $time) ? $time : '20:00') . ':00';
+        SiteContentService::set('chapter', 'title', $title);
+        SiteContentService::set('chapter', 'target_at', $target);
+        $this->ok('Sıradaki bölüm güncellendi.', 'siradaki-bolum');
+    }
+
+    public function saveFooterMeta(): void
+    {
+        AuthService::requireAdmin();
+        Security::requireCsrf('login');
+        SiteContentService::set('footer', 'copyright', trim((string) ($_POST['copyright'] ?? '')));
+        SiteContentService::set('footer', 'brand_text', trim((string) ($_POST['brand_text'] ?? '')));
+        $this->ok('Footer metinleri kaydedildi.', 'footer-ayarlari');
+    }
+
+    public function saveDownload(): void
+    {
+        AuthService::requireAdmin();
+        Security::requireCsrf('login');
+        $id = (int) ($_POST['id'] ?? 0);
+        $result = SiteContentService::saveDownload(
+            $id > 0 ? $id : null,
+            (string) ($_POST['title'] ?? ''),
+            (string) ($_POST['url'] ?? ''),
+            (string) ($_POST['description'] ?? ''),
+            (string) ($_POST['pack_type'] ?? 'normal')
+        );
+        $this->fromResult($result, 'İndirme linki kaydedildi.', 'patch-linkleri');
+    }
+
+    public function deleteDownload(): void
+    {
+        AuthService::requireAdmin();
+        Security::requireCsrf('login');
+        SiteContentService::deleteDownload((int) ($_POST['id'] ?? 0));
+        $this->ok('İndirme linki silindi.', 'patch-linkleri');
+    }
+
+    public function saveFeature(): void
+    {
+        AuthService::requireAdmin();
+        Security::requireCsrf('login');
+        $id = (int) ($_POST['id'] ?? 0);
+        $result = SiteContentService::saveFeature(
+            $id > 0 ? $id : null,
+            (string) ($_POST['icon'] ?? ''),
+            (string) ($_POST['title'] ?? ''),
+            (string) ($_POST['body'] ?? '')
+        );
+        $this->fromResult($result, 'Özellik kaydedildi.', 'ozellikler-ayarlari');
+    }
+
+    public function saveClass(): void
+    {
+        AuthService::requireAdmin();
+        Security::requireCsrf('login');
+        $result = SiteContentService::saveClass((int) ($_POST['id'] ?? 0), $_POST);
+        $this->fromResult($result, 'Sınıf kaydedildi.', 'siniflar-ayarlari');
+    }
+
+    public function saveGallery(): void
+    {
+        AuthService::requireAdmin();
+        Security::requireCsrf('login');
+
+        $title = (string) ($_POST['title'] ?? '');
+        $path = trim((string) ($_POST['image_path'] ?? ''));
+
+        if (!empty($_FILES['image']['tmp_name']) && is_uploaded_file((string) $_FILES['image']['tmp_name'])) {
+            $uploaded = $this->storeGalleryUpload($_FILES['image']);
+            if ($uploaded === null) {
+                $this->fail(['Görsel yüklenemedi (jpg/png/webp/gif, max 5MB).'], 'galeri-ayarlari');
+            }
+            $path = $uploaded;
+        }
+
+        $id = (int) ($_POST['id'] ?? 0);
+        $result = SiteContentService::saveGalleryItem($id > 0 ? $id : null, $title, $path);
+        $this->fromResult($result, 'Galeri kaydı eklendi.', 'galeri-ayarlari');
+    }
+
+    public function deleteGallery(): void
+    {
+        AuthService::requireAdmin();
+        Security::requireCsrf('login');
+        SiteContentService::deleteGallery((int) ($_POST['id'] ?? 0));
+        $this->ok('Galeri kaydı silindi.', 'galeri-ayarlari');
+    }
+
+    public function saveFooterLink(): void
+    {
+        AuthService::requireAdmin();
+        Security::requireCsrf('login');
+        $id = (int) ($_POST['id'] ?? 0);
+        $result = SiteContentService::saveFooterLink(
+            $id > 0 ? $id : null,
+            (string) ($_POST['column_key'] ?? 'community'),
+            (string) ($_POST['label'] ?? ''),
+            (string) ($_POST['url'] ?? '')
+        );
+        $this->fromResult($result, 'Footer linki kaydedildi.', 'footer-ayarlari');
+    }
+
+    public function deleteFooterLink(): void
+    {
+        AuthService::requireAdmin();
+        Security::requireCsrf('login');
+        SiteContentService::deleteFooterLink((int) ($_POST['id'] ?? 0));
+        $this->ok('Footer linki silindi.', 'footer-ayarlari');
+    }
+
+    public function saveSocial(): void
+    {
+        AuthService::requireAdmin();
+        Security::requireCsrf('login');
+        $id = (int) ($_POST['id'] ?? 0);
+        $result = SiteContentService::saveSocial(
+            $id > 0 ? $id : null,
+            (string) ($_POST['name'] ?? ''),
+            (string) ($_POST['icon'] ?? ''),
+            (string) ($_POST['url'] ?? ''),
+            !empty($_POST['is_active'])
+        );
+        $this->fromResult($result, 'Sosyal medya kaydedildi.', 'footer-ayarlari');
+    }
+
+    public function deleteSocial(): void
+    {
+        AuthService::requireAdmin();
+        Security::requireCsrf('login');
+        SiteContentService::deleteSocial((int) ($_POST['id'] ?? 0));
+        $this->ok('Sosyal medya silindi.', 'footer-ayarlari');
+    }
+
+    /** @param array{ok:bool, errors:list<string>} $result */
+    private function fromResult(array $result, string $success, string $section): void
+    {
+        if (!empty($result['ok'])) {
+            $this->ok($success, $section);
+        }
+        $this->fail($result['errors'] !== [] ? $result['errors'] : ['İşlem başarısız.'], $section);
+    }
+
+    private function ok(string $msg, string $section): void
+    {
+        Session::flash('panel_success', $msg);
+        Session::flash('panel_section', $section);
+        redirect('/admin?section=' . $section);
+    }
+
+    /** @param list<string> $errors */
+    private function fail(array $errors, string $section): void
+    {
+        Session::flash('panel_errors', $errors);
+        Session::flash('panel_section', $section);
+        redirect('/admin?section=' . $section);
+    }
+
+    /** @param array $file */
+    private function storeGalleryUpload(array $file): ?string
+    {
+        $tmp = (string) ($file['tmp_name'] ?? '');
+        $size = (int) ($file['size'] ?? 0);
+        if ($tmp === '' || $size <= 0 || $size > 5 * 1024 * 1024) {
+            return null;
+        }
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mime = (string) $finfo->file($tmp);
+        $map = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            'image/gif' => 'gif',
+        ];
+        if (!isset($map[$mime])) {
+            return null;
+        }
+        $dir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'gallery';
+        if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+            return null;
+        }
+        $name = 'g_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $map[$mime];
+        $dest = $dir . DIRECTORY_SEPARATOR . $name;
+        if (!move_uploaded_file($tmp, $dest)) {
+            return null;
+        }
+        return '/uploads/gallery/' . $name;
+    }
+}

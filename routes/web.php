@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Controllers\AdminPanelController;
+use App\Controllers\AdminSiteController;
 use App\Controllers\AuthController;
 use App\Controllers\HomeController;
 use App\Controllers\UserPanelController;
@@ -30,6 +31,20 @@ $router->post('/admin/oyuncu/ban', [AdminPanelController::class, 'ban']);
 $router->post('/admin/oyuncu/unban', [AdminPanelController::class, 'unban']);
 $router->post('/admin/ayarlar/ceza/kaydet', [AdminPanelController::class, 'savePenalty']);
 $router->post('/admin/ayarlar/ceza/sil', [AdminPanelController::class, 'deletePenalty']);
+
+$router->post('/admin/ayarlar/oranlar', [AdminSiteController::class, 'saveRates']);
+$router->post('/admin/ayarlar/bolum', [AdminSiteController::class, 'saveChapter']);
+$router->post('/admin/ayarlar/footer-meta', [AdminSiteController::class, 'saveFooterMeta']);
+$router->post('/admin/ayarlar/patch', [AdminSiteController::class, 'saveDownload']);
+$router->post('/admin/ayarlar/patch/sil', [AdminSiteController::class, 'deleteDownload']);
+$router->post('/admin/ayarlar/ozellik', [AdminSiteController::class, 'saveFeature']);
+$router->post('/admin/ayarlar/sinif', [AdminSiteController::class, 'saveClass']);
+$router->post('/admin/ayarlar/galeri', [AdminSiteController::class, 'saveGallery']);
+$router->post('/admin/ayarlar/galeri/sil', [AdminSiteController::class, 'deleteGallery']);
+$router->post('/admin/ayarlar/footer-link', [AdminSiteController::class, 'saveFooterLink']);
+$router->post('/admin/ayarlar/footer-link/sil', [AdminSiteController::class, 'deleteFooterLink']);
+$router->post('/admin/ayarlar/sosyal', [AdminSiteController::class, 'saveSocial']);
+$router->post('/admin/ayarlar/sosyal/sil', [AdminSiteController::class, 'deleteSocial']);
 
 $router->get('/kayit', [AuthController::class, 'showRegister']);
 $router->post('/kayit', [AuthController::class, 'register']);

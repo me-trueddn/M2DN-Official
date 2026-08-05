@@ -13,6 +13,16 @@
 /** @var mixed $loginSuccess */
 /** @var mixed $openLogin */
 /** @var mixed $open2fa */
+/** @var array|null $authUser */
+/** @var string $appVersion */
+/** @var list<array> $siteFeatures */
+/** @var list<array> $siteClasses */
+/** @var list<array> $siteDownloads */
+/** @var list<array> $siteGallery */
+/** @var list<array> $siteSocials */
+/** @var array $siteFooterLinks */
+/** @var array $siteFooter */
+/** @var array $nextChapter */
 
 $registerErrors = is_array($registerErrors ?? null) ? $registerErrors : [];
 $registerOld = is_array($registerOld ?? null) ? $registerOld : [];
@@ -24,6 +34,29 @@ $loginOld = is_array($loginOld ?? null) ? $loginOld : [];
 $loginSuccess = is_string($loginSuccess ?? null) ? $loginSuccess : null;
 $open2fa = !empty($open2fa);
 $openLogin = (!$open2fa) && (!empty($openLogin) || $loginErrors !== [] || $loginSuccess !== null);
+$authUser = is_array($authUser ?? null) ? $authUser : null;
+$appVersion = (string) ($appVersion ?? '1.10.2');
+$siteFeatures = is_array($siteFeatures ?? null) ? $siteFeatures : [];
+$siteClasses = is_array($siteClasses ?? null) ? $siteClasses : [];
+$siteDownloads = is_array($siteDownloads ?? null) ? $siteDownloads : [];
+$siteGallery = is_array($siteGallery ?? null) ? $siteGallery : [];
+$siteSocials = is_array($siteSocials ?? null) ? $siteSocials : [];
+$siteFooterLinks = is_array($siteFooterLinks ?? null) ? $siteFooterLinks : [];
+$siteFooter = is_array($siteFooter ?? null) ? $siteFooter : [];
+$nextChapter = is_array($nextChapter ?? null) ? $nextChapter : [];
+$isLoggedIn = $authUser !== null;
+$canAdmin = $isLoggedIn && \App\Services\AuthService::canAccessAdmin($authUser);
+
+$mediaUrl = static function (string $path): string {
+    $path = trim($path);
+    if ($path === '' || $path === '#') {
+        return '#';
+    }
+    if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://') || str_starts_with($path, '/')) {
+        return $path;
+    }
+    return asset($path);
+};
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -382,11 +415,47 @@ $openLogin = (!$open2fa) && (!empty($openLogin) || $loginErrors !== [] || $login
   .class-card:hover .glow{opacity:.85;}
   .class-card .rank{
     font-family:var(--font-brush); font-size:2.6rem; color:rgba(233,223,198,.12);
-    position:absolute; top:20px; right:24px; z-index:1;
+    position:absolute; top:20px; right:24px; z-index:1; pointer-events:none;
   }
-  .class-card i.class-icon{font-size:2.1rem; color:var(--gold-light); margin-bottom:16px; position:relative; z-index:2;}
+  .class-card .class-visual{
+    position:absolute; left:0; right:0; top:0; height:58%;
+    display:flex; align-items:flex-end; justify-content:center;
+    z-index:1; pointer-events:none; overflow:hidden;
+  }
+  .class-card .class-visual img{
+    max-height:100%; max-width:78%; width:auto; height:auto;
+    object-fit:contain; object-position:center bottom; display:block;
+    filter:drop-shadow(0 8px 18px rgba(0,0,0,.45));
+  }
+  .class-card i.class-icon{font-size:1.35rem; color:var(--gold-light); margin-bottom:10px; position:relative; z-index:2;}
   .class-card h3{position:relative; z-index:2; font-size:1.3rem; color:var(--parchment); margin-bottom:8px;}
   .class-card p{position:relative; z-index:2; font-size:.85rem; color:var(--ash); line-height:1.6; margin-bottom:18px;}
+  .nav-user{position:relative;}
+  .nav-user-btn{display:inline-flex; align-items:center; gap:8px;}
+  .nav-user-menu{
+    position:absolute; right:0; top:calc(100% + 8px); min-width:200px;
+    background:var(--obsidian-2); border:1px solid rgba(201,151,74,.28); padding:8px;
+    display:none; z-index:50; box-shadow:0 16px 40px rgba(0,0,0,.45);
+  }
+  .nav-user-menu.open{display:block;}
+  .nav-user-menu a{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; color:var(--parchment);
+    font-size:.82rem; text-decoration:none;
+  }
+  .nav-user-menu a:hover{background:rgba(201,151,74,.08); color:var(--gold-light);}
+  .session-timer-home{
+    display:inline-flex; align-items:center; gap:6px; margin-right:8px;
+    padding:7px 10px; border:1px solid rgba(201,151,74,.28); background:rgba(201,151,74,.1);
+    font-size:.72rem; color:var(--gold-light); font-variant-numeric:tabular-nums;
+  }
+  .session-timer-home.warn{border-color:rgba(197,51,71,.4); color:#e8a0a8; background:rgba(143,28,41,.18);}
+  .download-list{display:flex; flex-direction:column; gap:14px; align-items:center; margin-top:22px;}
+  .download-list .dl-item{text-align:center;}
+  .download-list .dl-meta{font-size:.78rem; color:var(--ash); margin-top:6px;}
+  .gallery-item{position:relative; overflow:hidden; min-height:160px; background:var(--obsidian-2); border:1px solid rgba(201,151,74,.12); display:flex; align-items:flex-end; justify-content:center;}
+  .gallery-item img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;}
+  .gallery-item span{position:relative; z-index:1; width:100%; padding:10px 12px; background:linear-gradient(transparent, rgba(0,0,0,.75)); color:var(--parchment); font-size:.82rem; text-align:center;}
+  .ver-tag{opacity:.75; margin-left:8px; font-size:.75rem;}
   .stat-row{position:relative; z-index:2; display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:.72rem; color:var(--ash); text-transform:uppercase; letter-spacing:.05em;}
   .stat-row .track{flex:1; height:4px; background:rgba(233,223,198,.1); position:relative; overflow:hidden;}
   .stat-row .fill{position:absolute; inset:0; width:0; background:var(--gold); transition:width 1.2s ease;}
@@ -497,8 +566,28 @@ $openLogin = (!$open2fa) && (!empty($openLogin) || $loginErrors !== [] || $login
         <li><a href="#galeri">Galeri</a></li>
       </ul>
       <div class="nav-actions">
-        <button type="button" class="nav-cta" id="openLoginModal"><i class="fa-solid fa-right-to-bracket"></i> Giriş</button>
-        <button type="button" class="nav-cta solid" id="openRegisterModal"><i class="fa-solid fa-user-plus"></i> Kayıt Ol</button>
+        <?php if ($isLoggedIn): ?>
+          <div class="session-timer-home" id="sessionTimer" title="Oturum süresi" data-expires="<?= (int) ($authUser['session_expires_at'] ?? 0) ?>" data-logout="<?= e(url('/cikis')) ?>">
+            <i class="fa-solid fa-hourglass-half"></i>
+            <span id="sessionTimerValue">--:--</span>
+          </div>
+          <div class="nav-user" id="navUser">
+            <button type="button" class="nav-cta solid nav-user-btn" id="navUserBtn">
+              <i class="fa-solid fa-user"></i> <?= e((string) ($authUser['login'] ?? 'Oyuncu')) ?>
+              <i class="fa-solid fa-chevron-down" style="font-size:.65rem;opacity:.8;"></i>
+            </button>
+            <div class="nav-user-menu" id="navUserMenu">
+              <a href="<?= e(url('/panel')) ?>"><i class="fa-solid fa-gauge-high"></i> Panele geç</a>
+              <?php if ($canAdmin): ?>
+                <a href="<?= e(url('/admin')) ?>"><i class="fa-solid fa-screwdriver-wrench"></i> Admin Panel</a>
+              <?php endif; ?>
+              <a href="<?= e(url('/cikis')) ?>"><i class="fa-solid fa-right-from-bracket"></i> Çıkış</a>
+            </div>
+          </div>
+        <?php else: ?>
+          <button type="button" class="nav-cta" id="openLoginModal"><i class="fa-solid fa-right-to-bracket"></i> Giriş</button>
+          <button type="button" class="nav-cta solid" id="openRegisterModal"><i class="fa-solid fa-user-plus"></i> Kayıt Ol</button>
+        <?php endif; ?>
       </div>
       <button class="menu-toggle" id="menuToggle" aria-label="Menü"><i class="fa-solid fa-bars"></i></button>
     </nav>
@@ -543,7 +632,11 @@ $openLogin = (!$open2fa) && (!empty($openLogin) || $loginErrors !== [] || $login
       <p>El yapımı haritalar, sıfır pay-to-win ekonomi ve gece gündüz nabız gibi atan bir topluluk. Metin taşları çağırıyor — sıra sende.</p>
       <div class="hero-ctas">
         <a href="#indir" class="btn btn-primary"><i class="fa-solid fa-download"></i> Oyunu İndir</a>
-        <button type="button" class="btn btn-ghost" id="openLoginModalHero"><i class="fa-solid fa-right-to-bracket"></i> Giriş Yap</button>
+        <?php if ($isLoggedIn): ?>
+          <a href="<?= e(url($canAdmin ? '/admin' : '/panel')) ?>" class="btn btn-ghost"><i class="fa-solid fa-gauge-high"></i> <?= $canAdmin ? 'Admin Panel' : 'Panele Geç' ?></a>
+        <?php else: ?>
+          <button type="button" class="btn btn-ghost" id="openLoginModalHero"><i class="fa-solid fa-right-to-bracket"></i> Giriş Yap</button>
+        <?php endif; ?>
       </div>
       <div class="hero-stats">
         <div><strong style="font-size:1.05rem;">Açık</strong><span>Sunucu Durumu</span></div>
@@ -567,12 +660,17 @@ $openLogin = (!$open2fa) && (!empty($openLogin) || $loginErrors !== [] || $login
   </div>
   <div class="container">
     <div class="features-grid">
-      <div class="feature"><i class="fa-solid fa-map-location-dot"></i><h3>Özgün Haritalar</h3><p>Orijinal oyunda olmayan, sıfırdan tasarlanmış metin bölgeleri ve gizli alanlar.</p></div>
-      <div class="feature"><i class="fa-solid fa-shield-halved"></i><h3>Sıfır Pay-to-Win</h3><p>Mağazada sadece kozmetik ürünler. Güç her zaman emekle ve stratejiyle kazanılır.</p></div>
-      <div class="feature"><i class="fa-solid fa-headset"></i><h3>7/24 GM Desteği</h3><p>Discord üzerinden anında destek, şeffaf yönetim ve haftalık geliştirici günlükleri.</p></div>
-      <div class="feature"><i class="fa-solid fa-dragon"></i><h3>Haftalık Etkinlikler</h3><p>Klan savaşları, ejderha avı ve özel boss rushlar her hafta sonu sizi bekliyor.</p></div>
-      <div class="feature"><i class="fa-solid fa-lock"></i><h3>Gelişmiş Anti-Cheat</h3><p>Özel geliştirilmiş koruma sistemiyle bot ve hileye karşı sıfır tolerans.</p></div>
-      <div class="feature"><i class="fa-solid fa-users"></i><h3>Canlı Topluluk</h3><p>Binlerce aktif oyuncu, düzenli forum içerikleri ve aktif bir klan ekosistemi.</p></div>
+      <?php if ($siteFeatures === []): ?>
+        <div class="feature"><i class="fa-solid fa-star"></i><h3>Özellikler</h3><p>Site ayarlarından özellik ekleyebilirsin.</p></div>
+      <?php else: ?>
+        <?php foreach ($siteFeatures as $feat): ?>
+          <div class="feature">
+            <i class="<?= e((string) ($feat['icon'] ?? 'fa-solid fa-star')) ?>"></i>
+            <h3><?= e((string) ($feat['title'] ?? '')) ?></h3>
+            <p><?= e((string) ($feat['body'] ?? '')) ?></p>
+          </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
     </div>
   </div>
 </section>
@@ -586,47 +684,20 @@ $openLogin = (!$open2fa) && (!empty($openLogin) || $loginErrors !== [] || $login
       <p>Her sınıfın kendi dövüş felsefesi var. Hangisi seni çağırıyor?</p>
     </div>
     <div class="class-grid">
-
-      <div class="class-card" style="--glow-color:#8f1c29">
+      <?php foreach ($siteClasses as $cls): ?>
+      <div class="class-card" style="--glow-color:<?= e((string) ($cls['glow_color'] ?? '#8f1c29')) ?>">
         <div class="glow"></div>
-        <div class="rank">壹</div>
-        <i class="fa-solid fa-khanda class-icon"></i>
-        <h3>Savaşçı</h3>
-        <p>Ham güç ve çelik disiplini. Ön saflarda durur, düşmanın kalbine yürür.</p>
-        <div class="stat-row"><span>Güç</span><div class="track"><div class="fill" data-w="92"></div></div></div>
-        <div class="stat-row"><span>Savunma</span><div class="track"><div class="fill" data-w="80"></div></div></div>
+        <div class="rank"><?= e((string) ($cls['rank_glyph'] ?? '')) ?></div>
+        <?php if (!empty($cls['gif_path'])): ?>
+          <div class="class-visual"><img src="<?= e($mediaUrl((string) $cls['gif_path'])) ?>" alt="<?= e((string) ($cls['name'] ?? '')) ?>" loading="lazy"></div>
+        <?php endif; ?>
+        <i class="<?= e((string) ($cls['icon'] ?? 'fa-solid fa-star')) ?> class-icon"></i>
+        <h3><?= e((string) ($cls['name'] ?? '')) ?></h3>
+        <p><?= e((string) ($cls['body'] ?? '')) ?></p>
+        <div class="stat-row"><span><?= e((string) ($cls['stat1_label'] ?? '')) ?></span><div class="track"><div class="fill" data-w="<?= (int) ($cls['stat1_value'] ?? 0) ?>"></div></div></div>
+        <div class="stat-row"><span><?= e((string) ($cls['stat2_label'] ?? '')) ?></span><div class="track"><div class="fill" data-w="<?= (int) ($cls['stat2_value'] ?? 0) ?>"></div></div></div>
       </div>
-
-      <div class="class-card" style="--glow-color:#33594a">
-        <div class="glow"></div>
-        <div class="rank">貳</div>
-        <i class="fa-solid fa-wind class-icon"></i>
-        <h3>Ninja</h3>
-        <p>Gölgelerin çevikliği. Görünmeden vurur, iz bırakmadan kaybolur.</p>
-        <div class="stat-row"><span>Çeviklik</span><div class="track"><div class="fill" data-w="95"></div></div></div>
-        <div class="stat-row"><span>Kritik</span><div class="track"><div class="fill" data-w="88"></div></div></div>
-      </div>
-
-      <div class="class-card" style="--glow-color:#4a1f66">
-        <div class="glow"></div>
-        <div class="rank">參</div>
-        <i class="fa-solid fa-skull class-icon"></i>
-        <h3>Sura</h3>
-        <p>Karanlığın büyüsüyle konuşur. Ölümü kendi silahına çevirir.</p>
-        <div class="stat-row"><span>Büyü Gücü</span><div class="track"><div class="fill" data-w="90"></div></div></div>
-        <div class="stat-row"><span>Can Emme</span><div class="track"><div class="fill" data-w="84"></div></div></div>
-      </div>
-
-      <div class="class-card" style="--glow-color:#1f5a3d">
-        <div class="glow"></div>
-        <div class="rank">肆</div>
-        <i class="fa-solid fa-leaf class-icon"></i>
-        <h3>Şaman</h3>
-        <p>Doğanın dengesini korur. İyileştirir, güçlendirir, savaşı yönlendirir.</p>
-        <div class="stat-row"><span>İyileştirme</span><div class="track"><div class="fill" data-w="93"></div></div></div>
-        <div class="stat-row"><span>Destek</span><div class="track"><div class="fill" data-w="87"></div></div></div>
-      </div>
-
+      <?php endforeach; ?>
     </div>
   </div>
 </section>
@@ -641,26 +712,26 @@ $openLogin = (!$open2fa) && (!empty($openLogin) || $loginErrors !== [] || $login
 
         <div class="rate-item">
           <div class="label"><span>Tecrübe (EXP)</span><b>x<?= (int)($rates['exp'] ?? 100) ?></b></div>
-          <div class="rate-bar"><div class="rate-fill" data-w="70"></div></div>
+          <div class="rate-bar"><div class="rate-fill" data-w="<?= min(100, max(5, (int) round(((int)($rates['exp'] ?? 100)) / 2))) ?>"></div></div>
         </div>
         <div class="rate-item">
           <div class="label"><span>Eşya Düşme (Drop)</span><b>x<?= (int)($rates['drop'] ?? 50) ?></b></div>
-          <div class="rate-bar"><div class="rate-fill" data-w="50"></div></div>
+          <div class="rate-bar"><div class="rate-fill" data-w="<?= min(100, max(5, (int)($rates['drop'] ?? 50))) ?>"></div></div>
         </div>
         <div class="rate-item">
           <div class="label"><span>Yang Kazancı</span><b>x<?= (int)($rates['yang'] ?? 30) ?></b></div>
-          <div class="rate-bar"><div class="rate-fill" data-w="35"></div></div>
+          <div class="rate-bar"><div class="rate-fill" data-w="<?= min(100, max(5, (int)($rates['yang'] ?? 30))) ?>"></div></div>
         </div>
         <div class="rate-item">
-          <div class="label"><span>Metin Taşı Yoğunluğu</span><b>Yüksek</b></div>
-          <div class="rate-bar"><div class="rate-fill" data-w="85"></div></div>
+          <div class="label"><span>Metin Taşı Yoğunluğu</span><b><?= e((string)($rates['metin_label'] ?? 'Yüksek')) ?></b></div>
+          <div class="rate-bar"><div class="rate-fill" data-w="<?= (int)($rates['metin_pct'] ?? 85) ?>"></div></div>
         </div>
       </div>
 
       <div class="countdown-card">
         <div class="eyebrow">更新 · Sıradaki Bölüm</div>
-        <h3>Yeni harita &amp; boss güncellemesi</h3>
-        <div class="countdown" id="countdown">
+        <h3><?= e((string) ($nextChapter['title'] ?? 'Yakında')) ?></h3>
+        <div class="countdown" id="countdown" data-target="<?= (int) ($nextChapter['target_ts'] ?? 0) ?>">
           <div><strong id="cd-days">00</strong><span>Gün</span></div>
           <div class="sep">:</div>
           <div><strong id="cd-hours">00</strong><span>Saat</span></div>
@@ -682,12 +753,16 @@ $openLogin = (!$open2fa) && (!empty($openLogin) || $loginErrors !== [] || $login
       <h2>M2DN dünyasından görüntüler.</h2>
     </div>
     <div class="gallery-grid">
-      <div class="gallery-item g1"><i class="fa-solid fa-mountain-sun"></i><span>Yükseliş Vadisi</span></div>
-      <div class="gallery-item"><i class="fa-solid fa-dragon"></i><span>Ejderha İni</span></div>
-      <div class="gallery-item"><i class="fa-solid fa-torii-gate"></i><span>Kızıl Tapınak</span></div>
-      <div class="gallery-item"><i class="fa-solid fa-fire"></i><span>Metin Meydanı</span></div>
-      <div class="gallery-item"><i class="fa-solid fa-crow"></i><span>Karanlık Orman</span></div>
-      <div class="gallery-item"><i class="fa-solid fa-water"></i><span>Sis Gölü</span></div>
+      <?php if ($siteGallery === []): ?>
+        <div class="gallery-item g1"><i class="fa-solid fa-image" style="position:relative;z-index:1;color:var(--gold-light);font-size:1.4rem;margin:auto;"></i><span>Galeri yakında</span></div>
+      <?php else: ?>
+        <?php foreach ($siteGallery as $g): ?>
+          <div class="gallery-item">
+            <img src="<?= e($mediaUrl((string) ($g['image_path'] ?? ''))) ?>" alt="<?= e((string) ($g['title'] ?? '')) ?>" loading="lazy">
+            <span><?= e((string) (($g['title'] ?? '') !== '' ? $g['title'] : '—')) ?></span>
+          </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
     </div>
   </div>
 </section>
@@ -697,7 +772,23 @@ $openLogin = (!$open2fa) && (!empty($openLogin) || $loginErrors !== [] || $login
   <div class="container">
     <h2>M2DN şimdi başlıyor.</h2>
     <p>Karakterini yarat, klanını kur, adını tarihe yaz.</p>
-    <a href="#" class="btn btn-primary"><i class="fa-solid fa-download"></i> Ücretsiz İndir</a>
+    <div class="download-list">
+      <?php if ($siteDownloads === []): ?>
+        <a href="#" class="btn btn-primary"><i class="fa-solid fa-download"></i> Ücretsiz İndir</a>
+      <?php else: ?>
+        <?php foreach ($siteDownloads as $dl): ?>
+          <div class="dl-item">
+            <a href="<?= e((string) ($dl['url'] ?? '#')) ?>" class="btn btn-primary" <?= str_starts_with((string)($dl['url'] ?? ''), 'http') ? 'target="_blank" rel="noopener"' : '' ?>>
+              <i class="fa-solid fa-download"></i> <?= e((string) ($dl['title'] ?? 'İndir')) ?>
+            </a>
+            <div class="dl-meta">
+              <?= e((string) ($dl['pack_type'] ?? 'normal')) ?>
+              <?= !empty($dl['description']) ? ' · ' . e((string) $dl['description']) : '' ?>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </div>
   </div>
 </section>
 
@@ -709,32 +800,29 @@ $openLogin = (!$open2fa) && (!empty($openLogin) || $loginErrors !== [] || $login
         <a href="<?= e(url('/')) ?>" class="brand" aria-label="<?= e($appName) ?> Anasayfa">
           <img class="brand-logo" src="<?= e(asset('img/logo-nav.svg')) ?>" alt="<?= e($appName) ?>">
         </a>
-        <p><?= e($appName) ?> — oyuncusuyla birlikte büyüyen bağımsız bir Metin2 sunucusu. Resmi Metin2 markasıyla bağlantısı yoktur; hayran yapımı bir projedir.</p>
+        <p><?= e((string) ($siteFooter['brand_text'] ?? ($appName . ' — bağımsız Metin2 sunucusu.'))) ?></p>
       </div>
       <div class="footer-cols">
         <div class="footer-col">
           <h4>Sunucu</h4>
-          <a href="#ozellikler">Özellikler</a>
-          <a href="#siniflar">Sınıflar</a>
-          <a href="#oranlar">Oranlar</a>
-          <a href="#galeri">Galeri</a>
+          <?php foreach (($siteFooterLinks['server'] ?? []) as $fl): ?>
+            <a href="<?= e((string) ($fl['url'] ?? '#')) ?>"><?= e((string) ($fl['label'] ?? '')) ?></a>
+          <?php endforeach; ?>
         </div>
         <div class="footer-col">
           <h4>Topluluk</h4>
-          <a href="#">Forum</a>
-          <a href="#">Kurallar</a>
-          <a href="#">Destek Talebi</a>
-          <a href="#">Bağış</a>
+          <?php foreach (($siteFooterLinks['community'] ?? []) as $fl): ?>
+            <a href="<?= e((string) ($fl['url'] ?? '#')) ?>"><?= e((string) ($fl['label'] ?? '')) ?></a>
+          <?php endforeach; ?>
         </div>
       </div>
     </div>
     <div class="footer-bottom">
-      <p>&copy; <?= date("Y") ?> <?= e($appName) ?>. Tüm hakları saklıdır.</p>
+      <p><?= e((string) ($siteFooter['copyright'] ?? ('© ' . date('Y') . ' ' . $appName . '. Tüm hakları saklıdır.'))) ?><span class="ver-tag">v<?= e($appVersion) ?></span></p>
       <div class="socials">
-        <a href="#"><i class="fa-brands fa-discord"></i></a>
-        <a href="#"><i class="fa-brands fa-youtube"></i></a>
-        <a href="#"><i class="fa-brands fa-instagram"></i></a>
-        <a href="#"><i class="fa-brands fa-x-twitter"></i></a>
+        <?php foreach ($siteSocials as $soc): ?>
+          <a href="<?= e((string) ($soc['url'] ?? '#')) ?>" title="<?= e((string) ($soc['name'] ?? '')) ?>" <?= str_starts_with((string)($soc['url'] ?? ''), 'http') ? 'target="_blank" rel="noopener"' : '' ?>><i class="<?= e((string) ($soc['icon'] ?? 'fa-brands fa-link')) ?>"></i></a>
+        <?php endforeach; ?>
       </div>
     </div>
   </div>
@@ -882,12 +970,13 @@ $openLogin = (!$open2fa) && (!empty($openLogin) || $loginErrors !== [] || $login
   const closeTwoFaBtn = document.getElementById('closeTwoFaModal');
 
   function hideAllModals() {
-    loginModal.classList.remove('open');
-    registerModal.classList.remove('open');
-    if (twoFaModal) twoFaModal.classList.remove('open');
+    loginModal?.classList.remove('open');
+    registerModal?.classList.remove('open');
+    twoFaModal?.classList.remove('open');
     document.body.classList.remove('modal-open');
   }
   function showLoginModal() {
+    if (!loginModal) return;
     hideAllModals();
     loginModal.classList.add('open');
     document.body.classList.add('modal-open');
@@ -895,6 +984,7 @@ $openLogin = (!$open2fa) && (!empty($openLogin) || $loginErrors !== [] || $login
     if (first) setTimeout(() => first.focus(), 50);
   }
   function showRegisterModal() {
+    if (!registerModal) return;
     hideAllModals();
     registerModal.classList.add('open');
     document.body.classList.add('modal-open');
@@ -910,19 +1000,46 @@ $openLogin = (!$open2fa) && (!empty($openLogin) || $loginErrors !== [] || $login
     if (first) setTimeout(() => first.focus(), 50);
   }
 
-  openLoginBtn.addEventListener('click', showLoginModal);
-  if (openLoginHero) openLoginHero.addEventListener('click', showLoginModal);
-  closeLoginBtn.addEventListener('click', hideAllModals);
-  openRegisterBtn.addEventListener('click', showRegisterModal);
-  closeRegisterBtn.addEventListener('click', hideAllModals);
-  if (closeTwoFaBtn) closeTwoFaBtn.addEventListener('click', hideAllModals);
+  openLoginBtn?.addEventListener('click', showLoginModal);
+  openLoginHero?.addEventListener('click', showLoginModal);
+  closeLoginBtn?.addEventListener('click', hideAllModals);
+  openRegisterBtn?.addEventListener('click', showRegisterModal);
+  closeRegisterBtn?.addEventListener('click', hideAllModals);
+  closeTwoFaBtn?.addEventListener('click', hideAllModals);
 
-  loginModal.addEventListener('click', (e) => { if (e.target === loginModal) hideAllModals(); });
-  registerModal.addEventListener('click', (e) => { if (e.target === registerModal) hideAllModals(); });
-  if (twoFaModal) twoFaModal.addEventListener('click', (e) => { if (e.target === twoFaModal) hideAllModals(); });
+  loginModal?.addEventListener('click', (e) => { if (e.target === loginModal) hideAllModals(); });
+  registerModal?.addEventListener('click', (e) => { if (e.target === registerModal) hideAllModals(); });
+  twoFaModal?.addEventListener('click', (e) => { if (e.target === twoFaModal) hideAllModals(); });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') hideAllModals();
   });
+
+  const navUserBtn = document.getElementById('navUserBtn');
+  const navUserMenu = document.getElementById('navUserMenu');
+  navUserBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    navUserMenu?.classList.toggle('open');
+  });
+  document.addEventListener('click', () => navUserMenu?.classList.remove('open'));
+
+  (function sessionCountdown() {
+    const el = document.getElementById('sessionTimer');
+    const valueEl = document.getElementById('sessionTimerValue');
+    if (!el || !valueEl) return;
+    const expires = parseInt(el.dataset.expires || '0', 10);
+    const logoutUrl = el.dataset.logout || '/cikis';
+    if (!expires) { valueEl.textContent = '--:--'; return; }
+    const pad = (n) => String(n).padStart(2, '0');
+    const tick = () => {
+      const left = Math.max(0, expires - Math.floor(Date.now() / 1000));
+      valueEl.textContent = pad(Math.floor(left / 60)) + ':' + pad(left % 60);
+      el.classList.toggle('warn', left <= 60);
+      if (left <= 0) { window.location.href = logoutUrl; return; }
+      setTimeout(tick, 1000);
+    };
+    tick();
+  })();
+
   <?php if ($open2fa): ?>
   showTwoFaModal();
   <?php elseif ($openLogin): ?>
@@ -977,28 +1094,18 @@ $openLogin = (!$open2fa) && (!empty($openLogin) || $loginErrors !== [] || $login
   }, { threshold: 0.4 });
   fills.forEach(f => fillObserver.observe(f));
 
-  // Countdown timer -> next Saturday 20:00
-  function getNextTarget() {
-    const now = new Date();
-    const target = new Date();
-    target.setHours(20, 0, 0, 0);
-    let daysUntilSat = (6 - now.getDay() + 7) % 7;
-    if (daysUntilSat === 0 && now > target) daysUntilSat = 7;
-    target.setDate(now.getDate() + daysUntilSat);
-    return target;
-  }
-  const cdTarget = getNextTarget();
+  // Countdown from site settings target
+  const cdEl = document.getElementById('countdown');
+  const cdTargetMs = (parseInt(cdEl?.dataset.target || '0', 10) || 0) * 1000;
   function updateCountdown() {
-    const now = new Date();
-    let diff = Math.max(0, cdTarget - now);
+    const now = Date.now();
+    let diff = Math.max(0, cdTargetMs - now);
     const d = Math.floor(diff / (1000*60*60*24));
     const h = Math.floor((diff / (1000*60*60)) % 24);
     const m = Math.floor((diff / (1000*60)) % 60);
     const s = Math.floor((diff / 1000) % 60);
-    document.getElementById('cd-days').textContent = String(d).padStart(2,'0');
-    document.getElementById('cd-hours').textContent = String(h).padStart(2,'0');
-    document.getElementById('cd-mins').textContent = String(m).padStart(2,'0');
-    document.getElementById('cd-secs').textContent = String(s).padStart(2,'0');
+    const set = (id, v) => { const n = document.getElementById(id); if (n) n.textContent = String(v).padStart(2,'0'); };
+    set('cd-days', d); set('cd-hours', h); set('cd-mins', m); set('cd-secs', s);
   }
   updateCountdown();
   setInterval(updateCountdown, 1000);
