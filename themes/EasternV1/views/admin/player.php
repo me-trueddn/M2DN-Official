@@ -6,6 +6,7 @@
 /** @var list<array> $characters */
 /** @var list<array> $activity */
 /** @var list<array> $gameLogins */
+/** @var list<array> $empireChanges */
 /** @var array $security */
 /** @var array $currentServer */
 /** @var array $siteBrand */
@@ -17,6 +18,7 @@ $account = is_array($account ?? null) ? $account : [];
 $characters = is_array($characters ?? null) ? $characters : [];
 $activity = is_array($activity ?? null) ? $activity : [];
 $gameLogins = is_array($gameLogins ?? null) ? $gameLogins : [];
+$empireChanges = is_array($empireChanges ?? null) ? $empireChanges : [];
 $security = is_array($security ?? null) ? $security : [];
 $currentServer = is_array($currentServer ?? null) ? $currentServer : [];
 $totpOn = !empty($security['totp_enabled']);
@@ -130,6 +132,26 @@ $brandAdminSize = (int) ($siteBrand['admin_size'] ?? 36);
     </div>
 
     <div class="stack">
+      <div class="card">
+        <h3>Bayrak Değişimi <span style="font-weight:400;color:var(--ash);font-size:.75rem;">(player.change_empire)</span></h3>
+        <?php if ($empireChanges === []): ?>
+          <div class="empty">Bayrak değişim kaydı yok.</div>
+        <?php else: ?>
+          <table>
+            <thead><tr><th>Son değişim</th><th>Değişim sayısı</th><th>Güncel bayrak</th></tr></thead>
+            <tbody>
+              <?php foreach ($empireChanges as $er): ?>
+              <tr>
+                <td><?= e((string) ($er['time_label'] ?? '—')) ?></td>
+                <td><?= (int) ($er['change_count'] ?? 0) ?></td>
+                <td><?= e((string) ($er['empire_label'] ?? '—')) ?></td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php endif; ?>
+      </div>
+
       <div class="card">
         <h3>Panel Hesap Kayıtları</h3>
         <?php if ($activity === []): ?>

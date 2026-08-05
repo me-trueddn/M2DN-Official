@@ -70,6 +70,14 @@ $pastOverviewAnn = array_slice($overviewAnnouncements, 1);
 $guildWars = is_array($guildWars ?? null) ? $guildWars : [];
 $guildWarHistory = is_array($guildWarHistory ?? null) ? $guildWarHistory : [];
 $guildWarBoard = is_array($guildWarBoard ?? null) ? $guildWarBoard : [];
+$rankings = is_array($rankings ?? null) ? $rankings : [];
+$rankRows = is_array($rankings['players'] ?? null) ? $rankings['players'] : [];
+$rankTotal = (int) ($rankings['total'] ?? 0);
+$rankPage = (int) ($rankings['page'] ?? 1);
+$rankPages = max(1, (int) ($rankings['pages'] ?? 1));
+$rankQ = (string) ($rankings['q'] ?? '');
+$rankPerPage = (int) ($rankings['per_page'] ?? 10);
+$rankPerOptions = is_array($rankings['per_page_options'] ?? null) ? $rankings['per_page_options'] : [10, 20, 30, 50, 100];
 if (!isset($siteBrand) || !is_array($siteBrand)) {
     $siteBrand = \App\Services\SiteContentService::brandingDefaults();
 }
@@ -257,6 +265,10 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   .btn-ghost{background:none; border:1px solid var(--line); color:var(--gold-light);}
   .btn-ghost:hover{background:rgba(201,151,74,.08);}
   .btn-sm{padding:7px 14px; font-size:.72rem;}
+  .filters{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; align-items:center;}
+  .filters input, .filters select{background:var(--obsidian); border:1px solid var(--line); padding:9px 12px; color:var(--parchment); font-size:.8rem; outline:none; font-family:inherit;}
+  .filters input:focus, .filters select:focus{border-color:var(--gold);}
+  .filters button.btn{cursor:pointer;}
 
   /* table */
   table{width:100%; border-collapse:collapse; font-size:.85rem;}
@@ -506,6 +518,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
 
     <div class="nav-group-label">Genel</div>
     <a class="nav-item<?= $panelSection === 'ozet' ? ' active' : '' ?>" data-target="ozet"><i class="fa-solid fa-gauge-high"></i> Genel Bakış</a>
+    <a class="nav-item<?= $panelSection === 'siralamalar' ? ' active' : '' ?>" data-target="siralamalar"><i class="fa-solid fa-ranking-star"></i> Oyuncu Sıralaması</a>
     <a class="nav-item<?= $panelSection === 'duyurular' ? ' active' : '' ?>" data-target="duyurular"><i class="fa-solid fa-bullhorn"></i> Duyurular</a>
     <a class="nav-item<?= $panelSection === 'karakterler' ? ' active' : '' ?>" data-target="karakterler"><i class="fa-solid fa-khanda"></i> Karakterlerim</a>
     <a class="nav-item<?= $panelSection === 'kayitlar' ? ' active' : '' ?>" data-target="kayitlar"><i class="fa-solid fa-clock-rotate-left"></i> Hesap Kayıtları</a>
@@ -760,6 +773,109 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
           </div>
           <?php endif; ?>
         <?php endif; ?>
+      </div>
+    </section>
+
+    <!-- ===================== OYUNCU SIRALAMASI ===================== -->
+    <section class="section<?= $panelSection === 'siralamalar' ? ' active' : '' ?>" id="siralamalar">
+      <div class="card">
+        <div class="card-head">
+          <h3>Oyuncu Sıralaması</h3>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span style="font-size:.8rem;color:var(--ash);"><?= number_format($rankTotal, 0, ',', '.') ?> karakter · level DESC</span>
+            <?php
+              $rankRefreshQs = http_build_query(array_filter([
+                  'section' => 'siralamalar',
+                  'rank_q' => $rankQ !== '' ? $rankQ : null,
+                  'rank_per' => $rankPerPage !== 10 ? $rankPerPage : null,
+                  'rank_page' => $rankPage > 1 ? $rankPage : null,
+              ], static fn($v) => $v !== null && $v !== ''));
+            ?>
+            <a class="btn btn-ghost btn-sm" href="<?= e(url('/panel?' . $rankRefreshQs)) ?>"><i class="fa-solid fa-arrows-rotate"></i> Yenile</a>
+          </div>
+        </div>
+        <p style="font-size:.82rem;color:var(--ash);margin-bottom:14px;line-height:1.55;">
+          Sunucudaki karakterler level sırasına göre listelenir. Detayda karakter adı, job, level, stamina, lonca ve bayrak bilgisi görünür.
+        </p>
+        <form class="filters" method="get" action="<?= e(url('/panel')) ?>">
+          <input type="hidden" name="section" value="siralamalar">
+          <input name="rank_q" value="<?= e($rankQ) ?>" placeholder="Karakter veya lonca ara..." style="flex:1;min-width:200px;">
+          <select name="rank_per">
+            <?php foreach ($rankPerOptions as $opt): ?>
+              <option value="<?= (int) $opt ?>"<?= $rankPerPage === (int) $opt ? ' selected' : '' ?>><?= (int) $opt ?> / sayfa</option>
+            <?php endforeach; ?>
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Ara</button>
+        </form>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Karakter</th>
+              <th>Job</th>
+              <th>Level</th>
+              <th>Stamina</th>
+              <th>Lonca</th>
+              <th>Bayrak</th>
+              <th>İşlem</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php if ($rankRows === []): ?>
+              <tr><td colspan="8" style="color:var(--ash);">Kayıt yok.</td></tr>
+            <?php else: ?>
+              <?php
+                $rankBase = ($rankPage - 1) * $rankPerPage;
+                foreach ($rankRows as $ri => $rp):
+              ?>
+              <tr>
+                <td><?= $rankBase + $ri + 1 ?></td>
+                <td><?= e((string) $rp['name']) ?></td>
+                <td><?= e((string) $rp['job_label']) ?></td>
+                <td><?= (int) $rp['level'] ?></td>
+                <td><?= (int) $rp['stamina'] ?></td>
+                <td><?= e((string) $rp['guild_name']) ?></td>
+                <td><?= e((string) $rp['empire_label']) ?></td>
+                <td class="actions-cell">
+                  <button type="button" title="Detay"
+                    data-rank-detail
+                    data-rank-name="<?= e((string) $rp['name']) ?>"
+                    data-rank-job="<?= e((string) $rp['job_label']) ?>"
+                    data-rank-level="<?= (int) $rp['level'] ?>"
+                    data-rank-stamina="<?= (int) $rp['stamina'] ?>"
+                    data-rank-guild="<?= e((string) $rp['guild_name']) ?>"
+                    data-rank-empire="<?= e((string) $rp['empire_label']) ?>"><i class="fa-solid fa-eye"></i></button>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </tbody>
+        </table>
+        <?php
+          $rmk = static function (int $p) use ($rankQ, $rankPerPage): string {
+              $qs = http_build_query(array_filter([
+                  'section' => 'siralamalar',
+                  'rank_q' => $rankQ !== '' ? $rankQ : null,
+                  'rank_per' => $rankPerPage !== 10 ? $rankPerPage : null,
+                  'rank_page' => $p > 1 ? $p : null,
+              ], static fn($v) => $v !== null && $v !== ''));
+              return url('/panel' . ($qs !== '' ? '?' . $qs : ''));
+          };
+        ?>
+        <div class="pager">
+          <div>Sayfa <?= (int) $rankPage ?> / <?= (int) $rankPages ?> · Toplam <?= number_format($rankTotal, 0, ',', '.') ?></div>
+          <div class="links">
+            <a class="<?= $rankPage <= 1 ? 'disabled' : '' ?>" href="<?= e($rmk(max(1, $rankPage - 1))) ?>">Önceki</a>
+            <?php
+              $rStart = max(1, $rankPage - 2);
+              $rEnd = min($rankPages, $rankPage + 2);
+              for ($i = $rStart; $i <= $rEnd; $i++):
+            ?>
+              <?php if ($i === $rankPage): ?><span class="cur"><?= $i ?></span><?php else: ?><a href="<?= e($rmk($i)) ?>"><?= $i ?></a><?php endif; ?>
+            <?php endfor; ?>
+            <a class="<?= $rankPage >= $rankPages ? 'disabled' : '' ?>" href="<?= e($rmk(min($rankPages, $rankPage + 1))) ?>">Sonraki</a>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1327,6 +1443,16 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   </div>
 </div>
 
+<div class="modal-overlay" id="rankDetailModal">
+  <div class="modal">
+    <h3><i class="fa-solid fa-ranking-star"></i> <span id="rankDetailTitle">Karakter</span></h3>
+    <div id="rankDetailBody" class="detail-meta" style="color:var(--ash);font-size:.88rem;"></div>
+    <div class="modal-actions" style="margin-top:18px;">
+      <button type="button" class="btn btn-ghost btn-sm" id="rankDetailClose">Kapat</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const navItems = document.querySelectorAll('.nav-item');
   const sections = document.querySelectorAll('.section');
@@ -1408,6 +1534,28 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   document.getElementById('guildCardModal')?.addEventListener('click', (e) => {
     if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
   });
+
+  const rankDetailModal = document.getElementById('rankDetailModal');
+  const rankDetailBody = document.getElementById('rankDetailBody');
+  const rankDetailTitle = document.getElementById('rankDetailTitle');
+  document.querySelectorAll('[data-rank-detail]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!rankDetailModal || !rankDetailBody) return;
+      rankDetailTitle.textContent = btn.dataset.rankName || 'Karakter';
+      let html = '';
+      html += '<div class="row"><span class="k">Karakter</span><span class="v">' + escHtml(btn.dataset.rankName || '—') + '</span></div>';
+      html += '<div class="row"><span class="k">Job</span><span class="v">' + escHtml(btn.dataset.rankJob || '—') + '</span></div>';
+      html += '<div class="row"><span class="k">Level</span><span class="v">' + escHtml(btn.dataset.rankLevel || '—') + '</span></div>';
+      html += '<div class="row"><span class="k">Stamina</span><span class="v">' + escHtml(btn.dataset.rankStamina || '—') + '</span></div>';
+      html += '<div class="row"><span class="k">Lonca</span><span class="v">' + escHtml(btn.dataset.rankGuild || '—') + '</span></div>';
+      html += '<div class="row"><span class="k">Bayrak</span><span class="v">' + escHtml(btn.dataset.rankEmpire || '—') + '</span></div>';
+      rankDetailBody.innerHTML = html;
+      rankDetailModal.classList.add('open');
+    });
+  });
+  document.getElementById('rankDetailClose')?.addEventListener('click', () => rankDetailModal?.classList.remove('open'));
+  rankDetailModal?.addEventListener('click', (e) => { if (e.target === rankDetailModal) rankDetailModal.classList.remove('open'); });
+
   document.getElementById('userWarTabs')?.querySelectorAll('[data-war-tab]').forEach(btn => {
     btn.addEventListener('click', () => {
       const tab = btn.getAttribute('data-war-tab');

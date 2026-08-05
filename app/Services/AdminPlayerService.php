@@ -240,9 +240,57 @@ final class AdminPlayerService
             'characters' => $dashboard['characters'],
             'activity' => ActivityLogService::forAccount($accountId, 80),
             'game_logins' => ActivityLogService::gameLoginLogs($accountId, 40, $serverKey),
+            'empire_changes' => self::empireChanges($accountId, $serverKey),
             'security' => $security,
             'active_ban' => PenaltyService::getActiveBan($accountId),
         ];
+    }
+
+    /**
+     * player.change_empire — bayrak değişim kaydı (hesap bazlı).
+     *
+     * @return list<array>
+     */
+    public static function empireChanges(int $accountId, ?string $serverKey = null): array
+    {
+        if ($accountId <= 0) {
+            return [];
+        }
+        $serverKey = $serverKey ?: (ServerManager::current()['key'] ?? null);
+        try {
+            $pdo = Database::player($serverKey);
+            $stmt = $pdo->prepare(
+                'SELECT account_id, change_count, timestamp FROM change_empire WHERE account_id = ? LIMIT 1'
+            );
+            $stmt->execute([$accountId]);
+            $row = $stmt->fetch();
+            if (!$row) {
+                return [];
+            }
+
+            $count = (int) ($row['change_count'] ?? 0);
+            $ts = strtotime((string) ($row['timestamp'] ?? ''));
+            $empire = 0;
+            try {
+                $idx = $pdo->prepare('SELECT empire FROM player_index WHERE id = ? LIMIT 1');
+                $idx->execute([$accountId]);
+                $empire = (int) ($idx->fetchColumn() ?: 0);
+            } catch (\Throwable) {
+                $empire = 0;
+            }
+
+            return [[
+                'account_id' => (int) ($row['account_id'] ?? $accountId),
+                'change_count' => $count,
+                'timestamp' => (string) ($row['timestamp'] ?? ''),
+                'time_label' => $ts ? date('d.m.Y H:i', $ts) : '—',
+                'empire' => $empire,
+                'empire_label' => PlayerService::empireLabel($empire),
+                'changed' => $count > 0 || $ts !== false,
+            ]];
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     public static function normalizePerPage(int $perPage): int

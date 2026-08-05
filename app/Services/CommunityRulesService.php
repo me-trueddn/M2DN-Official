@@ -93,6 +93,7 @@ final class CommunityRulesService
                     $title, $detail, $penalty1, $penalty2, $penalty3,
                     $sortOrder, $active ? 1 : 0, $id,
                 ]);
+                self::bumpRevision();
                 return ['ok' => true, 'errors' => [], 'id' => $id];
             }
             $nextNo = (int) $web->query('SELECT COALESCE(MAX(rule_no), 0) + 1 FROM community_rules')->fetchColumn();
@@ -107,7 +108,9 @@ final class CommunityRulesService
                 $nextNo, $title, $detail, $penalty1, $penalty2, $penalty3,
                 $sortOrder, $active ? 1 : 0,
             ]);
-            return ['ok' => true, 'errors' => [], 'id' => (int) $web->lastInsertId()];
+            $newId = (int) $web->lastInsertId();
+            self::bumpRevision();
+            return ['ok' => true, 'errors' => [], 'id' => $newId];
         } catch (\Throwable) {
             return ['ok' => false, 'errors' => ['Kural kaydedilemedi.']];
         }
@@ -141,9 +144,24 @@ final class CommunityRulesService
                 $upd->execute([$n, $n, (int) $r['id']]);
                 $n++;
             }
+            self::bumpRevision();
         } catch (\Throwable) {
             // ignore
         }
+    }
+
+    public static function currentRevision(): int
+    {
+        $raw = SiteContentService::get('community', 'rules_revision', '1');
+        $rev = (int) $raw;
+        return $rev > 0 ? $rev : 1;
+    }
+
+    public static function bumpRevision(): int
+    {
+        $next = self::currentRevision() + 1;
+        SiteContentService::set('community', 'rules_revision', (string) $next);
+        return $next;
     }
 
     /** @return list<array{title:string,detail:string,penalty_1:string,penalty_2:string,penalty_3:string}> */

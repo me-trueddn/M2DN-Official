@@ -100,8 +100,45 @@ final class Theme
             $data['captchaScripts'] = '';
         }
 
+        $data['forceRulesAcceptance'] = false;
+        $data['forceRulesList'] = [];
+        $isAdminView = str_starts_with($view, 'admin/');
+        if (!$isAdminView && class_exists(\App\Services\AuthService::class)
+            && class_exists(\App\Services\AccountConsentService::class)
+        ) {
+            try {
+                $authUser = $data['authUser'] ?? \App\Services\AuthService::user();
+                if (is_array($authUser) && !empty($authUser['account_id'])) {
+                    if (!isset($data['authUser'])) {
+                        $data['authUser'] = $authUser;
+                    }
+                    $accountId = (int) $authUser['account_id'];
+                    if (\App\Services\AccountConsentService::needsRulesAcceptance($accountId)) {
+                        $data['forceRulesAcceptance'] = true;
+                        $data['forceRulesList'] = \App\Services\CommunityRulesService::list(true);
+                    }
+                }
+            } catch (\Throwable) {
+                $data['forceRulesAcceptance'] = false;
+                $data['forceRulesList'] = [];
+            }
+        }
+
         extract($data, EXTR_SKIP);
+        ob_start();
         require self::viewPath($view);
+        $html = ob_get_clean();
+        if (!empty($data['forceRulesAcceptance']) && is_string($html) && $html !== '') {
+            ob_start();
+            require self::viewPath('partials/rules_reaccept_modal');
+            $modal = ob_get_clean();
+            if (is_string($modal) && $modal !== '' && stripos($html, '</body>') !== false) {
+                $html = preg_replace('/<\/body>/i', $modal . '</body>', $html, 1) ?? ($html . $modal);
+            } elseif (is_string($modal) && $modal !== '') {
+                $html .= $modal;
+            }
+        }
+        echo $html;
     }
 
     public static function assetUrl(string $path = ''): string

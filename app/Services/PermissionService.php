@@ -17,8 +17,10 @@ final class PermissionService
     public const FLAG_TICKETS = 'tickets';
     public const FLAG_SITE_SETTINGS = 'site_settings';
     public const FLAG_MENU_OYUNCULAR = 'menu_oyuncular';
+    public const FLAG_MENU_SIRALAMALAR = 'menu_siralamalar';
     public const FLAG_MENU_BINEK = 'menu_binek';
     public const FLAG_MENU_GM = 'menu_gm';
+    public const FLAG_MENU_IP_BAN = 'menu_ip_ban';
     public const FLAG_MENU_LONCALAR = 'menu_loncalar';
     public const FLAG_MENU_LONCA_SAVASLARI = 'menu_lonca_savaslari';
     public const FLAG_MENU_BANLAR = 'menu_banlar';
@@ -38,8 +40,10 @@ final class PermissionService
             self::FLAG_TICKETS => 'Destek talebi işlemleri',
             self::FLAG_SITE_SETTINGS => 'Ayarlara erişim',
             self::FLAG_MENU_OYUNCULAR => 'Menü: Oyuncu Yönetimi',
+            self::FLAG_MENU_SIRALAMALAR => 'Menü: Oyuncu Sıralaması',
             self::FLAG_MENU_BINEK => 'Menü: Binek Yönetimi',
             self::FLAG_MENU_GM => 'Menü: GM Yönetimi',
+            self::FLAG_MENU_IP_BAN => 'Menü: IP Ban',
             self::FLAG_MENU_LONCALAR => 'Menü: Loncalar',
             self::FLAG_MENU_LONCA_SAVASLARI => 'Menü: Lonca Savaşı',
             self::FLAG_MENU_BANLAR => 'Menü: Ban / Mute',

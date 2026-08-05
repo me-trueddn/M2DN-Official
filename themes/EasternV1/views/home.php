@@ -272,7 +272,9 @@ $footerHref = static function (string $url): string {
   }
   .modal-form input:focus{border-color:var(--gold);}
   .modal-form .hint{font-size:.7rem; color:var(--ash); margin-top:5px;}
-  .modal-form .captcha-wrap{margin:4px 0 16px; min-height:78px;}
+  .modal-form .captcha-wrap{margin:4px 0 16px; min-height:78px; display:flex; justify-content:flex-start; align-items:center;}
+  .modal-form .captcha-wrap [data-captcha-mount]{min-height:74px;}
+  .modal-form .captcha-wrap iframe{max-width:100%;}
   .modal-form .rules-accept{display:flex;align-items:flex-start;gap:10px;margin:4px 0 16px;font-size:.85rem;color:var(--ash);line-height:1.45;}
   .modal-form .rules-accept input{width:auto;margin-top:3px;flex-shrink:0;}
   .modal-form .rules-accept a{color:var(--gold-light);text-decoration:underline;}
@@ -1074,6 +1076,10 @@ $footerHref = static function (string $url): string {
   </div>
 </div>
 
+<?php if ($captchaEnabled && $captchaScripts !== ''): ?>
+<?= $captchaScripts ?>
+<?php endif; ?>
+
 <script>
   // Sticky header
   const header = document.getElementById('siteHeader');
@@ -1295,9 +1301,6 @@ $footerHref = static function (string $url): string {
   updateCountdown();
   setInterval(updateCountdown, 1000);
 </script>
-<?php if ($captchaEnabled && $captchaScripts !== ''): ?>
-<?= $captchaScripts ?>
-<?php endif; ?>
 
 </body>
 </html>

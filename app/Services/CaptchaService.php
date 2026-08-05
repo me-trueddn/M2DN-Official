@@ -8,7 +8,8 @@ use App\Core\Security;
 
 /**
  * Google reCAPTCHA v2 + Cloudflare Turnstile.
- * Endpoint / script URL'leri sabittir; sadece key'ler ayarlardan gelir.
+ * Widget’lar gizli (display:none) modallarda otomatik render olmaz —
+ * her iki sağlayıcı da explicit mount + modal açılışında yenileme kullanır.
  */
 final class CaptchaService
 {
@@ -98,11 +99,9 @@ final class CaptchaService
         $cfg = self::config();
         $siteKeyJson = json_encode($cfg['site_key'], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS);
         $providerJson = json_encode($cfg['provider'], JSON_UNESCAPED_UNICODE);
+        $isCf = $cfg['provider'] === self::PROVIDER_CLOUDFLARE;
 
-        if ($cfg['provider'] === self::PROVIDER_CLOUDFLARE) {
-            // explicit: gizli (display:none) modallarda otomatik render çalışmaz
-            $script = self::CF_SCRIPT . '?render=explicit';
-            $boot = <<<JS
+        $boot = <<<JS
 <script>
 window.M2DN_CAPTCHA = { provider: {$providerJson}, siteKey: {$siteKeyJson} };
 (function () {
@@ -110,84 +109,122 @@ window.M2DN_CAPTCHA = { provider: {$providerJson}, siteKey: {$siteKeyJson} };
     if (!el || !el.isConnected) return false;
     var overlay = el.closest('.modal-overlay');
     if (overlay && !overlay.classList.contains('open')) return false;
+    var style = window.getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
     return true;
   }
+
+  function apiReady() {
+    if (!window.M2DN_CAPTCHA) return false;
+    if (window.M2DN_CAPTCHA.provider === 'cloudflare') {
+      return !!(window.turnstile && typeof window.turnstile.render === 'function');
+    }
+    return !!(window.grecaptcha && typeof window.grecaptcha.render === 'function');
+  }
+
   function mountEl(el) {
-    if (!el || !window.turnstile || !window.M2DN_CAPTCHA || !window.M2DN_CAPTCHA.siteKey) return;
+    if (!el || !window.M2DN_CAPTCHA || !window.M2DN_CAPTCHA.siteKey) return;
     if (!isVisible(el)) return;
-    if (el.getAttribute('data-widget-id')) {
-      try { window.turnstile.reset(el.getAttribute('data-widget-id')); } catch (e) {}
+    if (!apiReady()) return;
+
+    var existing = el.getAttribute('data-widget-id');
+    if (existing !== null && existing !== '') {
+      try {
+        if (window.M2DN_CAPTCHA.provider === 'cloudflare') {
+          window.turnstile.reset(existing);
+        } else {
+          window.grecaptcha.reset(Number(existing));
+        }
+      } catch (e) {}
       return;
     }
+
     try {
-      var id = window.turnstile.render(el, {
-        sitekey: window.M2DN_CAPTCHA.siteKey,
-        theme: 'dark',
-        appearance: 'always'
-      });
-      if (id) el.setAttribute('data-widget-id', id);
-    } catch (e) {}
+      var id;
+      if (window.M2DN_CAPTCHA.provider === 'cloudflare') {
+        id = window.turnstile.render(el, {
+          sitekey: window.M2DN_CAPTCHA.siteKey,
+          theme: 'dark',
+          appearance: 'always'
+        });
+      } else {
+        id = window.grecaptcha.render(el, {
+          sitekey: window.M2DN_CAPTCHA.siteKey,
+          theme: 'dark'
+        });
+      }
+      if (id !== undefined && id !== null && id !== '') {
+        el.setAttribute('data-widget-id', String(id));
+      }
+    } catch (e) {
+      // iframe henüz hazır değilse bir sonraki refresh dener
+    }
   }
+
   function refresh(root) {
     var scope = root && root.querySelectorAll ? root : document;
     scope.querySelectorAll('[data-captcha-mount]').forEach(mountEl);
   }
-  window.m2dnCaptchaRefresh = refresh;
-  function onReady() {
-    refresh(document);
+
+  function refreshSoon(root) {
+    refresh(root);
+    setTimeout(function () { refresh(root); }, 80);
+    setTimeout(function () { refresh(root); }, 250);
+    setTimeout(function () { refresh(root); }, 600);
+  }
+
+  window.m2dnCaptchaRefresh = refreshSoon;
+
+  function bindModals() {
     document.querySelectorAll('.modal-overlay').forEach(function (modal) {
+      if (modal.getAttribute('data-captcha-bound') === '1') return;
+      modal.setAttribute('data-captcha-bound', '1');
       if (typeof MutationObserver === 'undefined') return;
       new MutationObserver(function () {
         if (modal.classList.contains('open')) {
-          setTimeout(function () { refresh(modal); }, 30);
+          refreshSoon(modal);
         }
       }).observe(modal, { attributes: true, attributeFilter: ['class'] });
     });
   }
-  function waitTurnstile(n) {
-    if (window.turnstile && typeof window.turnstile.render === 'function') {
-      onReady();
+
+  function onReady() {
+    bindModals();
+    refreshSoon(document);
+  }
+
+  function waitApi(n) {
+    if (apiReady()) {
+      if (window.M2DN_CAPTCHA.provider !== 'cloudflare' && window.grecaptcha.ready) {
+        window.grecaptcha.ready(onReady);
+      } else {
+        onReady();
+      }
       return;
     }
-    if ((n || 0) > 80) return;
-    setTimeout(function () { waitTurnstile((n || 0) + 1); }, 50);
+    if ((n || 0) > 100) return;
+    setTimeout(function () { waitApi((n || 0) + 1); }, 50);
   }
+
+  window.m2dnRecaptchaOnload = function () { waitApi(0); };
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { waitTurnstile(0); });
+    document.addEventListener('DOMContentLoaded', function () { waitApi(0); });
   } else {
-    waitTurnstile(0);
+    waitApi(0);
   }
 })();
 </script>
 JS;
-            return '<script src="' . htmlspecialchars($script, ENT_QUOTES, 'UTF-8') . '" async defer></script>' . "\n" . $boot;
+
+        if ($isCf) {
+            $script = self::CF_SCRIPT . '?render=explicit';
+            return $boot . "\n" . '<script src="' . htmlspecialchars($script, ENT_QUOTES, 'UTF-8') . '" async defer></script>';
         }
 
-        $script = self::GOOGLE_SCRIPT;
-        $boot = <<<JS
-<script>
-window.M2DN_CAPTCHA = { provider: {$providerJson}, siteKey: {$siteKeyJson} };
-window.m2dnCaptchaRefresh = function (root) {
-  if (!window.grecaptcha || !window.M2DN_CAPTCHA) return;
-  var scope = root && root.querySelectorAll ? root : document;
-  scope.querySelectorAll('.g-recaptcha').forEach(function (el) {
-    var overlay = el.closest('.modal-overlay');
-    if (overlay && !overlay.classList.contains('open')) return;
-    try {
-      if (el.getAttribute('data-widget-id')) {
-        window.grecaptcha.reset(Number(el.getAttribute('data-widget-id')));
-        return;
-      }
-      if (el.innerHTML.trim() !== '') return;
-      var id = window.grecaptcha.render(el, { sitekey: window.M2DN_CAPTCHA.siteKey, theme: 'dark' });
-      el.setAttribute('data-widget-id', String(id));
-    } catch (e) {}
-  });
-};
-</script>
-JS;
-
-        return '<script src="' . htmlspecialchars($script, ENT_QUOTES, 'UTF-8') . '" async defer></script>' . "\n" . $boot;
+        // onload callback boot'tan ÖNCE tanımlı olmalı
+        $script = self::GOOGLE_SCRIPT . '?onload=m2dnRecaptchaOnload&render=explicit';
+        return $boot . "\n" . '<script src="' . htmlspecialchars($script, ENT_QUOTES, 'UTF-8') . '" async defer></script>';
     }
 
     public static function widgetHtml(): string
@@ -195,14 +232,8 @@ JS;
         if (!self::isEnabled()) {
             return '';
         }
-        $cfg = self::config();
-        if ($cfg['provider'] === self::PROVIDER_CLOUDFLARE) {
-            // Mount noktası — render JS ile (gizli modal uyumlu)
-            return '<div class="captcha-wrap"><div data-captcha-mount></div></div>';
-        }
-        $siteKey = htmlspecialchars($cfg['site_key'], ENT_QUOTES, 'UTF-8');
-
-        return '<div class="captcha-wrap"><div class="g-recaptcha" data-sitekey="' . $siteKey . '" data-theme="dark"></div></div>';
+        // Boş mount — gizli modalda otomatik render yok; JS açılışta basar
+        return '<div class="captcha-wrap"><div data-captcha-mount></div></div>';
     }
 
     /**

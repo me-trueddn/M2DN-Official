@@ -105,6 +105,27 @@ $gmQ = (string) ($gms['q'] ?? '');
 $gmPerPage = (int) ($gms['per_page'] ?? 20);
 $gmPerOptions = is_array($gms['per_page_options'] ?? null) ? $gms['per_page_options'] : [10, 20, 30, 50, 100];
 $gmAuthorities = is_array($gms['authorities'] ?? null) ? $gms['authorities'] : \App\Services\AdminGmService::AUTHORITY_LABELS;
+$rankings = is_array($rankings ?? null) ? $rankings : [];
+$rankRows = is_array($rankings['players'] ?? null) ? $rankings['players'] : [];
+$rankTotal = (int) ($rankings['total'] ?? 0);
+$rankPage = (int) ($rankings['page'] ?? 1);
+$rankPages = (int) ($rankings['pages'] ?? 1);
+$rankQ = (string) ($rankings['q'] ?? '');
+$rankPerPage = (int) ($rankings['per_page'] ?? 10);
+$rankPerOptions = is_array($rankings['per_page_options'] ?? null) ? $rankings['per_page_options'] : [10, 20, 30, 50, 100];
+$ipBans = is_array($ipBans ?? null) ? $ipBans : [];
+$ipBanRows = is_array($ipBans['bans'] ?? null) ? $ipBans['bans'] : [];
+$ipBanTotal = (int) ($ipBans['total'] ?? 0);
+$ipBanPage = (int) ($ipBans['page'] ?? 1);
+$ipBanPages = (int) ($ipBans['pages'] ?? 1);
+$ipBanQ = (string) ($ipBans['q'] ?? '');
+$ipBanPerPage = (int) ($ipBans['per_page'] ?? 20);
+$ipBanPerOptions = is_array($ipBans['per_page_options'] ?? null) ? $ipBans['per_page_options'] : [10, 20, 30, 50, 100];
+$gameLogTables = is_array($gameLogTables ?? null) ? $gameLogTables : [];
+$gameLogs = is_array($gameLogs ?? null) ? $gameLogs : ['table' => '', 'label' => '', 'columns' => [], 'rows' => [], 'error' => null];
+$gameLogColumns = is_array($gameLogs['columns'] ?? null) ? $gameLogs['columns'] : [];
+$gameLogRows = is_array($gameLogs['rows'] ?? null) ? $gameLogs['rows'] : [];
+$logTab = in_array(($logTab ?? 'yonetici'), ['yonetici', 'oyun'], true) ? (string) $logTab : 'yonetici';
 $guildWars = is_array($guildWars ?? null) ? $guildWars : [];
 $penalties = is_array($penalties ?? null) ? $penalties : [];
 $activeBans = is_array($activeBans ?? null) ? $activeBans : [];
@@ -369,6 +390,24 @@ $can = static function (string $flag) use ($permFlags): bool {
   .filters input, .filters select{background:var(--obsidian); border:1px solid var(--line); padding:9px 12px; color:var(--parchment); font-size:.8rem; outline:none;}
   .filters input:focus, .filters select:focus{border-color:var(--gold);}
   .filters button.btn{cursor:pointer;}
+  .panel-select{
+    appearance:none; -webkit-appearance:none; -moz-appearance:none;
+    background-color:var(--obsidian);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23c9974a' d='M1.4.6 6 5.2 10.6.6 12 2 6 8 0 2z'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 10px center;
+    border:1px solid var(--line);
+    padding:8px 30px 8px 12px;
+    color:var(--parchment);
+    font:inherit;
+    font-size:.8rem;
+    outline:none;
+    cursor:pointer;
+    min-width:150px;
+    transition:border-color .2s;
+  }
+  .panel-select:hover,.panel-select:focus{border-color:var(--gold);}
+  .panel-select option{background:var(--obsidian-2); color:var(--parchment);}
   .badge.active{background:rgba(51,89,74,.2); color:var(--jade-light);}
   .pager{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:18px; flex-wrap:wrap; font-size:.8rem; color:var(--ash);}
   .pager .links{display:flex; gap:8px; flex-wrap:wrap;}
@@ -603,11 +642,17 @@ $can = static function (string $flag) use ($permFlags): bool {
     <?php if ($can('menu_oyuncular')): ?>
     <a class="nav-item<?= $panelSection === 'oyuncular' ? ' active' : '' ?>" data-target="oyuncular"><i class="fa-solid fa-users"></i> Oyuncu Yönetimi</a>
     <?php endif; ?>
+    <?php if ($can('menu_siralamalar')): ?>
+    <a class="nav-item<?= $panelSection === 'siralamalar' ? ' active' : '' ?>" data-target="siralamalar"><i class="fa-solid fa-ranking-star"></i> Oyuncu Sıralaması</a>
+    <?php endif; ?>
     <?php if ($can('menu_binek')): ?>
     <a class="nav-item<?= $panelSection === 'binek' ? ' active' : '' ?>" data-target="binek"><i class="fa-solid fa-horse"></i> Binek Yönetimi</a>
     <?php endif; ?>
     <?php if ($can('menu_gm')): ?>
     <a class="nav-item<?= $panelSection === 'gm' ? ' active' : '' ?>" data-target="gm"><i class="fa-solid fa-user-shield"></i> GM Yönetimi</a>
+    <?php endif; ?>
+    <?php if ($can('menu_ip_ban')): ?>
+    <a class="nav-item<?= $panelSection === 'ip-ban' ? ' active' : '' ?>" data-target="ip-ban"><i class="fa-solid fa-ban"></i> IP Ban</a>
     <?php endif; ?>
     <?php if ($can('menu_loncalar')): ?>
     <a class="nav-item<?= $panelSection === 'loncalar' ? ' active' : '' ?>" data-target="loncalar"><i class="fa-solid fa-shield"></i> Loncalar</a>
@@ -978,6 +1023,106 @@ $can = static function (string $flag) use ($permFlags): bool {
       </div>
     </section>
 
+    <!-- ===================== OYUNCU SIRALAMASI ===================== -->
+    <section class="section<?= $panelSection === 'siralamalar' ? ' active' : '' ?>" id="siralamalar">
+      <div class="card">
+        <div class="card-head">
+          <h3>Oyuncu Sıralaması</h3>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span style="font-size:.8rem;color:var(--ash);"><?= number_format($rankTotal, 0, ',', '.') ?> karakter · level DESC</span>
+            <?php
+              $rankRefreshQs = http_build_query(array_filter([
+                  'section' => 'siralamalar',
+                  'rank_q' => $rankQ !== '' ? $rankQ : null,
+                  'rank_per' => $rankPerPage !== 10 ? $rankPerPage : null,
+                  'rank_page' => $rankPage > 1 ? $rankPage : null,
+              ], static fn($v) => $v !== null && $v !== ''));
+            ?>
+            <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?' . $rankRefreshQs)) ?>"><i class="fa-solid fa-arrows-rotate"></i> Yenile</a>
+          </div>
+        </div>
+        <form class="filters" method="get" action="<?= e(url('/admin')) ?>">
+          <input type="hidden" name="section" value="siralamalar">
+          <input name="rank_q" value="<?= e($rankQ) ?>" placeholder="Karakter veya lonca ara..." style="flex:1;min-width:200px;">
+          <select name="rank_per">
+            <?php foreach ($rankPerOptions as $opt): ?>
+              <option value="<?= (int) $opt ?>"<?= $rankPerPage === (int) $opt ? ' selected' : '' ?>><?= (int) $opt ?> / sayfa</option>
+            <?php endforeach; ?>
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Ara</button>
+        </form>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Karakter</th>
+              <th>Job</th>
+              <th>Level</th>
+              <th>Stamina</th>
+              <th>Lonca</th>
+              <th>Bayrak</th>
+              <th>İşlem</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php if ($rankRows === []): ?>
+              <tr><td colspan="8" style="color:var(--ash);">Kayıt yok.</td></tr>
+            <?php else: ?>
+              <?php
+                $rankBase = ($rankPage - 1) * $rankPerPage;
+                foreach ($rankRows as $ri => $rp):
+              ?>
+              <tr>
+                <td><?= $rankBase + $ri + 1 ?></td>
+                <td><?= e((string) $rp['name']) ?></td>
+                <td><?= e((string) $rp['job_label']) ?></td>
+                <td><?= (int) $rp['level'] ?></td>
+                <td><?= (int) $rp['stamina'] ?></td>
+                <td><?= e((string) $rp['guild_name']) ?></td>
+                <td><?= e((string) $rp['empire_label']) ?></td>
+                <td class="actions-cell">
+                  <button type="button" title="Detay"
+                    data-rank-detail
+                    data-rank-name="<?= e((string) $rp['name']) ?>"
+                    data-rank-job="<?= e((string) $rp['job_label']) ?>"
+                    data-rank-level="<?= (int) $rp['level'] ?>"
+                    data-rank-stamina="<?= (int) $rp['stamina'] ?>"
+                    data-rank-guild="<?= e((string) $rp['guild_name']) ?>"
+                    data-rank-empire="<?= e((string) $rp['empire_label']) ?>"><i class="fa-solid fa-eye"></i></button>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </tbody>
+        </table>
+        <?php
+          $rmk = static function (int $p) use ($rankQ, $rankPerPage): string {
+              $qs = http_build_query(array_filter([
+                  'section' => 'siralamalar',
+                  'rank_q' => $rankQ !== '' ? $rankQ : null,
+                  'rank_per' => $rankPerPage !== 10 ? $rankPerPage : null,
+                  'rank_page' => $p > 1 ? $p : null,
+              ], static fn($v) => $v !== null && $v !== ''));
+              return url('/admin' . ($qs !== '' ? '?' . $qs : ''));
+          };
+        ?>
+        <div class="pager">
+          <div>Sayfa <?= (int) $rankPage ?> / <?= (int) $rankPages ?> · Toplam <?= number_format($rankTotal, 0, ',', '.') ?></div>
+          <div class="links">
+            <a class="<?= $rankPage <= 1 ? 'disabled' : '' ?>" href="<?= e($rmk(max(1, $rankPage - 1))) ?>">Önceki</a>
+            <?php
+              $rStart = max(1, $rankPage - 2);
+              $rEnd = min($rankPages, $rankPage + 2);
+              for ($i = $rStart; $i <= $rEnd; $i++):
+            ?>
+              <?php if ($i === $rankPage): ?><span class="cur"><?= $i ?></span><?php else: ?><a href="<?= e($rmk($i)) ?>"><?= $i ?></a><?php endif; ?>
+            <?php endfor; ?>
+            <a class="<?= $rankPage >= $rankPages ? 'disabled' : '' ?>" href="<?= e($rmk(min($rankPages, $rankPage + 1))) ?>">Sonraki</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ===================== BİNEK YÖNETİMİ ===================== -->
     <section class="section<?= $panelSection === 'binek' ? ' active' : '' ?>" id="binek">
       <div class="card">
@@ -1182,7 +1327,7 @@ $can = static function (string $flag) use ($permFlags): bool {
                     <input type="hidden" name="name" value="<?= e((string) $gm['name']) ?>">
                     <input type="hidden" name="contact_ip" value="<?= e((string) $gm['contact_ip']) ?>">
                     <input type="hidden" name="server_ip" value="<?= e((string) $gm['server_ip']) ?>">
-                    <select name="authority" onchange="this.form.submit()" title="mAuthority" style="min-width:140px;">
+                    <select name="authority" class="panel-select" onchange="this.form.submit()" title="mAuthority">
                       <?php foreach ($gmAuthorities as $akey => $alabel): ?>
                         <option value="<?= e((string) $akey) ?>"<?= ((string) $gm['authority'] === (string) $akey) ? ' selected' : '' ?>><?= e((string) $alabel) ?></option>
                       <?php endforeach; ?>
@@ -1231,6 +1376,101 @@ $can = static function (string $flag) use ($permFlags): bool {
               <?php if ($i === $gmPage): ?><span class="cur"><?= $i ?></span><?php else: ?><a href="<?= e($gmk($i)) ?>"><?= $i ?></a><?php endif; ?>
             <?php endfor; ?>
             <a class="<?= $gmPage >= $gmPages ? 'disabled' : '' ?>" href="<?= e($gmk(min($gmPages, $gmPage + 1))) ?>">Sonraki</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== IP BAN ===================== -->
+    <section class="section<?= $panelSection === 'ip-ban' ? ' active' : '' ?>" id="ip-ban">
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-head"><h3>IP Ekle</h3></div>
+        <p style="font-size:.82rem;color:var(--ash);margin-bottom:14px;line-height:1.55;">
+          IP adresleri <code>player.pcbang_ip</code> tablosuna yazılır. Sebep ve ekleyen bilgisi <code>DNWeb.ip_bans</code> içinde tutulur.
+        </p>
+        <form method="post" action="<?= e(url('/admin/ip-ban/ekle')) ?>" class="filters" style="align-items:flex-end;flex-wrap:wrap;">
+          <?= $csrf ?>
+          <div class="form-row" style="margin:0;min-width:160px;"><label>IP</label><input name="ip" maxlength="15" required placeholder="1.2.3.4"></div>
+          <div class="form-row" style="margin:0;min-width:220px;flex:1;"><label>Sebep</label><input name="reason" maxlength="500" placeholder="Ban sebebi (opsiyonel)"></div>
+          <div class="form-row" style="margin:0;min-width:100px;"><label>pcbang_id</label><input name="pcbang_id" type="number" min="0" value="0"></div>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Ekle</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>IP Ban Listesi</h3>
+          <span style="font-size:.8rem;color:var(--ash);"><?= number_format($ipBanTotal, 0, ',', '.') ?> kayıt</span>
+        </div>
+        <form class="filters" method="get" action="<?= e(url('/admin')) ?>">
+          <input type="hidden" name="section" value="ip-ban">
+          <input name="ipban_q" value="<?= e($ipBanQ) ?>" placeholder="IP ara..." style="flex:1;min-width:200px;">
+          <select name="ipban_per">
+            <?php foreach ($ipBanPerOptions as $opt): ?>
+              <option value="<?= (int) $opt ?>"<?= $ipBanPerPage === (int) $opt ? ' selected' : '' ?>><?= (int) $opt ?> / sayfa</option>
+            <?php endforeach; ?>
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Ara</button>
+        </form>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>IP</th>
+              <th>pcbang_id</th>
+              <th>Sebep</th>
+              <th>Ekleyen</th>
+              <th>Tarih</th>
+              <th>İşlem</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php if ($ipBanRows === []): ?>
+              <tr><td colspan="7" style="color:var(--ash);">IP kaydı yok.</td></tr>
+            <?php else: ?>
+              <?php foreach ($ipBanRows as $ban): ?>
+              <tr>
+                <td>#<?= (int) $ban['id'] ?></td>
+                <td><?= e((string) $ban['ip']) ?></td>
+                <td><?= (int) $ban['pcbang_id'] ?></td>
+                <td style="color:var(--ash);font-size:.82rem;"><?= e((string) ($ban['reason'] !== '' ? $ban['reason'] : '—')) ?></td>
+                <td><?= e((string) ($ban['created_by_login'] !== '' ? $ban['created_by_login'] : '—')) ?></td>
+                <td style="white-space:nowrap;font-size:.8rem;"><?= e((string) $ban['created_label']) ?></td>
+                <td class="actions-cell">
+                  <form method="post" action="<?= e(url('/admin/ip-ban/sil')) ?>" style="display:inline;" onsubmit="return confirm('Bu IP listeden silinsin mi?');">
+                    <?= $csrf ?>
+                    <input type="hidden" name="id" value="<?= (int) $ban['id'] ?>">
+                    <button type="submit" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                  </form>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </tbody>
+        </table>
+        <?php
+          $ibk = static function (int $p) use ($ipBanQ, $ipBanPerPage): string {
+              $qs = http_build_query(array_filter([
+                  'section' => 'ip-ban',
+                  'ipban_q' => $ipBanQ !== '' ? $ipBanQ : null,
+                  'ipban_per' => $ipBanPerPage !== 20 ? $ipBanPerPage : null,
+                  'ipban_page' => $p > 1 ? $p : null,
+              ], static fn($v) => $v !== null && $v !== ''));
+              return url('/admin' . ($qs !== '' ? '?' . $qs : ''));
+          };
+        ?>
+        <div class="pager">
+          <div>Sayfa <?= (int) $ipBanPage ?> / <?= (int) $ipBanPages ?> · Toplam <?= number_format($ipBanTotal, 0, ',', '.') ?></div>
+          <div class="links">
+            <a class="<?= $ipBanPage <= 1 ? 'disabled' : '' ?>" href="<?= e($ibk(max(1, $ipBanPage - 1))) ?>">Önceki</a>
+            <?php
+              $ibStart = max(1, $ipBanPage - 2);
+              $ibEnd = min($ipBanPages, $ipBanPage + 2);
+              for ($i = $ibStart; $i <= $ibEnd; $i++):
+            ?>
+              <?php if ($i === $ipBanPage): ?><span class="cur"><?= $i ?></span><?php else: ?><a href="<?= e($ibk($i)) ?>"><?= $i ?></a><?php endif; ?>
+            <?php endfor; ?>
+            <a class="<?= $ipBanPage >= $ipBanPages ? 'disabled' : '' ?>" href="<?= e($ibk(min($ipBanPages, $ipBanPage + 1))) ?>">Sonraki</a>
           </div>
         </div>
       </div>
@@ -2195,8 +2435,9 @@ $can = static function (string $flag) use ($permFlags): bool {
         </div>
         <p style="font-size:.82rem;color:var(--ash);margin-bottom:14px;line-height:1.55;">
           Aktifken giriş, kayıt ve parola sıfırlama formlarında zorunlu olur. Google reCAPTCHA v2 veya Cloudflare Turnstile seçin; script / doğrulama adresleri sabittir — yalnızca key’leri girin.
-          <br><strong style="color:var(--gold-light);">Turnstile:</strong> Cloudflare panelinde widget Hostname’lerine site adresinizi ekleyin
-          (ör. <code>127.0.0.1</code>, <code>localhost</code> veya canlı domain). Aksi halde widget görünmez / hata verir.
+          <br><strong style="color:var(--gold-light);">Google:</strong> reCAPTCHA admin’de domain ekleyin
+          (<code>127.0.0.1</code>, <code>localhost</code> veya canlı domain). v2 “I’m not a robot” Checkbox kullanın.
+          <br><strong style="color:var(--gold-light);">Turnstile:</strong> Cloudflare widget Hostname’lerine aynı adresleri ekleyin. Aksi halde widget görünmez.
         </p>
         <form method="post" action="<?= e(url('/admin/ayarlar/captcha')) ?>" id="captchaSettingsForm">
           <?= $csrf ?>
@@ -2967,6 +3208,12 @@ $can = static function (string $flag) use ($permFlags): bool {
 
     <!-- ===================== LOGLAR ===================== -->
     <section class="section<?= $panelSection === 'loglar' ? ' active' : '' ?>" id="loglar">
+      <div class="mail-tabs" id="logTabs">
+        <a class="btn btn-ghost btn-sm<?= $logTab === 'yonetici' ? ' active' : '' ?>" href="<?= e(url('/admin?section=loglar&log_tab=yonetici')) ?>" style="<?= $logTab === 'yonetici' ? 'color:var(--gold-light);border-color:rgba(201,151,74,.45);background:rgba(201,151,74,.08);' : '' ?>">1. Yönetici Logları</a>
+        <a class="btn btn-ghost btn-sm<?= $logTab === 'oyun' ? ' active' : '' ?>" href="<?= e(url('/admin?section=loglar&log_tab=oyun' . (($gameLogs['table'] ?? '') !== '' ? '&game_log=' . rawurlencode((string) $gameLogs['table']) : ''))) ?>" style="<?= $logTab === 'oyun' ? 'color:var(--gold-light);border-color:rgba(201,151,74,.45);background:rgba(201,151,74,.08);' : '' ?>">2. Oyun Logları</a>
+      </div>
+
+      <?php if ($logTab !== 'oyun'): ?>
       <div class="card">
         <div class="card-head">
           <h3>Yönetici Logları</h3>
@@ -2974,10 +3221,11 @@ $can = static function (string $flag) use ($permFlags): bool {
         </div>
         <form class="filters" method="get" action="<?= e(url('/admin')) ?>">
           <input type="hidden" name="section" value="loglar">
+          <input type="hidden" name="log_tab" value="yonetici">
           <input name="log_q" value="<?= e($adminLogFilter) ?>" placeholder="Hesap adı veya ID (yetkili / hedef)..." style="flex:1; min-width:200px;">
           <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Filtrele</button>
           <?php if ($adminLogFilter !== ''): ?>
-            <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?section=loglar')) ?>">Temizle</a>
+            <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?section=loglar&log_tab=yonetici')) ?>">Temizle</a>
           <?php endif; ?>
         </form>
         <table>
@@ -3017,6 +3265,7 @@ $can = static function (string $flag) use ($permFlags): bool {
             $logMk = static function (int $p) use ($adminLogFilter): string {
                 return url('/admin?' . http_build_query(array_filter([
                     'section' => 'loglar',
+                    'log_tab' => 'yonetici',
                     'log_q' => $adminLogFilter !== '' ? $adminLogFilter : null,
                     'log_page' => $p > 1 ? $p : null,
                 ])));
@@ -3039,6 +3288,61 @@ $can = static function (string $flag) use ($permFlags): bool {
           </div>
         <?php endif; ?>
       </div>
+      <?php else: ?>
+      <div class="card">
+        <div class="card-head">
+          <h3>Oyun Logları</h3>
+          <span style="font-size:.8rem;color:var(--ash);">Son 10 kayıt · <code>log</code> DB</span>
+        </div>
+        <form class="filters" method="get" action="<?= e(url('/admin')) ?>">
+          <input type="hidden" name="section" value="loglar">
+          <input type="hidden" name="log_tab" value="oyun">
+          <div class="form-row" style="margin:0;min-width:240px;flex:1;">
+            <label>Log tablosu</label>
+            <select name="game_log" onchange="this.form.submit()">
+              <?php if ($gameLogTables === []): ?>
+                <option value="">Tablo yok</option>
+              <?php else: ?>
+                <?php foreach ($gameLogTables as $gt): ?>
+                  <option value="<?= e((string) $gt['key']) ?>"<?= ((string) ($gameLogs['table'] ?? '') === (string) $gt['key']) ? ' selected' : '' ?>><?= e((string) $gt['label']) ?> (<?= e((string) $gt['key']) ?>)</option>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Göster</button>
+        </form>
+        <?php if (!empty($gameLogs['error'])): ?>
+          <p style="color:var(--blood-light);font-size:.85rem;"><?= e((string) $gameLogs['error']) ?></p>
+        <?php elseif ($gameLogColumns === []): ?>
+          <p style="color:var(--ash);">Gösterilecek log seçin.</p>
+        <?php else: ?>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <?php foreach ($gameLogColumns as $col): ?>
+                    <th><?= e((string) $col) ?></th>
+                  <?php endforeach; ?>
+                </tr>
+              </thead>
+              <tbody>
+                <?php if ($gameLogRows === []): ?>
+                  <tr><td colspan="<?= max(1, count($gameLogColumns)) ?>" style="color:var(--ash);">Kayıt yok.</td></tr>
+                <?php else: ?>
+                  <?php foreach ($gameLogRows as $grow): ?>
+                  <tr>
+                    <?php foreach ($gameLogColumns as $col): ?>
+                      <td style="font-size:.78rem;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;"><?= e((string) ($grow[$col] ?? '')) ?></td>
+                    <?php endforeach; ?>
+                  </tr>
+                  <?php endforeach; ?>
+                <?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php endif; ?>
+      </div>
+      <?php endif; ?>
     </section>
 
   </main>
@@ -3151,6 +3455,17 @@ $can = static function (string $flag) use ($permFlags): bool {
     <div id="detailBody" style="color:var(--ash); font-size:.88rem;">Yükleniyor…</div>
     <div class="modal-actions" style="margin-top:18px;">
       <button type="button" class="btn btn-ghost btn-sm" id="detailClose">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SIRALAMA DETAY ============ -->
+<div class="modal-overlay" id="rankDetailModal">
+  <div class="modal">
+    <h3><i class="fa-solid fa-ranking-star"></i> <span id="rankDetailTitle">Karakter</span></h3>
+    <div id="rankDetailBody" class="detail-meta" style="color:var(--ash);font-size:.88rem;"></div>
+    <div class="modal-actions" style="margin-top:18px;">
+      <button type="button" class="btn btn-ghost btn-sm" id="rankDetailClose">Kapat</button>
     </div>
   </div>
 </div>
@@ -3649,6 +3964,19 @@ $can = static function (string $flag) use ($permFlags): bool {
         }
         html += '</div>';
 
+        const empireLogs = res.data.empire_changes || [];
+        html += '<div class="detail-block"><h4>Bayrak Değişimi</h4>';
+        if (!empireLogs.length) {
+          html += '<div>Bayrak değişim kaydı yok.</div>';
+        } else {
+          html += '<table><thead><tr><th>Son değişim</th><th>Değişim sayısı</th><th>Güncel bayrak</th></tr></thead><tbody>';
+          empireLogs.forEach(er => {
+            html += '<tr><td>' + esc(er.time_label || '—') + '</td><td>' + esc(String(er.change_count ?? 0)) + '</td><td>' + esc(er.empire_label || '—') + '</td></tr>';
+          });
+          html += '</tbody></table>';
+        }
+        html += '</div>';
+
         html += '<div class="detail-block"><h4>Panel Hesap Kayıtları</h4>';
         if (!logs.length) html += '<div>Henüz kayıt yok.</div>';
         else {
@@ -3704,6 +4032,27 @@ $can = static function (string $flag) use ($permFlags): bool {
   });
   document.getElementById('detailClose').addEventListener('click', () => detailModal.classList.remove('open'));
   detailModal.addEventListener('click', (e) => { if (e.target === detailModal) detailModal.classList.remove('open'); });
+
+  const rankDetailModal = document.getElementById('rankDetailModal');
+  const rankDetailBody = document.getElementById('rankDetailBody');
+  const rankDetailTitle = document.getElementById('rankDetailTitle');
+  document.querySelectorAll('[data-rank-detail]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!rankDetailModal || !rankDetailBody) return;
+      rankDetailTitle.textContent = btn.dataset.rankName || 'Karakter';
+      let html = '';
+      html += '<div class="row"><span class="k">Karakter</span><span class="v">' + esc(btn.dataset.rankName || '—') + '</span></div>';
+      html += '<div class="row"><span class="k">Job</span><span class="v">' + esc(btn.dataset.rankJob || '—') + '</span></div>';
+      html += '<div class="row"><span class="k">Level</span><span class="v">' + esc(btn.dataset.rankLevel || '—') + '</span></div>';
+      html += '<div class="row"><span class="k">Stamina</span><span class="v">' + esc(btn.dataset.rankStamina || '—') + '</span></div>';
+      html += '<div class="row"><span class="k">Lonca</span><span class="v">' + esc(btn.dataset.rankGuild || '—') + '</span></div>';
+      html += '<div class="row"><span class="k">Bayrak</span><span class="v">' + esc(btn.dataset.rankEmpire || '—') + '</span></div>';
+      rankDetailBody.innerHTML = html;
+      rankDetailModal.classList.add('open');
+    });
+  });
+  document.getElementById('rankDetailClose')?.addEventListener('click', () => rankDetailModal?.classList.remove('open'));
+  rankDetailModal?.addEventListener('click', (e) => { if (e.target === rankDetailModal) rankDetailModal.classList.remove('open'); });
 
   // Lonca detay / ad / usta
   const guildDetailModal = document.getElementById('guildDetailModal');

@@ -24,6 +24,8 @@ use App\Services\AuthService;
 
 $router->get('/', [HomeController::class, 'index']);
 $router->get('/kurallar', [CommunityRulesController::class, 'index']);
+$router->post('/kurallar/kabul', [CommunityRulesController::class, 'accept']);
+$router->post('/kurallar/reddet', [CommunityRulesController::class, 'decline']);
 $router->get('/gizlilik', [PrivacyController::class, 'index']);
 $router->get('/panel', [UserPanelController::class, 'index']);
 $router->get('/panel/karakter', [UserPanelController::class, 'character']);
@@ -54,6 +56,8 @@ $router->post('/admin/banword/sil', [AdminPanelController::class, 'deleteBanword
 $router->post('/admin/gm/ekle', [AdminPanelController::class, 'addGm']);
 $router->post('/admin/gm/guncelle', [AdminPanelController::class, 'updateGm']);
 $router->post('/admin/gm/sil', [AdminPanelController::class, 'deleteGm']);
+$router->post('/admin/ip-ban/ekle', [AdminPanelController::class, 'addIpBan']);
+$router->post('/admin/ip-ban/sil', [AdminPanelController::class, 'deleteIpBan']);
 $router->post('/admin/ayarlar/ceza/kaydet', [AdminPanelController::class, 'savePenalty']);
 $router->post('/admin/ayarlar/ceza/sil', [AdminPanelController::class, 'deletePenalty']);
 

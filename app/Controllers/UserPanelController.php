@@ -9,6 +9,7 @@ use App\Core\Session;
 use App\Core\Theme;
 use App\Services\AccountSecurityService;
 use App\Services\ActivityLogService;
+use App\Services\AdminRankingService;
 use App\Services\AnnouncementService;
 use App\Services\AuthService;
 use App\Services\GuildWarService;
@@ -39,6 +40,11 @@ final class UserPanelController
         $logPage = max(1, (int) ($_GET['log_page'] ?? 1));
         $activityPage = ActivityLogService::forAccountPaged($accountId, $logPage, 10);
 
+        $rankQ = trim((string) ($_GET['rank_q'] ?? ''));
+        $rankPage = (int) ($_GET['rank_page'] ?? 1);
+        $rankPer = (int) ($_GET['rank_per'] ?? 10);
+        $rankings = AdminRankingService::list($rankQ, $rankPage, $rankPer);
+
         $pendingSecret = (string) ($security['totp_secret'] ?? '');
         $totpSetup = null;
         if ($pendingSecret !== '' && !$security['totp_enabled']) {
@@ -54,6 +60,14 @@ final class UserPanelController
             ?? ($searchQuery !== '' ? 'ozet' : null);
         if (isset($_GET['log_page'])) {
             $panelSection = 'kayitlar';
+        } elseif ($rankQ !== '' || isset($_GET['rank_page']) || isset($_GET['rank_per'])) {
+            $panelSection = 'siralamalar';
+        }
+        $allowedSections = [
+            'ozet', 'duyurular', 'karakterler', 'kayitlar', 'lonca-savaslari', 'siralamalar', 'destek', 'guvenlik',
+        ];
+        if (!is_string($panelSection) || !in_array($panelSection, $allowedSections, true)) {
+            $panelSection = 'ozet';
         }
 
         Theme::render('user/panel', [
@@ -84,6 +98,7 @@ final class UserPanelController
             'guildWars' => GuildWarService::listActive(),
             'guildWarHistory' => GuildWarService::listHistory(40),
             'guildWarBoard' => GuildWarService::leaderboard(30),
+            'rankings' => $rankings,
         ]);
     }
 

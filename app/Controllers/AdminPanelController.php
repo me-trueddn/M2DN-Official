@@ -8,12 +8,15 @@ use App\Core\Security;
 use App\Core\Session;
 use App\Core\Theme;
 use App\Services\AdminBanwordService;
+use App\Services\AdminGameLogService;
 use App\Services\AdminGmService;
 use App\Services\AdminGuildService;
 use App\Services\AdminHorseService;
+use App\Services\AdminIpBanService;
 use App\Services\GuildWarService;
 use App\Services\AdminLogService;
 use App\Services\AdminPlayerService;
+use App\Services\AdminRankingService;
 use App\Services\AdminStatsService;
 use App\Services\AnnouncementService;
 use App\Services\AccountSecurityService;
@@ -56,17 +59,25 @@ final class AdminPanelController
         $gmQ = trim((string) ($_GET['gm_q'] ?? ''));
         $gmPage = (int) ($_GET['gm_page'] ?? 1);
         $gmPer = (int) ($_GET['gm_per'] ?? 20);
+        $rankQ = trim((string) ($_GET['rank_q'] ?? ''));
+        $rankPage = (int) ($_GET['rank_page'] ?? 1);
+        $rankPer = (int) ($_GET['rank_per'] ?? 10);
+        $ipBanQ = trim((string) ($_GET['ipban_q'] ?? ''));
+        $ipBanPage = (int) ($_GET['ipban_page'] ?? 1);
+        $ipBanPer = (int) ($_GET['ipban_per'] ?? 20);
         $players = AdminPlayerService::listAccounts($q, $status, $page, $per);
         $ticketQ = trim((string) ($_GET['ticket_q'] ?? ''));
         $logQ = trim((string) ($_GET['log_q'] ?? ''));
         $logPage = (int) ($_GET['log_page'] ?? 1);
+        $logTab = trim((string) ($_GET['log_tab'] ?? 'yonetici'));
+        $gameLogTable = trim((string) ($_GET['game_log'] ?? ''));
         $mailQ = trim((string) ($_GET['mail_q'] ?? ''));
 
         $section = (string) ($_GET['section'] ?? 'ozet');
         if ($ticketQ !== '' || isset($_GET['ticket'])) {
             $section = 'destekler';
-        } elseif ($logQ !== '' || isset($_GET['log_page']) || $section === 'loglar') {
-            if (isset($_GET['log_q']) || isset($_GET['log_page'])) {
+        } elseif ($logQ !== '' || isset($_GET['log_page']) || isset($_GET['log_tab']) || isset($_GET['game_log']) || $section === 'loglar') {
+            if (isset($_GET['log_q']) || isset($_GET['log_page']) || isset($_GET['log_tab']) || isset($_GET['game_log'])) {
                 $section = 'loglar';
             }
         } elseif ($guildQ !== '' || isset($_GET['guild_page']) || isset($_GET['guild_per'])) {
@@ -77,13 +88,17 @@ final class AdminPanelController
             $section = 'yasakli-kelimeler';
         } elseif ($gmQ !== '' || isset($_GET['gm_page']) || isset($_GET['gm_per'])) {
             $section = 'gm';
+        } elseif ($rankQ !== '' || isset($_GET['rank_page']) || isset($_GET['rank_per'])) {
+            $section = 'siralamalar';
+        } elseif ($ipBanQ !== '' || isset($_GET['ipban_page']) || isset($_GET['ipban_per'])) {
+            $section = 'ip-ban';
         } elseif ($q !== '' || $status !== '' || isset($_GET['page']) || isset($_GET['per'])) {
             $section = 'oyuncular';
         } elseif ($mailQ !== '' || isset($_GET['mail_tab'])) {
             $section = 'mail-ayarlari';
         }
         $allowed = [
-            'ozet', 'oyuncular', 'binek', 'gm', 'loncalar', 'lonca-savaslari', 'banlar', 'duyurular', 'destekler', 'sunucu', 'yasakli-kelimeler', 'loglar',
+            'ozet', 'oyuncular', 'siralamalar', 'binek', 'gm', 'ip-ban', 'loncalar', 'lonca-savaslari', 'banlar', 'duyurular', 'destekler', 'sunucu', 'yasakli-kelimeler', 'loglar',
             'ceza-ayarlari', 'patch-linkleri', 'ozellikler-ayarlari', 'siniflar-ayarlari',
             'oranlar-ayarlari', 'siradaki-bolum', 'galeri-ayarlari', 'footer-ayarlari',
             'logo-ayarlari', 'mail-ayarlari', 'yetki-gruplari', 'ticket-ayarlari', 'duyuru-turleri',
@@ -116,8 +131,10 @@ final class AdminPanelController
 
         $menuGate = [
             'oyuncular' => PermissionService::FLAG_MENU_OYUNCULAR,
+            'siralamalar' => PermissionService::FLAG_MENU_SIRALAMALAR,
             'binek' => PermissionService::FLAG_MENU_BINEK,
             'gm' => PermissionService::FLAG_MENU_GM,
+            'ip-ban' => PermissionService::FLAG_MENU_IP_BAN,
             'loncalar' => PermissionService::FLAG_MENU_LONCALAR,
             'lonca-savaslari' => PermissionService::FLAG_MENU_LONCA_SAVASLARI,
             'banlar' => PermissionService::FLAG_MENU_BANLAR,
@@ -158,6 +175,31 @@ final class AdminPanelController
             $gms = AdminGmService::list($gmQ, $gmPage, $gmPer);
         }
 
+        $rankings = ['players' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 10, 'q' => '', 'per_page_options' => AdminRankingService::PER_PAGE_OPTIONS];
+        if (!empty($permFlags[PermissionService::FLAG_MENU_SIRALAMALAR])) {
+            $rankings = AdminRankingService::list($rankQ, $rankPage, $rankPer);
+        }
+
+        $ipBans = ['bans' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 20, 'q' => '', 'per_page_options' => AdminIpBanService::PER_PAGE_OPTIONS];
+        if (!empty($permFlags[PermissionService::FLAG_MENU_IP_BAN])) {
+            $ipBans = AdminIpBanService::list($ipBanQ, $ipBanPage, $ipBanPer);
+        }
+
+        $gameLogTables = [];
+        $gameLogs = ['table' => '', 'label' => '', 'columns' => [], 'rows' => [], 'error' => null];
+        if (!empty($permFlags[PermissionService::FLAG_MENU_LOGLAR])) {
+            $gameLogTables = AdminGameLogService::availableTables();
+            if ($gameLogTable === '' && $gameLogTables !== []) {
+                $gameLogTable = (string) ($gameLogTables[0]['key'] ?? 'loginlog');
+            }
+            if ($gameLogTable !== '') {
+                $gameLogs = AdminGameLogService::latest($gameLogTable);
+            }
+        }
+        if (!in_array($logTab, ['yonetici', 'oyun'], true)) {
+            $logTab = 'yonetici';
+        }
+
         $guildWars = [];
         $guildWarHistory = [];
         $guildWarBoard = [];
@@ -189,6 +231,11 @@ final class AdminPanelController
             'horses' => $horses,
             'banwords' => $banwords,
             'gms' => $gms,
+            'rankings' => $rankings,
+            'ipBans' => $ipBans,
+            'gameLogTables' => $gameLogTables,
+            'gameLogs' => $gameLogs,
+            'logTab' => $logTab,
             'guildWars' => $guildWars,
             'guildWarHistory' => $guildWarHistory,
             'guildWarBoard' => $guildWarBoard,
@@ -270,6 +317,7 @@ final class AdminPanelController
             'characters' => $detail['characters'],
             'activity' => $detail['activity'],
             'gameLogins' => $detail['game_logins'],
+            'empireChanges' => $detail['empire_changes'] ?? [],
             'security' => $detail['security'],
             'activeBan' => $detail['active_ban'] ?? null,
         ]);
@@ -517,6 +565,36 @@ final class AdminPanelController
         }
         $this->flashResult($result, 'GM silindi.', 'gm');
         redirect('/admin?section=gm');
+    }
+
+    public function addIpBan(): void
+    {
+        $user = PermissionService::requireFlag(PermissionService::FLAG_MENU_IP_BAN);
+        Security::requireCsrf('login');
+        $result = AdminIpBanService::add(
+            (string) ($_POST['ip'] ?? ''),
+            (string) ($_POST['reason'] ?? ''),
+            (int) ($_POST['pcbang_id'] ?? AdminIpBanService::DEFAULT_PCBANG_ID),
+            $user
+        );
+        if (!empty($result['ok'])) {
+            AdminLogService::write($user, 'IP ban eklendi', trim((string) ($_POST['ip'] ?? '')));
+        }
+        $this->flashResult($result, 'IP eklendi.', 'ip-ban');
+        redirect('/admin?section=ip-ban');
+    }
+
+    public function deleteIpBan(): void
+    {
+        $user = PermissionService::requireFlag(PermissionService::FLAG_MENU_IP_BAN);
+        Security::requireCsrf('login');
+        $id = (int) ($_POST['id'] ?? 0);
+        $result = AdminIpBanService::delete($id);
+        if (!empty($result['ok'])) {
+            AdminLogService::write($user, 'IP ban silindi', 'pcbang_ip #' . $id);
+        }
+        $this->flashResult($result, 'IP silindi.', 'ip-ban');
+        redirect('/admin?section=ip-ban');
     }
 
     public function ban(): void

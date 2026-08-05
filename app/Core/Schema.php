@@ -145,11 +145,14 @@ final class Schema
               `account_id` INT UNSIGNED NOT NULL,
               `rules_accepted` TINYINT(1) NOT NULL DEFAULT 0,
               `rules_accepted_at` DATETIME NULL DEFAULT NULL,
+              `rules_revision` INT UNSIGNED NOT NULL DEFAULT 0,
               `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
               `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
               PRIMARY KEY (`account_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
         );
+        self::ensureColumn($pdo, 'account_consents', 'rules_revision', 'INT UNSIGNED NOT NULL DEFAULT 0 AFTER `rules_accepted_at`');
+        self::ensureCommunityRulesRevision($pdo);
 
         $pdo->exec(
             "CREATE TABLE IF NOT EXISTS `online_snapshots` (
@@ -229,6 +232,7 @@ final class Schema
         self::ensurePermissionAndTicketTables($pdo);
         self::seedPermissionAndTickets($pdo);
         self::ensureAdminActionLogs($pdo);
+        self::ensureIpBans($pdo);
         self::ensureAnnouncementTables($pdo);
         self::ensureMailAndNotificationTables($pdo);
 
@@ -664,7 +668,7 @@ final class Schema
             $superId = (int) $pdo->query('SELECT id FROM permission_groups WHERE web_permission = 2 AND is_system = 1 LIMIT 1')->fetchColumn();
             $flags = [
                 'ban', 'player_detail', 'announcements', 'tickets', 'site_settings',
-                'menu_oyuncular', 'menu_binek', 'menu_gm', 'menu_loncalar', 'menu_lonca_savaslari', 'menu_banlar', 'menu_duyurular', 'menu_destekler', 'menu_sunucu', 'menu_yasakli_kelimeler', 'menu_loglar',
+                'menu_oyuncular', 'menu_siralamalar', 'menu_binek', 'menu_gm', 'menu_ip_ban', 'menu_loncalar', 'menu_lonca_savaslari', 'menu_banlar', 'menu_duyurular', 'menu_destekler', 'menu_sunucu', 'menu_yasakli_kelimeler', 'menu_loglar',
             ];
             $stmt = $pdo->prepare(
                 'INSERT INTO permission_group_flags (group_id, flag_key, is_enabled) VALUES (?,?,1)'
@@ -694,6 +698,8 @@ final class Schema
                 $insFlag->execute([(int) $gid, 'menu_binek']);
                 $insFlag->execute([(int) $gid, 'menu_yasakli_kelimeler']);
                 $insFlag->execute([(int) $gid, 'menu_gm']);
+                $insFlag->execute([(int) $gid, 'menu_siralamalar']);
+                $insFlag->execute([(int) $gid, 'menu_ip_ban']);
             }
         } catch (\Throwable) {
             // ignore
@@ -881,6 +887,25 @@ final class Schema
               KEY `idx_aal_actor_login` (`actor_login`),
               KEY `idx_aal_target_login` (`target_login`),
               KEY `idx_aal_created` (`created_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+    }
+
+    private static function ensureIpBans(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `ip_bans` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `ip` VARCHAR(15) NOT NULL,
+              `reason` VARCHAR(500) NOT NULL DEFAULT '',
+              `pcbang_ip_id` INT NULL DEFAULT NULL,
+              `pcbang_id` INT NOT NULL DEFAULT 0,
+              `created_by_id` INT UNSIGNED NOT NULL DEFAULT 0,
+              `created_by_login` VARCHAR(30) NOT NULL DEFAULT '',
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `uk_ip_bans_ip` (`ip`),
+              KEY `idx_ip_bans_pcbang` (`pcbang_ip_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
         );
     }
@@ -1330,6 +1355,31 @@ final class Schema
 
         if (!(int) $colCheck) {
             $pdo->exec("ALTER TABLE `{$webDb}`.`{$table}` ADD COLUMN `{$column}` {$definition}");
+        }
+    }
+
+    /** İlk kurulumda mevcut onaylı hesapları mevcut revizyona hizala (zorunlu yeniden kabul tetiklenmesin). */
+    private static function ensureCommunityRulesRevision(PDO $pdo): void
+    {
+        try {
+            $stmt = $pdo->prepare(
+                "SELECT setting_value FROM settings WHERE group_key = 'community' AND setting_key = 'rules_revision' LIMIT 1"
+            );
+            $stmt->execute();
+            $val = $stmt->fetchColumn();
+            if ($val !== false && $val !== null && $val !== '') {
+                return;
+            }
+            $pdo->prepare(
+                "INSERT INTO settings (group_key, setting_key, setting_value, updated_at)
+                 VALUES ('community', 'rules_revision', '1', NOW())
+                 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()"
+            )->execute();
+            $pdo->exec(
+                'UPDATE account_consents SET rules_revision = 1 WHERE rules_accepted = 1 AND rules_revision = 0'
+            );
+        } catch (\Throwable) {
+            // ignore
         }
     }
 

@@ -25,6 +25,8 @@ final class ActivityLogService
     public const ACTION_REGISTER = 'register';
     public const ACTION_BAN = 'ban';
     public const ACTION_UNBAN = 'unban';
+    public const ACTION_RULES_ACCEPT = 'rules_accept';
+    public const ACTION_RULES_DECLINE = 'rules_decline';
 
     private const LABELS = [
         self::ACTION_LOGIN => 'Panele giriş yapıldı',
@@ -39,6 +41,8 @@ final class ActivityLogService
         self::ACTION_REGISTER => 'Hesap oluşturuldu',
         self::ACTION_BAN => 'Hesap banlandı',
         self::ACTION_UNBAN => 'Ban kaldırıldı',
+        self::ACTION_RULES_ACCEPT => 'Topluluk kuralları kabul edildi',
+        self::ACTION_RULES_DECLINE => 'Topluluk kuralları reddedildi',
     ];
 
     public static function log(
