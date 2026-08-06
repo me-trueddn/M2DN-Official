@@ -30,6 +30,8 @@ final class PermissionService
     public const FLAG_MENU_YASAKLI_KELIMELER = 'menu_yasakli_kelimeler';
     public const FLAG_MENU_LOGLAR = 'menu_loglar';
     public const FLAG_MENU_NESNE_MARKET = 'menu_nesne_market';
+    public const FLAG_RESET_SECURITY_CODE = 'reset_security_code';
+    public const FLAG_RESET_SAFEBOX = 'reset_safebox_password';
 
     /** @return array<string, string> */
     public static function flagDefinitions(): array
@@ -37,6 +39,8 @@ final class PermissionService
         return [
             self::FLAG_BAN => 'Oyuncu banlama / ban kaldırma',
             self::FLAG_PLAYER_DETAIL => 'Oyuncu detayı görüntüleme',
+            self::FLAG_RESET_SECURITY_CODE => 'Güvenlik kodu sıfırlama',
+            self::FLAG_RESET_SAFEBOX => 'Depo şifresi sıfırlama',
             self::FLAG_ANNOUNCEMENTS => 'Duyuru işlemleri',
             self::FLAG_TICKETS => 'Destek talebi işlemleri',
             self::FLAG_SITE_SETTINGS => 'Ayarlara erişim',

@@ -670,7 +670,8 @@ final class Schema
             $adminId = (int) $pdo->query('SELECT id FROM permission_groups WHERE web_permission = 1 AND is_system = 1 LIMIT 1')->fetchColumn();
             $superId = (int) $pdo->query('SELECT id FROM permission_groups WHERE web_permission = 2 AND is_system = 1 LIMIT 1')->fetchColumn();
             $flags = [
-                'ban', 'player_detail', 'announcements', 'tickets', 'site_settings',
+                'ban', 'player_detail', 'reset_security_code', 'reset_safebox_password',
+                'announcements', 'tickets', 'site_settings',
                 'menu_oyuncular', 'menu_siralamalar', 'menu_binek', 'menu_gm', 'menu_ip_ban', 'menu_loncalar', 'menu_lonca_savaslari', 'menu_banlar', 'menu_duyurular', 'menu_destekler', 'menu_sunucu', 'menu_yasakli_kelimeler', 'menu_loglar', 'menu_nesne_market',
             ];
             $stmt = $pdo->prepare(
@@ -704,6 +705,8 @@ final class Schema
                 $insFlag->execute([(int) $gid, 'menu_siralamalar']);
                 $insFlag->execute([(int) $gid, 'menu_ip_ban']);
                 $insFlag->execute([(int) $gid, 'menu_nesne_market']);
+                $insFlag->execute([(int) $gid, 'reset_security_code']);
+                $insFlag->execute([(int) $gid, 'reset_safebox_password']);
             }
         } catch (\Throwable) {
             // ignore

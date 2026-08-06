@@ -1062,7 +1062,7 @@ $footerHref = static function (string $url): string {
                value="<?= e((string) ($registerOld['email'] ?? '')) ?>">
       </div>
       <div class="form-row">
-        <label for="reg-security">Güvenli Şifre</label>
+        <label for="reg-security">Güvenlik Kodu</label>
         <input id="reg-security" name="securitycode" type="text" inputmode="numeric"
                pattern="\d{1,6}" maxlength="6" required>
       </div>

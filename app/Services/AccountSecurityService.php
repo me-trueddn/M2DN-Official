@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Core\Database;
 use App\Core\Security;
+use App\Core\ServerManager;
 use PDO;
 
 final class AccountSecurityService
@@ -67,10 +68,10 @@ final class AccountSecurityService
     {
         $errors = [];
         if (!preg_match('/^\d{1,6}$/', $newCode)) {
-            $errors[] = 'Güvenli şifre en fazla 6 haneli ve sadece sayı olmalı.';
+            $errors[] = 'Güvenlik kodu en fazla 6 haneli ve sadece sayı olmalı.';
         }
         if ($newCode !== $confirmCode) {
-            $errors[] = 'Güvenli şifreler eşleşmiyor.';
+            $errors[] = 'Güvenlik kodları eşleşmiyor.';
         }
         if ($errors !== []) {
             return ['ok' => false, 'errors' => $errors];
@@ -88,17 +89,116 @@ final class AccountSecurityService
         $upd = $pdo->prepare('UPDATE account SET securitycode = ? WHERE id = ?');
         $upd->execute([$hash, $accountId]);
 
-        ActivityLogService::log($accountId, ActivityLogService::ACTION_SECURITY_CODE, 'Depo / güvenli şifre güncellendi');
+        ActivityLogService::log($accountId, ActivityLogService::ACTION_SECURITY_CODE, 'Güvenlik kodu güncellendi');
 
         return ['ok' => true, 'errors' => []];
     }
 
     /**
-     * Admin (WebPermission ≥ 1) depo / güvenli şifreyi doğrudan sıfırlar.
+     * Oyuncu: oyun deposu şifresi (player.safebox.password) — account.securitycode ile ayrıdır.
+     *
+     * @return array{ok:bool, errors:list<string>}
+     */
+    public static function changeSafeboxPassword(int $accountId, string $password, string $newCode, string $confirmCode, ?string $serverKey = null): array
+    {
+        $errors = [];
+        if (!preg_match('/^\d{1,6}$/', $newCode)) {
+            $errors[] = 'Depo şifresi en fazla 6 haneli ve sadece sayı olmalı.';
+        }
+        if ($newCode !== $confirmCode) {
+            $errors[] = 'Depo şifreleri eşleşmiyor.';
+        }
+        if ($errors !== []) {
+            return ['ok' => false, 'errors' => $errors];
+        }
+
+        $pdo = Database::account();
+        $stmt = $pdo->prepare('SELECT password FROM account WHERE id = ? LIMIT 1');
+        $stmt->execute([$accountId]);
+        $row = $stmt->fetch();
+        if (!$row || !Security::verifyAccountPassword($password, (string) $row['password'])) {
+            return ['ok' => false, 'errors' => ['Hesap parolası hatalı.']];
+        }
+
+        $result = self::writeSafeboxPassword($accountId, $newCode, $serverKey);
+        if (empty($result['ok'])) {
+            return $result;
+        }
+
+        ActivityLogService::log($accountId, ActivityLogService::ACTION_SAFEBOX_PASSWORD, 'Depo şifresi güncellendi');
+
+        return ['ok' => true, 'errors' => []];
+    }
+
+    /**
+     * Admin: account.securitycode (kayıt / güvenlik kodu) sıfırlar.
+     *
      * @param array{account_id?:int,login?:string,permission?:int} $actor
      * @return array{ok:bool, errors:list<string>}
      */
     public static function adminSetSecurityCode(int $targetAccountId, string $newCode, array $actor): array
+    {
+        $actorPerm = AuthService::normalizePermission($actor['permission'] ?? AuthService::PERM_USER);
+        if ($actorPerm < AuthService::PERM_ADMIN) {
+            return ['ok' => false, 'errors' => ['Güvenlik kodu sıfırlamak için admin yetkisi gerekir.']];
+        }
+
+        $newCode = trim($newCode);
+        if (!preg_match('/^\d{1,6}$/', $newCode)) {
+            return ['ok' => false, 'errors' => ['Güvenlik kodu 1–6 haneli ve sadece sayı olmalı.']];
+        }
+        if ($targetAccountId <= 0) {
+            return ['ok' => false, 'errors' => ['Geçersiz hesap.']];
+        }
+
+        try {
+            $pdo = Database::account();
+            $stmt = $pdo->prepare('SELECT id, login, WebPermission FROM account WHERE id = ? LIMIT 1');
+            $stmt->execute([$targetAccountId]);
+            $row = $stmt->fetch();
+            if (!$row) {
+                return ['ok' => false, 'errors' => ['Hesap bulunamadı.']];
+            }
+
+            $targetPerm = AuthService::normalizePermission($row['WebPermission'] ?? AuthService::PERM_USER);
+            if ($targetPerm > $actorPerm) {
+                return ['ok' => false, 'errors' => ['Daha yetkili hesabın güvenlik kodunu sıfırlayamazsın.']];
+            }
+
+            $hash = Security::hashAccountPassword($newCode);
+            $pdo->prepare('UPDATE account SET securitycode = ? WHERE id = ?')->execute([$hash, $targetAccountId]);
+
+            $actorId = (int) ($actor['account_id'] ?? 0);
+            $actorLogin = (string) ($actor['login'] ?? '');
+            ActivityLogService::log(
+                $targetAccountId,
+                ActivityLogService::ACTION_SECURITY_CODE,
+                'Güvenlik kodu admin tarafından sıfırlandı',
+                (string) $row['login'],
+                $actorId > 0 ? $actorId : null,
+                $actorLogin !== '' ? $actorLogin : null
+            );
+            AdminLogService::write(
+                $actor,
+                'Güvenlik kodu sıfırlandı',
+                '#' . $targetAccountId . ' · ' . (string) $row['login'],
+                $targetAccountId,
+                (string) $row['login']
+            );
+
+            return ['ok' => true, 'errors' => []];
+        } catch (\Throwable) {
+            return ['ok' => false, 'errors' => ['Güvenlik kodu güncellenemedi.']];
+        }
+    }
+
+    /**
+     * Admin: player.safebox.password (oyun deposu) sıfırlar.
+     *
+     * @param array{account_id?:int,login?:string,permission?:int} $actor
+     * @return array{ok:bool, errors:list<string>}
+     */
+    public static function adminSetSafeboxPassword(int $targetAccountId, string $newCode, array $actor, ?string $serverKey = null): array
     {
         $actorPerm = AuthService::normalizePermission($actor['permission'] ?? AuthService::PERM_USER);
         if ($actorPerm < AuthService::PERM_ADMIN) {
@@ -127,14 +227,16 @@ final class AccountSecurityService
                 return ['ok' => false, 'errors' => ['Daha yetkili hesabın depo şifresini sıfırlayamazsın.']];
             }
 
-            $hash = Security::hashAccountPassword($newCode);
-            $pdo->prepare('UPDATE account SET securitycode = ? WHERE id = ?')->execute([$hash, $targetAccountId]);
+            $write = self::writeSafeboxPassword($targetAccountId, $newCode, $serverKey);
+            if (empty($write['ok'])) {
+                return $write;
+            }
 
             $actorId = (int) ($actor['account_id'] ?? 0);
             $actorLogin = (string) ($actor['login'] ?? '');
             ActivityLogService::log(
                 $targetAccountId,
-                ActivityLogService::ACTION_SECURITY_CODE,
+                ActivityLogService::ACTION_SAFEBOX_PASSWORD,
                 'Depo şifresi admin tarafından sıfırlandı',
                 (string) $row['login'],
                 $actorId > 0 ? $actorId : null,
@@ -152,6 +254,55 @@ final class AccountSecurityService
         } catch (\Throwable) {
             return ['ok' => false, 'errors' => ['Depo şifresi güncellenemedi.']];
         }
+    }
+
+    /**
+     * player.safebox.password yazar (yoksa satır oluşturur). Değer MD5 hash olarak saklanır.
+     *
+     * @return array{ok:bool, errors:list<string>}
+     */
+    private static function writeSafeboxPassword(int $accountId, string $plainPassword, ?string $serverKey = null): array
+    {
+        $serverKey = $serverKey ?: (ServerManager::current()['key'] ?? null);
+        $pages = max(1, (int) (\App\Core\Config::get('nesne_market.safebox_default_pages', 1)));
+        $hash = Security::hashAccountPassword($plainPassword);
+
+        try {
+            $player = Database::player($serverKey);
+            self::ensureSafeboxPasswordColumn($player);
+
+            $stmt = $player->prepare('SELECT account_id FROM safebox WHERE account_id = ? LIMIT 1');
+            $stmt->execute([$accountId]);
+            if ($stmt->fetch()) {
+                $player->prepare('UPDATE safebox SET password = ? WHERE account_id = ?')
+                    ->execute([$hash, $accountId]);
+            } else {
+                $player->prepare('INSERT INTO safebox (account_id, size, password, gold) VALUES (?, ?, ?, 0)')
+                    ->execute([$accountId, $pages, $hash]);
+            }
+            return ['ok' => true, 'errors' => []];
+        } catch (\Throwable) {
+            return ['ok' => false, 'errors' => ['Depo kaydı güncellenemedi.']];
+        }
+    }
+
+    /** MD5 (32 karakter) sığması için password kolonunu genişletir. */
+    private static function ensureSafeboxPasswordColumn(PDO $player): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        try {
+            $col = $player->query("SHOW COLUMNS FROM safebox LIKE 'password'")->fetch();
+            $type = strtolower((string) ($col['Type'] ?? ''));
+            if (preg_match('/varchar\((\d+)\)/', $type, $m) && (int) $m[1] < 32) {
+                $player->exec('ALTER TABLE `safebox` MODIFY `password` VARCHAR(32) NOT NULL DEFAULT \'\'');
+            }
+        } catch (\Throwable) {
+            // ignore — yazma denemesi yine de yapılır
+        }
+        $done = true;
     }
 
     /** @return array{ok:bool, errors:list<string>, secret?:string} */

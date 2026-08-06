@@ -360,9 +360,26 @@ $can = static function (string $flag) use ($permFlags): bool {
   .mail-preview-meta{font-size:.82rem; color:var(--ash); margin-bottom:12px; padding:10px 12px; background:var(--obsidian); border:1px solid var(--line);}
   .mail-preview-meta b{color:var(--gold-light); font-weight:600;}
   .detail-ops{margin-top:18px; padding-top:14px; border-top:1px solid var(--line);}
-  .detail-ops h4{margin:0 0 12px; font-size:.9rem; color:var(--parchment);}
-  .detail-ops .form-row{margin-bottom:10px;}
-  .detail-ops .ops-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;}
+  .detail-ops > h4{margin:0 0 14px; font-size:.9rem; color:var(--parchment);}
+  .detail-ops .ops-block{
+    border:1px solid var(--line);
+    background:rgba(11,9,6,.35);
+    padding:14px 16px;
+    margin-bottom:12px;
+  }
+  .detail-ops .ops-block:last-child{margin-bottom:0;}
+  .detail-ops .ops-block .ops-title{
+    font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--ash); margin:0 0 10px; font-weight:600;
+  }
+  .detail-ops .ops-block .form-row{margin-bottom:10px;}
+  .detail-ops .ops-block .form-row:last-of-type{margin-bottom:12px;}
+  .detail-ops .ops-block form{display:flex; flex-direction:column; gap:0; align-items:stretch;}
+  .detail-ops .ops-block .btn{align-self:flex-start;}
+  .detail-ops .ops-block .ops-inline{
+    display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;
+  }
+  .detail-ops .ops-block .ops-inline .form-row{margin:0; flex:1; min-width:160px;}
   .status-pill{display:flex; align-items:center; gap:8px; padding:8px 14px; background:rgba(51,89,74,.15); border:1px solid rgba(79,138,113,.3); font-size:.78rem; color:var(--jade-light); text-transform:uppercase; letter-spacing:.05em;}
   .status-pill .pulse{width:7px; height:7px; border-radius:50%; background:var(--jade-light); animation:pulse 2s infinite;}
   .session-timer{display:flex; align-items:center; gap:8px; padding:8px 14px; background:rgba(201,151,74,.1); border:1px solid rgba(201,151,74,.28); font-size:.78rem; color:var(--gold-light); letter-spacing:.04em; font-variant-numeric:tabular-nums;}
@@ -485,6 +502,28 @@ $can = static function (string $flag) use ($permFlags): bool {
   .modal-overlay.open{display:flex;}
   .modal{width:400px; max-width:90vw; background:var(--obsidian-2); border:1px solid var(--gold); padding:28px; clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);}
   .modal.modal-lg{width:720px; max-height:88vh; overflow:auto;}
+  .modal.modal-lg,
+  .modal.modal-lg #detailBody{
+    scrollbar-width:thin;
+    scrollbar-color:rgba(201,151,74,.45) rgba(11,9,6,.55);
+  }
+  .modal.modal-lg::-webkit-scrollbar,
+  .modal.modal-lg #detailBody::-webkit-scrollbar{width:10px; height:10px;}
+  .modal.modal-lg::-webkit-scrollbar-track,
+  .modal.modal-lg #detailBody::-webkit-scrollbar-track{
+    background:rgba(11,9,6,.55);
+    border-left:1px solid rgba(201,151,74,.12);
+  }
+  .modal.modal-lg::-webkit-scrollbar-thumb,
+  .modal.modal-lg #detailBody::-webkit-scrollbar-thumb{
+    background:linear-gradient(180deg, rgba(201,151,74,.55), rgba(143,28,41,.45));
+    border:2px solid rgba(11,9,6,.4);
+    border-radius:6px;
+  }
+  .modal.modal-lg::-webkit-scrollbar-thumb:hover,
+  .modal.modal-lg #detailBody::-webkit-scrollbar-thumb:hover{
+    background:linear-gradient(180deg, rgba(236,205,142,.7), rgba(197,51,71,.55));
+  }
   .modal h3{font-size:1.1rem; color:var(--gold-light); margin-bottom:12px;}
   .modal p{font-size:.85rem; color:var(--ash); margin-bottom:20px; line-height:1.6;}
   .modal .modal-actions{display:flex; gap:12px; justify-content:flex-end;}
@@ -4087,11 +4126,13 @@ $can = static function (string $flag) use ($permFlags): bool {
   const emailChangeUrl = <?= json_encode(url('/admin/oyuncu/email'), JSON_UNESCAPED_UNICODE) ?>;
   const resetLinkUrl = <?= json_encode(url('/admin/oyuncu/sifre-link'), JSON_UNESCAPED_UNICODE) ?>;
   const setPasswordUrl = <?= json_encode(url('/admin/oyuncu/sifre'), JSON_UNESCAPED_UNICODE) ?>;
-  const setSecurityCodeUrl = <?= json_encode(url('/admin/oyuncu/depo'), JSON_UNESCAPED_UNICODE) ?>;
+  const setSecurityCodeUrl = <?= json_encode(url('/admin/oyuncu/guvenlik-kodu'), JSON_UNESCAPED_UNICODE) ?>;
+  const setSafeboxPasswordUrl = <?= json_encode(url('/admin/oyuncu/depo'), JSON_UNESCAPED_UNICODE) ?>;
   const notifListUrl = <?= json_encode(url('/bildirimler/json'), JSON_UNESCAPED_UNICODE) ?>;
   const notifReadUrl = <?= json_encode(url('/bildirimler/okundu'), JSON_UNESCAPED_UNICODE) ?>;
   const isSuperAdmin = <?= $authPermission === 2 ? 'true' : 'false' ?>;
-  const canStaffAdmin = <?= $authPermission >= 1 ? 'true' : 'false' ?>;
+  const canResetSecurityCode = <?= !empty($permFlags['reset_security_code']) ? 'true' : 'false' ?>;
+  const canResetSafebox = <?= !empty($permFlags['reset_safebox_password']) ? 'true' : 'false' ?>;
   const canMailOps = <?= !empty($permFlags['player_detail']) ? 'true' : 'false' ?>;
   const adminIndexUrl = <?= json_encode(url('/admin'), JSON_UNESCAPED_UNICODE) ?>;
   const mailPresetsJs = <?= json_encode($mailPresets, JSON_UNESCAPED_UNICODE) ?>;
@@ -4645,33 +4686,59 @@ $can = static function (string $flag) use ($permFlags): bool {
         }
         html += '</div>';
 
-        if (canMailOps && a.id) {
+        const canShowOps = a.id && (canMailOps || isSuperAdmin || canResetSecurityCode || canResetSafebox);
+        if (canShowOps) {
           html += '<div class="detail-ops"><h4>İşlemler</h4>';
-          html += '<form method="post" action="' + esc(emailChangeUrl) + '">';
-          html += '<input type="hidden" name="csrf_token" value="' + esc(csrfToken) + '">';
-          html += '<input type="hidden" name="account_id" value="' + esc(String(a.id)) + '">';
-          html += '<div class="form-row"><label>E-posta değiştir</label><input name="email" type="email" maxlength="64" required value="' + esc(a.email || '') + '"></div>';
-          html += '<button type="submit" class="btn btn-primary btn-sm">E-postayı kaydet</button></form>';
-          html += '<div class="ops-row">';
-          html += '<form method="post" action="' + esc(resetLinkUrl) + '" onsubmit="return confirm(\'Sıfırlama bağlantısı e-postaya gönderilsin mi?\');">';
-          html += '<input type="hidden" name="csrf_token" value="' + esc(csrfToken) + '">';
-          html += '<input type="hidden" name="account_id" value="' + esc(String(a.id)) + '">';
-          html += '<button type="submit" class="btn btn-ghost btn-sm">Şifre sıfırlama linki gönder</button></form>';
+
+          if (canMailOps) {
+            html += '<div class="ops-block"><div class="ops-title">E-posta</div>';
+            html += '<form method="post" action="' + esc(emailChangeUrl) + '">';
+            html += '<input type="hidden" name="csrf_token" value="' + esc(csrfToken) + '">';
+            html += '<input type="hidden" name="account_id" value="' + esc(String(a.id)) + '">';
+            html += '<div class="form-row"><label>E-posta değiştir</label><input name="email" type="email" maxlength="64" required value="' + esc(a.email || '') + '"></div>';
+            html += '<button type="submit" class="btn btn-primary btn-sm">E-postayı kaydet</button></form></div>';
+
+            html += '<div class="ops-block"><div class="ops-title">Şifre sıfırlama linki</div>';
+            html += '<form method="post" action="' + esc(resetLinkUrl) + '" onsubmit="return confirm(\'Sıfırlama bağlantısı e-postaya gönderilsin mi?\');">';
+            html += '<input type="hidden" name="csrf_token" value="' + esc(csrfToken) + '">';
+            html += '<input type="hidden" name="account_id" value="' + esc(String(a.id)) + '">';
+            html += '<button type="submit" class="btn btn-ghost btn-sm">Şifre sıfırlama linki gönder</button></form></div>';
+          }
+
           if (isSuperAdmin) {
-            html += '<form method="post" action="' + esc(setPasswordUrl) + '" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">';
+            html += '<div class="ops-block"><div class="ops-title">Hesap şifresi (süper admin)</div>';
+            html += '<form method="post" action="' + esc(setPasswordUrl) + '">';
             html += '<input type="hidden" name="csrf_token" value="' + esc(csrfToken) + '">';
             html += '<input type="hidden" name="account_id" value="' + esc(String(a.id)) + '">';
-            html += '<div class="form-row" style="margin:0;"><label>Yeni şifre (süper admin)</label><input name="password" type="password" maxlength="16" minlength="4" required></div>';
-            html += '<button type="submit" class="btn btn-jade btn-sm">Şifreyi sıfırla</button></form>';
+            html += '<div class="ops-inline">';
+            html += '<div class="form-row"><label>Yeni şifre</label><input name="password" type="password" maxlength="16" minlength="4" required></div>';
+            html += '<button type="submit" class="btn btn-jade btn-sm">Şifreyi sıfırla</button>';
+            html += '</div></form></div>';
           }
-          if (canStaffAdmin) {
-            html += '<form method="post" action="' + esc(setSecurityCodeUrl) + '" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;" onsubmit="return confirm(\'Depo / güvenli şifre sıfırlansın mı?\');">';
+
+          if (canResetSecurityCode) {
+            html += '<div class="ops-block"><div class="ops-title">Güvenlik kodu</div>';
+            html += '<form method="post" action="' + esc(setSecurityCodeUrl) + '" onsubmit="return confirm(\'Güvenlik kodu sıfırlansın mı?\');">';
             html += '<input type="hidden" name="csrf_token" value="' + esc(csrfToken) + '">';
             html += '<input type="hidden" name="account_id" value="' + esc(String(a.id)) + '">';
-            html += '<div class="form-row" style="margin:0;"><label>Yeni depo şifresi (1–6 hane)</label><input name="securitycode" type="text" inputmode="numeric" pattern="\\d{1,6}" maxlength="6" required placeholder="örn. 123456"></div>';
-            html += '<button type="submit" class="btn btn-ghost btn-sm">Depo şifresini sıfırla</button></form>';
+            html += '<div class="ops-inline">';
+            html += '<div class="form-row"><label>Yeni güvenlik kodu (1–6 hane)</label><input name="securitycode" type="text" inputmode="numeric" pattern="\\d{1,6}" maxlength="6" required placeholder="örn. 123456"></div>';
+            html += '<button type="submit" class="btn btn-ghost btn-sm">Güvenlik kodunu sıfırla</button>';
+            html += '</div></form></div>';
           }
-          html += '</div></div>';
+
+          if (canResetSafebox) {
+            html += '<div class="ops-block"><div class="ops-title">Depo şifresi</div>';
+            html += '<form method="post" action="' + esc(setSafeboxPasswordUrl) + '" onsubmit="return confirm(\'Oyun depo şifresi sıfırlansın mı?\');">';
+            html += '<input type="hidden" name="csrf_token" value="' + esc(csrfToken) + '">';
+            html += '<input type="hidden" name="account_id" value="' + esc(String(a.id)) + '">';
+            html += '<div class="ops-inline">';
+            html += '<div class="form-row"><label>Yeni depo şifresi (1–6 hane)</label><input name="safebox_password" type="text" inputmode="numeric" pattern="\\d{1,6}" maxlength="6" required placeholder="örn. 123456"></div>';
+            html += '<button type="submit" class="btn btn-ghost btn-sm">Depo şifresini sıfırla</button>';
+            html += '</div></form></div>';
+          }
+
+          html += '</div>';
         }
 
         detailBody.innerHTML = html;

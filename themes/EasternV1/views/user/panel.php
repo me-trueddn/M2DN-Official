@@ -1353,14 +1353,25 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
         </div>
 
         <div class="card">
-          <div class="card-head"><h3>Depo / Güvenli Şifre</h3></div>
-          <p style="font-size:.8rem;color:var(--ash);margin-bottom:14px;">Depo şifresini sıfırlamak için hesap parolanı doğrula, ardından yeni 6 haneli kodu gir.</p>
-          <form method="post" action="<?= e(url('/panel/guvenlik/depo')) ?>" autocomplete="off">
+          <div class="card-head"><h3>Güvenlik Kodu</h3></div>
+          <p style="font-size:.8rem;color:var(--ash);margin-bottom:14px;">Kayıt sırasında belirlenen güvenlik kodu. Hesap parolanı doğrula, ardından yeni 1–6 haneli kodu gir.</p>
+          <form method="post" action="<?= e(url('/panel/guvenlik/guvenlik-kodu')) ?>" autocomplete="off">
             <?= $csrf ?>
             <div class="form-row"><label for="sec-pass">Hesap Parolası</label><input id="sec-pass" name="password" type="password" maxlength="16" required></div>
-            <div class="form-row"><label for="sec-new">Yeni Güvenli Şifre</label><input id="sec-new" name="new_securitycode" type="text" inputmode="numeric" pattern="\d{1,6}" maxlength="6" required></div>
+            <div class="form-row"><label for="sec-new">Yeni Güvenlik Kodu</label><input id="sec-new" name="new_securitycode" type="text" inputmode="numeric" pattern="\d{1,6}" maxlength="6" required></div>
             <div class="form-row"><label for="sec-new2">Tekrar</label><input id="sec-new2" name="new_securitycode_confirm" type="text" inputmode="numeric" pattern="\d{1,6}" maxlength="6" required></div>
-            <button type="submit" class="btn btn-primary btn-block">Güvenli Şifreyi Güncelle</button>
+            <button type="submit" class="btn btn-primary btn-block">Güvenlik Kodunu Güncelle</button>
+          </form>
+
+          <div style="border-top:1px solid var(--line); margin:22px 0 16px;"></div>
+          <div class="card-head" style="padding:0;margin-bottom:10px;"><h3 style="font-size:1rem;">Depo Şifresi</h3></div>
+          <p style="font-size:.8rem;color:var(--ash);margin-bottom:14px;">Oyun içi depo (safebox) şifresi. Güvenlik kodundan ayrıdır.</p>
+          <form method="post" action="<?= e(url('/panel/guvenlik/depo')) ?>" autocomplete="off">
+            <?= $csrf ?>
+            <div class="form-row"><label for="box-pass">Hesap Parolası</label><input id="box-pass" name="password" type="password" maxlength="16" required></div>
+            <div class="form-row"><label for="box-new">Yeni Depo Şifresi</label><input id="box-new" name="new_safebox_password" type="text" inputmode="numeric" pattern="\d{1,6}" maxlength="6" required></div>
+            <div class="form-row"><label for="box-new2">Tekrar</label><input id="box-new2" name="new_safebox_password_confirm" type="text" inputmode="numeric" pattern="\d{1,6}" maxlength="6" required></div>
+            <button type="submit" class="btn btn-primary btn-block">Depo Şifresini Güncelle</button>
           </form>
         </div>
 

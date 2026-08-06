@@ -168,7 +168,7 @@ $brandHomeSize = (int) ($siteBrand['home_size'] ?? 48);
         </div>
 
         <div class="form-row">
-          <label for="securitycode">Güvenli Şifre</label>
+          <label for="securitycode">Güvenlik Kodu</label>
           <input id="securitycode" name="securitycode" type="text" inputmode="numeric"
                  pattern="\d{1,6}" maxlength="6" required>
         </div>

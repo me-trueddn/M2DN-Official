@@ -17,6 +17,7 @@ final class ActivityLogService
     public const ACTION_LOGOUT = 'logout';
     public const ACTION_PASSWORD = 'password_change';
     public const ACTION_SECURITY_CODE = 'security_code_change';
+    public const ACTION_SAFEBOX_PASSWORD = 'safebox_password_change';
     public const ACTION_2FA_START = '2fa_start';
     public const ACTION_2FA_ENABLE = '2fa_enable';
     public const ACTION_2FA_DISABLE = '2fa_disable';
@@ -32,7 +33,8 @@ final class ActivityLogService
         self::ACTION_LOGIN => 'Panele giriş yapıldı',
         self::ACTION_LOGOUT => 'Panelden çıkış yapıldı',
         self::ACTION_PASSWORD => 'Hesap parolası değiştirildi',
-        self::ACTION_SECURITY_CODE => 'Depo / güvenli şifre değiştirildi',
+        self::ACTION_SECURITY_CODE => 'Güvenlik kodu değiştirildi',
+        self::ACTION_SAFEBOX_PASSWORD => 'Depo şifresi değiştirildi',
         self::ACTION_2FA_START => '2FA kurulumu başlatıldı',
         self::ACTION_2FA_ENABLE => '2FA aktif edildi',
         self::ACTION_2FA_DISABLE => '2FA kapatıldı',

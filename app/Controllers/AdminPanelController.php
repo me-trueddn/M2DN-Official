@@ -514,17 +514,28 @@ final class AdminPanelController
 
     public function setSecurityCode(): void
     {
-        $user = PermissionService::requireFlag(PermissionService::FLAG_PLAYER_DETAIL);
+        $user = PermissionService::requireFlag(PermissionService::FLAG_RESET_SECURITY_CODE);
         Security::requireCsrf('login');
         $perm = AuthService::normalizePermission($user['permission'] ?? 0);
-        if ($perm < AuthService::PERM_ADMIN) {
-            Session::flash('panel_errors', ['Depo şifresi sıfırlamak için admin yetkisi gerekir.']);
-            Session::flash('panel_section', 'oyuncular');
-            redirect('/admin?section=oyuncular');
-        }
         $accountId = (int) ($_POST['account_id'] ?? 0);
         $code = (string) ($_POST['securitycode'] ?? '');
         $result = AccountSecurityService::adminSetSecurityCode($accountId, $code, [
+            'account_id' => (int) $user['account_id'],
+            'login' => (string) $user['login'],
+            'permission' => $perm,
+        ]);
+        $this->flashResult($result, 'Güvenlik kodu güncellendi.', 'oyuncular');
+        redirect('/admin?section=oyuncular');
+    }
+
+    public function setSafeboxPassword(): void
+    {
+        $user = PermissionService::requireFlag(PermissionService::FLAG_RESET_SAFEBOX);
+        Security::requireCsrf('login');
+        $perm = AuthService::normalizePermission($user['permission'] ?? 0);
+        $accountId = (int) ($_POST['account_id'] ?? 0);
+        $code = (string) ($_POST['safebox_password'] ?? '');
+        $result = AccountSecurityService::adminSetSafeboxPassword($accountId, $code, [
             'account_id' => (int) $user['account_id'],
             'login' => (string) $user['login'],
             'permission' => $perm,

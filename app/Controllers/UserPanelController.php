@@ -170,7 +170,21 @@ final class UserPanelController
             (string) ($_POST['new_securitycode_confirm'] ?? '')
         );
 
-        $this->flashResult($result, 'Depo / güvenli şifre güncellendi.', 'guvenlik');
+        $this->flashResult($result, 'Güvenlik kodu güncellendi.', 'guvenlik');
+        redirect('/panel');
+    }
+
+    public function changeSafeboxPassword(): void
+    {
+        $user = $this->requirePanelCsrf();
+        $result = AccountSecurityService::changeSafeboxPassword(
+            (int) $user['account_id'],
+            (string) ($_POST['password'] ?? ''),
+            (string) ($_POST['new_safebox_password'] ?? ''),
+            (string) ($_POST['new_safebox_password_confirm'] ?? '')
+        );
+
+        $this->flashResult($result, 'Depo şifresi güncellendi.', 'guvenlik');
         redirect('/panel');
     }
 
