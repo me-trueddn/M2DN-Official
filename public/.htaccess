@@ -1,6 +1,7 @@
 RewriteEngine On
 
-# Tema assetleri
+# Tema assetleri (nesnemarket modülü + genel)
+RewriteRule ^themes/([A-Za-z0-9_-]+)/nesnemarket/assets/(.*)$ theme-asset.php?theme=$1&module=nesnemarket&folder=assets&path=$2 [L,QSA]
 RewriteRule ^themes/([A-Za-z0-9_-]+)/assets/(.*)$ theme-asset.php?theme=$1&path=$2 [L,QSA]
 
 # Mevcut dosya/klasör ise dokunma

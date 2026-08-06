@@ -29,6 +29,7 @@ final class PermissionService
     public const FLAG_MENU_SUNUCU = 'menu_sunucu';
     public const FLAG_MENU_YASAKLI_KELIMELER = 'menu_yasakli_kelimeler';
     public const FLAG_MENU_LOGLAR = 'menu_loglar';
+    public const FLAG_MENU_NESNE_MARKET = 'menu_nesne_market';
 
     /** @return array<string, string> */
     public static function flagDefinitions(): array
@@ -52,6 +53,7 @@ final class PermissionService
             self::FLAG_MENU_SUNUCU => 'Menü: Sunucu Yönetimi',
             self::FLAG_MENU_YASAKLI_KELIMELER => 'Menü: Yasaklı Kelimeler',
             self::FLAG_MENU_LOGLAR => 'Menü: Loglar',
+            self::FLAG_MENU_NESNE_MARKET => 'Menü: Nesne Market',
         ];
     }
 

@@ -102,7 +102,7 @@ $brandAdminSize = (int) ($siteBrand['admin_size'] ?? 36);
           <div class="row"><span class="k">IP</span><span class="v"><?= e((string) ($account['ip'] ?? '—')) ?></span></div>
           <div class="row"><span class="k">Kayıt</span><span class="v"><?= e((string) ($account['create_label'] ?? '—')) ?></span></div>
           <div class="row"><span class="k">Durum</span><span class="v"><span class="badge <?= e((string) ($account['status_badge'] ?? 'active')) ?>"><?= e((string) ($account['status_label'] ?? '—')) ?></span></span></div>
-          <div class="row"><span class="k">Cash</span><span class="v"><?= number_format((int) ($account['cash'] ?? 0), 0, ',', '.') ?></span></div>
+          <div class="row"><span class="k">Elmas</span><span class="v"><?= number_format((int) ($account['cash'] ?? 0), 0, ',', '.') ?></span></div>
           <div class="row"><span class="k">Kurallar</span><span class="v"><?= e((string) ($account['rules_accepted_label'] ?? 'Hayır')) ?></span></div>
           <div class="row"><span class="k">2FA</span><span class="v"><?= $totpOn ? 'Aktif' : 'Kapalı' ?></span></div>
           <div class="row"><span class="k">IP Kilidi</span><span class="v"><?= $ipLockOn ? e((string) ($security['locked_ip'] ?? 'Açık')) : 'Kapalı' ?></span></div>
@@ -115,13 +115,14 @@ $brandAdminSize = (int) ($siteBrand['admin_size'] ?? 36);
           <div class="empty">Karakter yok.</div>
         <?php else: ?>
           <table>
-            <thead><tr><th>Ad</th><th>Sınıf</th><th>Sv.</th><th>Yang</th></tr></thead>
+            <thead><tr><th>Ad</th><th>Sınıf</th><th>Sv.</th><th>Eş</th><th>Yang</th></tr></thead>
             <tbody>
               <?php foreach ($characters as $ch): ?>
               <tr>
                 <td><?= e((string) $ch['name']) ?></td>
                 <td><?= e((string) $ch['job_label']) ?></td>
                 <td><?= (int) $ch['level'] ?></td>
+                <td><?= !empty($ch['married']) && !empty($ch['spouse_name']) ? e((string) $ch['spouse_name']) : 'Bekar' ?></td>
                 <td><?= number_format((int) $ch['gold'], 0, ',', '.') ?></td>
               </tr>
               <?php endforeach; ?>

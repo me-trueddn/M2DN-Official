@@ -18,7 +18,7 @@ Site ayarları `DNWeb` içinde tutulur; oyun verisi bu 4 DB'dedir.
 | `iptocountry` | IP aralığı → ülke eşlemesi |
 | `string` | *(net değil)* |
 
-**Panel kullanımı:** kayıt/giriş, cash yükleme, hesap ban/status, e-posta.
+**Panel kullanımı:** kayıt/giriş, cash yükleme, hesap ban/status, e-posta, **Nesne Market Elmas (`cash`) düşümü**.
 
 ---
 
@@ -83,14 +83,14 @@ Site ayarları `DNWeb` içinde tutulur; oyun verisi bu 4 DB'dedir.
 | `guild_war_bet` | *(emin değil — savaş bahisleri olabilir)* |
 | `guild_war_reservation` | Lonca savaşı rezervasyon/detayları |
 | `horse_name` | At isimleri |
-| `item` | Envanter + depo eşyaları (konum `window` ile) |
+| `item` | Envanter + depo eşyaları (`window='SAFEBOX'` = depo; Nesne Market teslimatı) |
 | `item_attr` | Eşya efsun (attr) tanımları |
 | `item_attr_rare` | 6. ve 7. efsun tanımları |
-| `item_award` | Nesne marketten alınan / ödül bekleyen itemler |
+| `item_award` | Nesne marketten alınan / ödül bekleyen itemler *(eski akış; canlı market `player.item` SAFEBOX kullanır)* |
 | `item_proto` | Tüm eşya prototipleri |
 | `land` | Lonca arazileri |
 | `lotto_list` | *(bilinmiyor)* |
-| `marriage` | Evlilik kayıtları |
+| `marriage` | Evlilik (`pid1`, `pid2`, `love_point`, `time`, `is_married`) — panel Evlilikler |
 | `messenger_list` | Arkadaş listesi |
 | `mob_proto` | Mob / NPC prototipleri |
 | `monarch` | Monarşi sistemi |
@@ -99,20 +99,23 @@ Site ayarları `DNWeb` içinde tutulur; oyun verisi bu 4 DB'dedir.
 | `myshop_pricelist` | İpek Bohça pazar fiyat hafızası |
 | `object` | Lonca arazisi binaları |
 | `object_proto` | Arazi bina prototipleri |
-| `pcbang_ip` | *(bilinmiyor)* |
+| `pcbang_ip` | IP ban listesi (panel IP Ban) |
 | `player` | Karakterler |
 | `player_deleted` | Silinen karakterler |
 | `player_index` | Hesap ↔ karakter / bayrak (empire) indeksi |
 | `quest` | Görev ilerleme / event durumları |
 | `refine_proto` | + basma malzeme, yang, oran tanımları |
-| `safebox` | Depo şifresi ve boyut |
+| `safebox` | Depo şifresi ve boyut (sayfa sayısı) |
 | `shop` | Eşya satan NPC tanımları |
 | `shop_item` | NPC'nin sattığı item + adet (`item_proto.gold` = fiyat) |
 | `skill_proto` | Yetenek prototipleri |
 | `sms_pool` | SMS gönderim kayıtları (genelde kapalı) |
 | `string` | *(bilinmiyor)* |
+| `change_empire` | Hesap bazlı bayrak değişim sayacı |
 
-**Panel kullanımı:** karakter listesi, envanter/item ver, lonca yönetimi, banword, safebox, market ödülleri (`item_award`).
+**Panel kullanımı:** karakter listesi, lonca, banword, binek, IP ban, evlilik, Nesne Market depo teslimatı (`item` + `safebox`), bayrak değişimi.
+
+Referans SQL: `database/player_marriage_reference.sql`
 
 ---
 
@@ -120,11 +123,24 @@ Site ayarları `DNWeb` içinde tutulur; oyun verisi bu 4 DB'dedir.
 
 | Tablo | İşlev |
 |-------|--------|
-| `settings` | Site config (tema, oranlar, genel ayarlar) |
-| `announcements` | Duyurular |
-| `support_tickets` | Destek talepleri |
+| `settings` | Site config (tema, oranlar, captcha, logo…) |
+| `web_sessions` | Panel oturumları |
+| `account_security` | 2FA, IP kilidi, depo şifresi metası |
+| `account_consents` | Topluluk kuralları onayı |
+| `account_activity_log` | Oyuncu panel işlem logları |
+| `account_bans` / `penalty_templates` | Ban kayıtları / şablonlar |
+| `ip_bans` | IP ban sebep metası (`player.pcbang_ip` ile) |
+| `admin_action_logs` | Yönetici işlem logları |
+| `announcements` / `announcement_types` | Duyurular |
+| `tickets` / `ticket_*` | Destek sistemi |
+| `mail_*` / `password_resets` / `notifications` | Mail ve bildirim |
+| `site_*` / `community_rules` | Anasayfa içerik, kurallar |
+| `permission_*` / `account_staff_groups` | Yetki grupları |
+| **`market_categories`** | Nesne Market kategorileri |
+| **`market_items`** | Nesne Market ürünleri (kod, fiyat, indirim, görsel, süre) |
+| **`market_sales_logs`** | Satış logları (hesap, elmas önce/sonra, depo slot) |
 
-Oyun DB'lerine yazılmayan web paneli verisi burada tutulur.
+SQL: `database/dnweb_full_schema.sql` · migrate: `database/migrate_nesne_market.sql`
 
 ---
 
@@ -134,10 +150,12 @@ Oyun DB'lerine yazılmayan web paneli verisi burada tutulur.
 |---------|--------|
 | Giriş / kayıt | `account.account` |
 | Karakterlerim | `player.player` + `player.player_index` |
-| Cash / mileage | `account.account` |
-| Envanter / item ver | `player.item` / `player.item_award` |
+| Cash / Elmas | `account.account.cash` |
+| Nesne Market katalog | `DNWeb.market_*` |
+| Nesne Market satın alma | `account.cash` − · `player.item` SAFEBOX + · `market_sales_logs` |
+| Evlilikler | `player.marriage` |
 | Lonca | `player.guild*` |
 | Ban / sansür | `player.banword`, `account.account.status` |
 | GM listesi | `common.gmlist` |
-| Admin loglar | `log.*` (özellikle `command_log`, `hack_*`, `loginlog`) |
+| Admin loglar | `DNWeb.admin_action_logs` + `log.*` |
 | Site ayarları | `DNWeb.settings` |

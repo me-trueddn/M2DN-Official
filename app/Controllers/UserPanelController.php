@@ -13,6 +13,7 @@ use App\Services\AdminRankingService;
 use App\Services\AnnouncementService;
 use App\Services\AuthService;
 use App\Services\GuildWarService;
+use App\Services\MarriageService;
 use App\Services\PenaltyService;
 use App\Services\PlayerService;
 use App\Services\TicketService;
@@ -64,11 +65,19 @@ final class UserPanelController
             $panelSection = 'siralamalar';
         }
         $allowedSections = [
-            'ozet', 'duyurular', 'karakterler', 'kayitlar', 'lonca-savaslari', 'siralamalar', 'destek', 'guvenlik',
+            'ozet', 'duyurular', 'karakterler', 'evlilikler', 'kayitlar', 'lonca-savaslari', 'siralamalar', 'destek', 'guvenlik',
         ];
         if (!is_string($panelSection) || !in_array($panelSection, $allowedSections, true)) {
             $panelSection = 'ozet';
         }
+
+        $marriageQ = trim((string) ($_GET['marriage_q'] ?? ''));
+        $marriagePage = (int) ($_GET['marriage_page'] ?? 1);
+        $marriagePer = (int) ($_GET['marriage_per'] ?? 20);
+        if ($marriageQ !== '' || isset($_GET['marriage_page']) || isset($_GET['marriage_per'])) {
+            $panelSection = 'evlilikler';
+        }
+        $marriages = MarriageService::list($marriageQ, $marriagePage, $marriagePer);
 
         Theme::render('user/panel', [
             'authUser' => $user,
@@ -99,6 +108,7 @@ final class UserPanelController
             'guildWarHistory' => GuildWarService::listHistory(40),
             'guildWarBoard' => GuildWarService::leaderboard(30),
             'rankings' => $rankings,
+            'marriages' => $marriages,
         ]);
     }
 

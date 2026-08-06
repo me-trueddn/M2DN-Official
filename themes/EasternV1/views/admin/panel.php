@@ -13,6 +13,7 @@
 /** @var array $gms */
 /** @var array $rankings */
 /** @var array $ipBans */
+/** @var array $marriages */
 /** @var list<array{key:string,label:string}> $gameLogTables */
 /** @var array{table:string,label:string,columns:list<string>,rows:list<array>,error:?string} $gameLogs */
 /** @var string $logTab */
@@ -23,6 +24,11 @@
 /** @var string $privacyTitle */
 /** @var string $privacyHtml */
 /** @var array $captchaConfig */
+/** @var list<array> $marketCategories */
+/** @var list<array> $marketItems */
+/** @var int $marketItemNextSort */
+/** @var string $marketItemQ */
+/** @var int $marketItemCat */
 /** @var string $panelSection */
 /** @var list<array> $penalties */
 /** @var list<array> $activeBans */
@@ -137,6 +143,14 @@ $ipBanPages = (int) ($ipBans['pages'] ?? 1);
 $ipBanQ = (string) ($ipBans['q'] ?? '');
 $ipBanPerPage = (int) ($ipBans['per_page'] ?? 20);
 $ipBanPerOptions = is_array($ipBans['per_page_options'] ?? null) ? $ipBans['per_page_options'] : [10, 20, 30, 50, 100];
+$marriages = is_array($marriages ?? null) ? $marriages : [];
+$marriageRows = is_array($marriages['rows'] ?? null) ? $marriages['rows'] : [];
+$marriageTotal = (int) ($marriages['total'] ?? 0);
+$marriagePage = (int) ($marriages['page'] ?? 1);
+$marriagePages = (int) ($marriages['pages'] ?? 1);
+$marriageQ = (string) ($marriages['q'] ?? '');
+$marriagePerPage = (int) ($marriages['per_page'] ?? 20);
+$marriagePerOptions = is_array($marriages['per_page_options'] ?? null) ? $marriages['per_page_options'] : [10, 20, 30, 50, 100];
 $gameLogTables = is_array($gameLogTables ?? null) ? $gameLogTables : [];
 $gameLogs = is_array($gameLogs ?? null) ? $gameLogs : ['table' => '', 'label' => '', 'columns' => [], 'rows' => [], 'error' => null];
 $gameLogColumns = is_array($gameLogs['columns'] ?? null) ? $gameLogs['columns'] : [];
@@ -475,6 +489,19 @@ $can = static function (string $flag) use ($permFlags): bool {
   .modal p{font-size:.85rem; color:var(--ash); margin-bottom:20px; line-height:1.6;}
   .modal .modal-actions{display:flex; gap:12px; justify-content:flex-end;}
   .form-row select{width:100%; background:var(--obsidian); border:1px solid var(--line); padding:12px 14px; color:var(--parchment); font-size:.88rem; outline:none; font-family:inherit;}
+  .icon-pick-wrap{margin-top:10px;}
+  .icon-pick-toggle{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--ash);cursor:pointer;text-transform:none;letter-spacing:0;margin:0;}
+  .icon-pick-toggle input{width:auto;}
+  .icon-pick-preview{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--line);background:var(--obsidian);color:var(--gold-light);font-size:1.1rem;flex-shrink:0;}
+  .icon-pick-row{display:flex;gap:10px;align-items:center;}
+  .icon-pick-row input{flex:1;}
+  .icon-pick-grid{display:none;grid-template-columns:repeat(8,1fr);gap:6px;max-height:220px;overflow:auto;padding:10px;margin-top:10px;border:1px solid var(--line);background:rgba(11,9,6,.35);}
+  .icon-pick-grid.open{display:grid;}
+  .icon-pick-grid button{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:var(--obsidian);border:1px solid var(--line);color:var(--ash);cursor:pointer;font-size:1rem;padding:0;}
+  .icon-pick-grid button:hover{color:var(--gold-light);border-color:rgba(201,151,74,.45);}
+  .icon-pick-grid button.active{color:var(--gold-light);border-color:var(--gold);background:rgba(201,151,74,.12);}
+  .icon-pick-search{margin-top:8px;display:none;}
+  .icon-pick-search.open{display:block;}
   .form-row select:focus{border-color:var(--gold);}
   .flags-table{width:100%; border-collapse:collapse; margin-top:8px;}
   .flags-table th, .flags-table td{padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle;}
@@ -657,6 +684,7 @@ $can = static function (string $flag) use ($permFlags): bool {
     <div class="nav-group-label">Oyuncular</div>
     <?php if ($can('menu_oyuncular')): ?>
     <a class="nav-item<?= $panelSection === 'oyuncular' ? ' active' : '' ?>" data-target="oyuncular"><i class="fa-solid fa-users"></i> Oyuncu Yönetimi</a>
+    <a class="nav-item<?= $panelSection === 'evlilikler' ? ' active' : '' ?>" data-target="evlilikler"><i class="fa-solid fa-heart"></i> Evlilikler</a>
     <?php endif; ?>
     <?php if ($can('menu_siralamalar')): ?>
     <a class="nav-item<?= $panelSection === 'siralamalar' ? ' active' : '' ?>" data-target="siralamalar"><i class="fa-solid fa-ranking-star"></i> Oyuncu Sıralaması</a>
@@ -699,6 +727,13 @@ $can = static function (string $flag) use ($permFlags): bool {
     <?php endif; ?>
     <?php if ($can('menu_loglar')): ?>
     <a class="nav-item<?= $panelSection === 'loglar' ? ' active' : '' ?>" data-target="loglar"><i class="fa-solid fa-scroll"></i> Loglar</a>
+    <?php endif; ?>
+
+    <?php if ($can('menu_nesne_market') || $can('site_settings')): ?>
+    <div class="nav-group-label">Nesne Market</div>
+    <a class="nav-item<?= $panelSection === 'nesne-market-kategoriler' ? ' active' : '' ?>" data-target="nesne-market-kategoriler"><i class="fa-solid fa-layer-group"></i> Kategoriler</a>
+    <a class="nav-item<?= $panelSection === 'nesne-market-urunler' ? ' active' : '' ?>" data-target="nesne-market-urunler"><i class="fa-solid fa-box-open"></i> Ürünler</a>
+    <a class="nav-item<?= $panelSection === 'nesne-market-satis-loglari' ? ' active' : '' ?>" data-target="nesne-market-satis-loglari"><i class="fa-solid fa-receipt"></i> Satış Logları</a>
     <?php endif; ?>
 
     <?php if ($can('site_settings')): ?>
@@ -1034,6 +1069,110 @@ $can = static function (string $flag) use ($permFlags): bool {
               <?php endif; ?>
             <?php endfor; ?>
             <a class="<?= $playerPage >= $playerPages ? 'disabled' : '' ?>" href="<?= e($mk(min($playerPages, $playerPage + 1))) ?>">Sonraki</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== EVLİLİKLER ===================== -->
+    <section class="section<?= $panelSection === 'evlilikler' ? ' active' : '' ?>" id="evlilikler">
+      <div class="card">
+        <div class="card-head">
+          <h3>Evlilikler</h3>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span style="font-size:.8rem; color:var(--ash);"><?= number_format($marriageTotal, 0, ',', '.') ?> kayıt · player.marriage</span>
+            <?php
+              $refreshMarriageQs = http_build_query(array_filter([
+                  'section' => 'evlilikler',
+                  'marriage_q' => $marriageQ !== '' ? $marriageQ : null,
+                  'marriage_per' => $marriagePerPage !== 20 ? $marriagePerPage : null,
+                  'marriage_page' => $marriagePage > 1 ? $marriagePage : null,
+              ], static fn($v) => $v !== null && $v !== ''));
+            ?>
+            <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?' . $refreshMarriageQs)) ?>" title="Yenile"><i class="fa-solid fa-arrows-rotate"></i> Yenile</a>
+          </div>
+        </div>
+        <form class="filters" method="get" action="<?= e(url('/admin')) ?>">
+          <input type="hidden" name="section" value="evlilikler">
+          <input name="marriage_q" value="<?= e($marriageQ) ?>" placeholder="Karakter adı veya PID ara..." style="flex:1; min-width:200px;">
+          <select name="marriage_per" title="Sayfa başına">
+            <?php foreach ($marriagePerOptions as $opt): ?>
+              <option value="<?= (int) $opt ?>"<?= $marriagePerPage === (int) $opt ? ' selected' : '' ?>><?= (int) $opt ?> / sayfa</option>
+            <?php endforeach; ?>
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Filtrele</button>
+        </form>
+        <table>
+          <thead>
+            <tr>
+              <th>Karakter 1</th>
+              <th>Karakter 2</th>
+              <th>Aşk Puanı</th>
+              <th>Tarih</th>
+              <th>İşlemler</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php if ($marriageRows === []): ?>
+              <tr><td colspan="5" style="color:var(--ash);">Evlilik kaydı yok.</td></tr>
+            <?php else: ?>
+              <?php foreach ($marriageRows as $mr): ?>
+              <tr>
+                <td>
+                  <div><?= e((string) $mr['name1']) ?></div>
+                  <div class="meta" style="font-size:.72rem;color:var(--ash);">PID <?= (int) $mr['pid1'] ?> · Sv. <?= (int) $mr['level1'] ?> · <?= e((string) $mr['job_label1']) ?></div>
+                </td>
+                <td>
+                  <div><?= e((string) $mr['name2']) ?></div>
+                  <div class="meta" style="font-size:.72rem;color:var(--ash);">PID <?= (int) $mr['pid2'] ?> · Sv. <?= (int) $mr['level2'] ?> · <?= e((string) $mr['job_label2']) ?></div>
+                </td>
+                <td><?= $mr['love_point'] !== null ? number_format((int) $mr['love_point'], 0, ',', '.') : '—' ?></td>
+                <td><?= e((string) $mr['time_label']) ?></td>
+                <td class="actions-cell">
+                  <form method="post" action="<?= e(url('/admin/evlilik/bitir')) ?>" style="display:inline;" onsubmit="return confirm('Bu evliliği sonlandırmak istediğinize emin misiniz?');">
+                    <?= $csrf ?>
+                    <input type="hidden" name="pid1" value="<?= (int) $mr['pid1'] ?>">
+                    <input type="hidden" name="pid2" value="<?= (int) $mr['pid2'] ?>">
+                    <button type="submit" class="danger" title="Evliliği bitir"><i class="fa-solid fa-heart-crack"></i></button>
+                  </form>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </tbody>
+        </table>
+        <?php
+          $mkMarriage = static function (int $p, ?int $per = null) use ($marriageQ, $marriagePerPage): string {
+              $per = $per ?? $marriagePerPage;
+              $qs = http_build_query(array_filter([
+                  'section' => 'evlilikler',
+                  'marriage_q' => $marriageQ !== '' ? $marriageQ : null,
+                  'marriage_per' => $per !== 20 ? $per : null,
+                  'marriage_page' => $p > 1 ? $p : null,
+              ], static fn($v) => $v !== null && $v !== ''));
+              return url('/admin' . ($qs !== '' ? '?' . $qs : ''));
+          };
+        ?>
+        <div class="pager">
+          <div>
+            Sayfa <?= (int) $marriagePage ?> / <?= (int) $marriagePages ?>
+            · <?= (int) $marriagePerPage ?> kayıt / sayfa
+            · Toplam <?= number_format($marriageTotal, 0, ',', '.') ?>
+          </div>
+          <div class="links">
+            <a class="<?= $marriagePage <= 1 ? 'disabled' : '' ?>" href="<?= e($mkMarriage(max(1, $marriagePage - 1))) ?>">Önceki</a>
+            <?php
+              $mStart = max(1, $marriagePage - 2);
+              $mEnd = min($marriagePages, $marriagePage + 2);
+              for ($i = $mStart; $i <= $mEnd; $i++):
+            ?>
+              <?php if ($i === $marriagePage): ?>
+                <span class="cur"><?= $i ?></span>
+              <?php else: ?>
+                <a href="<?= e($mkMarriage($i)) ?>"><?= $i ?></a>
+              <?php endif; ?>
+            <?php endfor; ?>
+            <a class="<?= $marriagePage >= $marriagePages ? 'disabled' : '' ?>" href="<?= e($mkMarriage(min($marriagePages, $marriagePage + 1))) ?>">Sonraki</a>
           </div>
         </div>
       </div>
@@ -2426,14 +2565,337 @@ $can = static function (string $flag) use ($permFlags): bool {
             </div>
           </div>
           <div class="card-head" style="margin-top:8px;"><h3 style="font-size:.95rem;">Boyutlar (px)</h3></div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
             <div class="form-row"><label>Ana sayfa logo yüksekliği</label><input type="number" name="home_size" min="16" max="160" value="<?= (int) ($siteBrand['home_size'] ?? 48) ?>"></div>
             <div class="form-row"><label>Kullanıcı paneli ikon</label><input type="number" name="user_size" min="16" max="120" value="<?= (int) ($siteBrand['user_size'] ?? 36) ?>"></div>
             <div class="form-row"><label>Admin paneli ikon</label><input type="number" name="admin_size" min="16" max="120" value="<?= (int) ($siteBrand['admin_size'] ?? 36) ?>"></div>
+            <div class="form-row"><label>Nesne Market logo</label><input type="number" name="market_size" min="12" max="80" value="<?= (int) ($siteBrand['market_size'] ?? 22) ?>"></div>
+          </div>
+          <div class="card-head" style="margin-top:18px;"><h3 style="font-size:.95rem;">Nesne Market logosu</h3></div>
+          <div class="form-row" style="margin-bottom:12px;">
+            <label>Özel market logosu (boşsa ana logo kullanılır)</label>
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;padding:12px;border:1px solid var(--line);background:var(--obsidian);">
+              <img src="<?= e((string) ($siteBrand['market_logo_url'] ?? $brandLogo)) ?>" alt="Market Logo" style="max-height:<?= max(16, min(80, (int) ($siteBrand['market_size'] ?? 22))) ?>px;max-width:180px;object-fit:contain;">
+              <span style="font-size:.75rem;color:var(--ash);"><?= !empty($siteBrand['has_custom_market_logo']) ? 'Özel market logosu' : 'Ana logo / varsayılan' ?></span>
+            </div>
+            <input type="file" name="market_logo" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg">
+            <?php if (!empty($siteBrand['has_custom_market_logo'])): ?>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:10px;text-transform:none;letter-spacing:0;cursor:pointer;font-size:.82rem;color:var(--ash);">
+              <input type="checkbox" name="remove_market_logo" value="1" style="width:auto;"> Özel market logosunu kaldır
+            </label>
+            <?php endif; ?>
           </div>
           <p style="font-size:.75rem;color:var(--ash);margin:4px 0 16px;">Boş bırakılan yüklemeler mevcut dosyayı korur. Kaldır seçenekleri varsayılan tema görsellerine döner.</p>
           <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
         </form>
+      </div>
+    </section>
+
+    <!-- ===================== NESNE MARKET KATEGORİLER ===================== -->
+    <section class="section<?= $panelSection === 'nesne-market-kategoriler' ? ' active' : '' ?>" id="nesne-market-kategoriler">
+      <?php
+        $marketCategories = isset($marketCategories) && is_array($marketCategories) ? $marketCategories : [];
+      ?>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h3>Kategoriler</h3>
+            <span style="font-size:.8rem;color:var(--ash);"><?= count($marketCategories) ?> kayıt</span>
+          </div>
+          <p style="font-size:.8rem;color:var(--ash);margin-bottom:12px;">Aktif kategoriler Nesne Market sol menüsünde (Tümü’den sonra) sıralama ile görünür. İkon: Font Awesome (örn. <code>fa-solid fa-khanda</code>).</p>
+          <table>
+            <thead><tr><th>Sıra</th><th>İkon</th><th>Ad</th><th>Slug</th><th>Durum</th><th></th></tr></thead>
+            <tbody>
+              <?php if ($marketCategories === []): ?>
+                <tr><td colspan="6" style="color:var(--ash);">Kategori yok.</td></tr>
+              <?php else: ?>
+                <?php foreach ($marketCategories as $mc): ?>
+                <tr>
+                  <td><?= (int) $mc['sort_order'] ?></td>
+                  <td><i class="<?= e((string) $mc['icon']) ?>" style="color:var(--gold-light);"></i></td>
+                  <td><?= e((string) $mc['name']) ?></td>
+                  <td><code><?= e((string) $mc['slug']) ?></code></td>
+                  <td><?= !empty($mc['is_active']) ? '<span class="badge ok">Aktif</span>' : '<span class="badge ban">Pasif</span>' ?></td>
+                  <td class="actions-cell">
+                    <button type="button" title="Düzenle"
+                      data-edit-market-cat
+                      data-id="<?= (int) $mc['id'] ?>"
+                      data-name="<?= e((string) $mc['name']) ?>"
+                      data-slug="<?= e((string) $mc['slug']) ?>"
+                      data-icon="<?= e((string) $mc['icon']) ?>"
+                      data-sort="<?= (int) $mc['sort_order'] ?>"
+                      data-active="<?= !empty($mc['is_active']) ? '1' : '0' ?>"
+                    ><i class="fa-solid fa-pen"></i></button>
+                    <form method="post" action="<?= e(url('/admin/nesne-market/kategori/toggle')) ?>" style="display:inline;">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $mc['id'] ?>">
+                      <input type="hidden" name="is_active" value="<?= !empty($mc['is_active']) ? '0' : '1' ?>">
+                      <button type="submit" title="Aç/Kapat"><?= !empty($mc['is_active']) ? '<i class="fa-solid fa-toggle-on"></i>' : '<i class="fa-solid fa-toggle-off"></i>' ?></button>
+                    </form>
+                    <form method="post" action="<?= e(url('/admin/nesne-market/kategori/sil')) ?>" style="display:inline;" onsubmit="return confirm('Kategori silinsin mi?');">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $mc['id'] ?>">
+                      <button type="submit" class="danger" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3 id="marketCatFormTitle">Yeni Kategori</h3></div>
+          <form method="post" action="<?= e(url('/admin/nesne-market/kategori/kaydet')) ?>" id="marketCatForm">
+            <?= $csrf ?>
+            <input type="hidden" name="id" id="marketCatId" value="">
+            <div class="form-row"><label>Ad</label><input name="name" id="marketCatName" required maxlength="120" placeholder="Örn. Silah"></div>
+            <div class="form-row"><label>Slug (boşsa addan üretilir)</label><input name="slug" id="marketCatSlug" maxlength="40" placeholder="silah"></div>
+            <div class="form-row">
+              <label>İkon (Font Awesome)</label>
+              <div class="icon-pick-row">
+                <span class="icon-pick-preview" id="marketCatIconPreview" title="Önizleme"><i class="fa-solid fa-box"></i></span>
+                <input name="icon" id="marketCatIcon" required maxlength="80" value="fa-solid fa-box" placeholder="fa-solid fa-khanda" autocomplete="off">
+              </div>
+              <label class="icon-pick-toggle" style="margin-top:10px;">
+                <input type="checkbox" id="marketCatIconPickToggle" style="width:auto;"> İkonları göster ve seç
+              </label>
+              <input type="search" id="marketCatIconSearch" class="icon-pick-search" placeholder="İkon ara (örn. khanda, horse)…" autocomplete="off">
+              <div class="icon-pick-grid" id="marketCatIconGrid" aria-label="İkon seçici"></div>
+            </div>
+            <div class="grid grid-2">
+              <div class="form-row"><label>Sıra</label><input type="number" name="sort_order" id="marketCatSort" value="0" min="0"></div>
+              <div class="form-row"><label><input type="checkbox" name="is_active" id="marketCatActive" value="1" checked> Aktif</label></div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="marketCatReset">Temizle</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== NESNE MARKET ÜRÜNLER ===================== -->
+    <section class="section<?= $panelSection === 'nesne-market-urunler' ? ' active' : '' ?>" id="nesne-market-urunler">
+      <?php
+        $marketItems = isset($marketItems) && is_array($marketItems) ? $marketItems : [];
+        $marketCategories = isset($marketCategories) && is_array($marketCategories) ? $marketCategories : [];
+        $marketItemNextSort = isset($marketItemNextSort) ? (int) $marketItemNextSort : 1;
+        if ($marketItemNextSort < 1) {
+            $marketItemNextSort = 1;
+        }
+        $marketItemQ = isset($marketItemQ) ? (string) $marketItemQ : '';
+        $marketItemCat = isset($marketItemCat) ? (int) $marketItemCat : 0;
+      ?>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h3>Ürünler</h3>
+            <span style="font-size:.8rem;color:var(--ash);"><?= count($marketItems) ?> kayıt</span>
+          </div>
+          <p style="font-size:.8rem;color:var(--ash);margin-bottom:12px;">Aktif ürünler Nesne Market’te görünür. Görsel: m2icondb linki veya yükleme (<code>/uploads/market/</code>). İndirim aktifken fiyat yüzde olarak düşer.</p>
+          <form class="filters" method="get" action="<?= e(url('/admin')) ?>" style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input type="hidden" name="section" value="nesne-market-urunler">
+            <input name="market_item_q" value="<?= e($marketItemQ) ?>" placeholder="Ad veya item kodu ara…" style="flex:1;min-width:180px;">
+            <select name="market_item_cat" style="min-width:140px;">
+              <option value="0">Tüm kategoriler</option>
+              <?php foreach ($marketCategories as $mc): ?>
+                <option value="<?= (int) $mc['id'] ?>"<?= $marketItemCat === (int) $mc['id'] ? ' selected' : '' ?>><?= e((string) $mc['name']) ?></option>
+              <?php endforeach; ?>
+            </select>
+            <button type="submit" class="btn btn-ghost btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Ara</button>
+            <?php if ($marketItemQ !== '' || $marketItemCat > 0): ?>
+              <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?section=nesne-market-urunler')) ?>">Temizle</a>
+            <?php endif; ?>
+          </form>
+          <table>
+            <thead><tr><th>Sıra</th><th></th><th>Kod</th><th>Ad</th><th>Kategori</th><th>Süre</th><th>Fiyat</th><th>Durum</th><th></th></tr></thead>
+            <tbody>
+              <?php if ($marketItems === []): ?>
+                <tr><td colspan="9" style="color:var(--ash);"><?= ($marketItemQ !== '' || $marketItemCat > 0) ? 'Filtreye uyan ürün yok.' : 'Henüz ürün yok. Sağdaki formdan ekleyebilirsin.' ?></td></tr>
+              <?php else: ?>
+                <?php foreach ($marketItems as $mi): ?>
+                <tr>
+                  <td><?= (int) $mi['sort_order'] ?></td>
+                  <td>
+                    <?php if ((string) ($mi['image_url'] ?? '') !== ''): ?>
+                      <img src="<?= e((string) $mi['image_url']) ?>" alt="" referrerpolicy="no-referrer" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;">
+                    <?php else: ?>
+                      <i class="fa-solid fa-box" style="color:var(--ash);"></i>
+                    <?php endif; ?>
+                  </td>
+                  <td><code><?= e((string) ($mi['item_code'] ?? '')) ?></code></td>
+                  <td><?= e((string) $mi['name']) ?></td>
+                  <td><?= e((string) ($mi['category_name'] !== '' ? $mi['category_name'] : '—')) ?></td>
+                  <td><?= ((string) ($mi['duration_type'] ?? '') === 'timed') ? 'Süreli' : 'Süresiz' ?></td>
+                  <td>
+                    <?= number_format((int) $mi['sale_price'], 0, ',', '.') ?>
+                    <?php if (!empty($mi['old_price'])): ?>
+                      <span style="text-decoration:line-through;color:var(--ash);font-size:.75rem;margin-left:4px;"><?= number_format((int) $mi['old_price'], 0, ',', '.') ?></span>
+                      <span class="badge" style="margin-left:4px;">%<?= (int) $mi['discount_percent'] ?></span>
+                    <?php endif; ?>
+                  </td>
+                  <td><?= !empty($mi['is_active']) ? '<span class="badge ok">Aktif</span>' : '<span class="badge ban">Pasif</span>' ?></td>
+                  <td class="actions-cell">
+                    <button type="button" title="Düzenle"
+                      data-edit-market-item
+                      data-id="<?= (int) $mi['id'] ?>"
+                      data-code="<?= e((string) ($mi['item_code'] ?? '')) ?>"
+                      data-name="<?= e((string) $mi['name']) ?>"
+                      data-desc="<?= e((string) $mi['description']) ?>"
+                      data-price="<?= (int) $mi['price'] ?>"
+                      data-discount-active="<?= !empty($mi['discount_active']) ? '1' : '0' ?>"
+                      data-discount-percent="<?= (int) $mi['discount_percent'] ?>"
+                      data-image="<?= e((string) $mi['image_url']) ?>"
+                      data-duration="<?= e((string) ($mi['duration_type'] ?? 'permanent')) ?>"
+                      data-category="<?= (int) $mi['category_id'] ?>"
+                      data-sort="<?= (int) $mi['sort_order'] ?>"
+                      data-active="<?= !empty($mi['is_active']) ? '1' : '0' ?>"
+                    ><i class="fa-solid fa-pen"></i></button>
+                    <form method="post" action="<?= e(url('/admin/nesne-market/urun/toggle')) ?>" style="display:inline;">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $mi['id'] ?>">
+                      <input type="hidden" name="is_active" value="<?= !empty($mi['is_active']) ? '0' : '1' ?>">
+                      <button type="submit" title="Aç/Kapat"><?= !empty($mi['is_active']) ? '<i class="fa-solid fa-toggle-on"></i>' : '<i class="fa-solid fa-toggle-off"></i>' ?></button>
+                    </form>
+                    <form method="post" action="<?= e(url('/admin/nesne-market/urun/sil')) ?>" style="display:inline;" onsubmit="return confirm('Ürün silinsin mi?');">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $mi['id'] ?>">
+                      <button type="submit" class="danger" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3 id="marketItemFormTitle">Yeni Ürün</h3></div>
+          <form method="post" action="<?= e(url('/admin/nesne-market/urun/kaydet')) ?>" id="marketItemForm" enctype="multipart/form-data">
+            <?= $csrf ?>
+            <input type="hidden" name="id" id="marketItemId" value="">
+            <div class="form-row"><label>Item kodu</label><input name="item_code" id="marketItemCode" required maxlength="32" placeholder="Örn. 10 veya 00010" autocomplete="off"></div>
+            <div class="form-row"><label>Ürün adı</label><input name="name" id="marketItemName" required maxlength="160" placeholder="Örn. Kılıç+0"></div>
+            <div class="form-row"><label>Açıklama</label><textarea name="description" id="marketItemDesc" rows="3" placeholder="Ürün açıklaması"></textarea></div>
+            <div class="form-row">
+              <label>Kategori</label>
+              <select name="category_id" id="marketItemCategory" required>
+                <option value="">Seçin…</option>
+                <?php foreach ($marketCategories as $mc): ?>
+                  <option value="<?= (int) $mc['id'] ?>"><?= e((string) $mc['name']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="grid grid-2">
+              <div class="form-row"><label>Fiyat (Elmas)</label><input type="number" name="price" id="marketItemPrice" value="0" min="0" required></div>
+              <div class="form-row"><label>Sıra</label><input type="number" name="sort_order" id="marketItemSort" value="<?= $marketItemNextSort ?>" min="0"></div>
+            </div>
+            <div class="form-row">
+              <label>Süre</label>
+              <select name="duration_type" id="marketItemDuration">
+                <option value="permanent">Süresiz</option>
+                <option value="timed">Süreli</option>
+              </select>
+            </div>
+            <div class="form-row"><label><input type="checkbox" name="discount_active" id="marketItemDiscountActive" value="1"> İndirim aktif</label></div>
+            <div class="form-row" id="marketItemDiscountRow" style="display:none;">
+              <label>İndirim tutarı (%)</label>
+              <input type="number" name="discount_percent" id="marketItemDiscountPercent" value="0" min="0" max="100">
+            </div>
+            <div class="form-row">
+              <label>Item resmi (URL)</label>
+              <input name="image_url" id="marketItemImageUrl" maxlength="500" placeholder="https://img.m2icondb.com/00010.png">
+              <div id="marketItemImagePreview" style="margin-top:8px;min-height:32px;"></div>
+            </div>
+            <div class="form-row">
+              <label>veya yükle (png/jpg/webp/gif, max 3MB)</label>
+              <input type="file" name="image_file" id="marketItemImageFile" accept="image/png,image/jpeg,image/webp,image/gif">
+            </div>
+            <div class="form-row"><label><input type="checkbox" name="is_active" id="marketItemActive" value="1" checked> Aktif</label></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="marketItemReset">Temizle</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== NESNE MARKET SATIŞ LOGLARI ===================== -->
+    <section class="section<?= $panelSection === 'nesne-market-satis-loglari' ? ' active' : '' ?>" id="nesne-market-satis-loglari">
+      <?php
+        $marketSales = isset($marketSales) && is_array($marketSales) ? $marketSales : ['logs' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 20, 'q' => ''];
+        $saleLogs = is_array($marketSales['logs'] ?? null) ? $marketSales['logs'] : [];
+        $saleQ = (string) ($marketSales['q'] ?? '');
+        $salePage = (int) ($marketSales['page'] ?? 1);
+        $salePages = (int) ($marketSales['pages'] ?? 1);
+        $saleTotal = (int) ($marketSales['total'] ?? 0);
+      ?>
+      <div class="card">
+        <div class="card-head">
+          <h3>Satış Logları</h3>
+          <span style="font-size:.8rem;color:var(--ash);"><?= $saleTotal ?> kayıt</span>
+        </div>
+        <p style="font-size:.8rem;color:var(--ash);margin-bottom:12px;">Her alışverişte hesap, ürün (ad + kod), alış öncesi / sonrası Elmas bakiyesi kaydedilir.</p>
+        <form class="filters" method="get" action="<?= e(url('/admin')) ?>" style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <input type="hidden" name="section" value="nesne-market-satis-loglari">
+          <input name="market_sale_q" value="<?= e($saleQ) ?>" placeholder="Hesap, item adı veya kod…" style="flex:1;min-width:200px;">
+          <button type="submit" class="btn btn-ghost btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Ara</button>
+          <?php if ($saleQ !== ''): ?>
+            <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?section=nesne-market-satis-loglari')) ?>">Temizle</a>
+          <?php endif; ?>
+        </form>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Tarih</th>
+              <th>Hesap</th>
+              <th>Ürün</th>
+              <th>Kod</th>
+              <th>Fiyat</th>
+              <th>Cash önce</th>
+              <th>Cash sonra</th>
+              <th>Depo pos</th>
+              <th>IP</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php if ($saleLogs === []): ?>
+              <tr><td colspan="10" style="color:var(--ash);">Henüz satış yok.</td></tr>
+            <?php else: ?>
+              <?php foreach ($saleLogs as $sl): ?>
+              <tr>
+                <td><?= (int) $sl['id'] ?></td>
+                <td style="white-space:nowrap;font-size:.78rem;"><?= e((string) $sl['created_at']) ?></td>
+                <td><?= e((string) $sl['account_login']) ?> <span style="color:var(--ash);font-size:.72rem;">#<?= (int) $sl['account_id'] ?></span></td>
+                <td><?= e((string) $sl['item_name']) ?></td>
+                <td><code><?= e((string) $sl['item_code']) ?></code></td>
+                <td><?= number_format((int) $sl['price'], 0, ',', '.') ?></td>
+                <td><?= number_format((int) $sl['cash_before'], 0, ',', '.') ?></td>
+                <td><?= number_format((int) $sl['cash_after'], 0, ',', '.') ?></td>
+                <td><?= (int) $sl['safebox_pos'] ?></td>
+                <td style="font-size:.75rem;"><?= e((string) $sl['ip']) ?></td>
+              </tr>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </tbody>
+        </table>
+        <?php if ($salePages > 1): ?>
+          <div class="modal-pager" style="margin-top:14px;">
+            <span>Sayfa <?= $salePage ?> / <?= $salePages ?></span>
+            <div class="links">
+              <?php if ($salePage > 1): ?>
+                <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?section=nesne-market-satis-loglari&market_sale_q=' . rawurlencode($saleQ) . '&market_sale_page=' . ($salePage - 1))) ?>">Önceki</a>
+              <?php endif; ?>
+              <?php if ($salePage < $salePages): ?>
+                <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?section=nesne-market-satis-loglari&market_sale_q=' . rawurlencode($saleQ) . '&market_sale_page=' . ($salePage + 1))) ?>">Sonraki</a>
+              <?php endif; ?>
+            </div>
+          </div>
+        <?php endif; ?>
       </div>
     </section>
 
@@ -3860,6 +4322,180 @@ $can = static function (string $flag) use ($permFlags): bool {
     document.getElementById('annTypeName').value = '';
   });
 
+  document.querySelectorAll('[data-edit-market-cat]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('marketCatFormTitle').textContent = 'Kategori Düzenle';
+      document.getElementById('marketCatId').value = btn.dataset.id || '';
+      document.getElementById('marketCatName').value = btn.dataset.name || '';
+      document.getElementById('marketCatSlug').value = btn.dataset.slug || '';
+      document.getElementById('marketCatIcon').value = btn.dataset.icon || 'fa-solid fa-box';
+      document.getElementById('marketCatSort').value = btn.dataset.sort || '0';
+      document.getElementById('marketCatActive').checked = btn.dataset.active === '1';
+      if (typeof window.syncMarketCatIconPicker === 'function') window.syncMarketCatIconPicker();
+      showSection('nesne-market-kategoriler');
+    });
+  });
+  document.getElementById('marketCatReset')?.addEventListener('click', () => {
+    document.getElementById('marketCatFormTitle').textContent = 'Yeni Kategori';
+    document.getElementById('marketCatId').value = '';
+    document.getElementById('marketCatName').value = '';
+    document.getElementById('marketCatSlug').value = '';
+    document.getElementById('marketCatIcon').value = 'fa-solid fa-box';
+    document.getElementById('marketCatSort').value = '0';
+    document.getElementById('marketCatActive').checked = true;
+    if (typeof window.syncMarketCatIconPicker === 'function') window.syncMarketCatIconPicker();
+  });
+
+  (function marketItemAdmin() {
+    const nextSort = <?= (int) ($marketItemNextSort ?? 1) ?>;
+    const discActive = document.getElementById('marketItemDiscountActive');
+    const discRow = document.getElementById('marketItemDiscountRow');
+    const imageUrl = document.getElementById('marketItemImageUrl');
+    const imagePrev = document.getElementById('marketItemImagePreview');
+
+    function syncDiscountRow() {
+      if (!discRow || !discActive) return;
+      discRow.style.display = discActive.checked ? '' : 'none';
+    }
+    function syncImagePreview() {
+      if (!imagePrev) return;
+      const u = (imageUrl?.value || '').trim();
+      if (!u) {
+        imagePrev.innerHTML = '';
+        return;
+      }
+      imagePrev.innerHTML = '<img src="' + u.replace(/"/g, '&quot;') + '" alt="" referrerpolicy="no-referrer" style="width:48px;height:48px;object-fit:contain;image-rendering:pixelated;border:1px solid rgba(255,255,255,.08);padding:4px;">';
+    }
+    discActive?.addEventListener('change', syncDiscountRow);
+    imageUrl?.addEventListener('input', syncImagePreview);
+    syncDiscountRow();
+    syncImagePreview();
+
+    document.querySelectorAll('[data-edit-market-item]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('marketItemFormTitle').textContent = 'Ürün Düzenle';
+        document.getElementById('marketItemId').value = btn.dataset.id || '';
+        document.getElementById('marketItemCode').value = btn.dataset.code || '';
+        document.getElementById('marketItemName').value = btn.dataset.name || '';
+        document.getElementById('marketItemDesc').value = btn.dataset.desc || '';
+        document.getElementById('marketItemPrice').value = btn.dataset.price || '0';
+        document.getElementById('marketItemDiscountActive').checked = btn.dataset.discountActive === '1';
+        document.getElementById('marketItemDiscountPercent').value = btn.dataset.discountPercent || '0';
+        document.getElementById('marketItemImageUrl').value = btn.dataset.image || '';
+        document.getElementById('marketItemDuration').value = btn.dataset.duration || 'permanent';
+        document.getElementById('marketItemCategory').value = btn.dataset.category || '';
+        document.getElementById('marketItemSort').value = btn.dataset.sort || '0';
+        document.getElementById('marketItemActive').checked = btn.dataset.active === '1';
+        const file = document.getElementById('marketItemImageFile');
+        if (file) file.value = '';
+        syncDiscountRow();
+        syncImagePreview();
+        showSection('nesne-market-urunler');
+      });
+    });
+    document.getElementById('marketItemReset')?.addEventListener('click', () => {
+      document.getElementById('marketItemFormTitle').textContent = 'Yeni Ürün';
+      document.getElementById('marketItemId').value = '';
+      document.getElementById('marketItemCode').value = '';
+      document.getElementById('marketItemName').value = '';
+      document.getElementById('marketItemDesc').value = '';
+      document.getElementById('marketItemPrice').value = '0';
+      document.getElementById('marketItemDiscountActive').checked = false;
+      document.getElementById('marketItemDiscountPercent').value = '0';
+      document.getElementById('marketItemImageUrl').value = '';
+      document.getElementById('marketItemDuration').value = 'permanent';
+      document.getElementById('marketItemCategory').value = '';
+      document.getElementById('marketItemSort').value = String(nextSort);
+      document.getElementById('marketItemActive').checked = true;
+      const file = document.getElementById('marketItemImageFile');
+      if (file) file.value = '';
+      syncDiscountRow();
+      syncImagePreview();
+    });
+  })();
+
+  (function marketCatIconPicker() {
+    const input = document.getElementById('marketCatIcon');
+    const preview = document.getElementById('marketCatIconPreview');
+    const toggle = document.getElementById('marketCatIconPickToggle');
+    const grid = document.getElementById('marketCatIconGrid');
+    const search = document.getElementById('marketCatIconSearch');
+    if (!input || !preview || !toggle || !grid) return;
+
+    const icons = [
+      'fa-solid fa-box', 'fa-solid fa-box-open', 'fa-solid fa-gift', 'fa-solid fa-cubes',
+      'fa-solid fa-khanda', 'fa-solid fa-gun', 'fa-solid fa-hand-fist', 'fa-solid fa-shield',
+      'fa-solid fa-shield-halved', 'fa-solid fa-shirt', 'fa-solid fa-hat-wizard', 'fa-solid fa-crown',
+      'fa-solid fa-helmet-un', 'fa-solid fa-gem', 'fa-solid fa-ring', 'fa-solid fa-wand-sparkles',
+      'fa-solid fa-flask', 'fa-solid fa-heart', 'fa-solid fa-heart-pulse', 'fa-solid fa-pills',
+      'fa-solid fa-horse', 'fa-solid fa-paw', 'fa-solid fa-dragon', 'fa-solid fa-dove',
+      'fa-solid fa-star', 'fa-solid fa-bolt', 'fa-solid fa-fire', 'fa-solid fa-snowflake',
+      'fa-solid fa-leaf', 'fa-solid fa-moon', 'fa-solid fa-sun', 'fa-solid fa-cloud',
+      'fa-solid fa-key', 'fa-solid fa-lock', 'fa-solid fa-coins', 'fa-solid fa-sack-dollar',
+      'fa-solid fa-scroll', 'fa-solid fa-book', 'fa-solid fa-map', 'fa-solid fa-compass',
+      'fa-solid fa-ticket', 'fa-solid fa-tags', 'fa-solid fa-basket-shopping', 'fa-solid fa-cart-shopping',
+      'fa-solid fa-user', 'fa-solid fa-users', 'fa-solid fa-skull', 'fa-solid fa-ghost',
+      'fa-solid fa-mask', 'fa-solid fa-eye', 'fa-solid fa-hand', 'fa-solid fa-fingerprint',
+      'fa-solid fa-hammer', 'fa-solid fa-wrench', 'fa-solid fa-gear', 'fa-solid fa-toolbox',
+      'fa-solid fa-fish', 'fa-solid fa-tree', 'fa-solid fa-mountain', 'fa-solid fa-campground',
+      'fa-solid fa-chess-knight', 'fa-solid fa-chess-rook', 'fa-solid fa-trophy', 'fa-solid fa-medal',
+    ];
+
+    const setPreview = (cls) => {
+      const i = preview.querySelector('i') || document.createElement('i');
+      i.className = cls || 'fa-solid fa-box';
+      if (!preview.contains(i)) {
+        preview.innerHTML = '';
+        preview.appendChild(i);
+      }
+    };
+
+    const highlight = () => {
+      const cur = (input.value || '').trim();
+      grid.querySelectorAll('button').forEach((b) => {
+        b.classList.toggle('active', b.dataset.icon === cur);
+      });
+    };
+
+    const render = (filter) => {
+      const q = String(filter || '').trim().toLowerCase();
+      grid.innerHTML = '';
+      icons.filter((cls) => !q || cls.toLowerCase().includes(q)).forEach((cls) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.icon = cls;
+        btn.title = cls;
+        btn.innerHTML = '<i class="' + cls + '"></i>';
+        btn.addEventListener('click', () => {
+          input.value = cls;
+          setPreview(cls);
+          highlight();
+        });
+        grid.appendChild(btn);
+      });
+      highlight();
+    };
+
+    window.syncMarketCatIconPicker = () => {
+      setPreview((input.value || '').trim() || 'fa-solid fa-box');
+      highlight();
+    };
+
+    toggle.addEventListener('change', () => {
+      const on = toggle.checked;
+      grid.classList.toggle('open', on);
+      search?.classList.toggle('open', on);
+      if (on) render(search?.value || '');
+    });
+    search?.addEventListener('input', () => render(search.value));
+    input.addEventListener('input', () => {
+      setPreview((input.value || '').trim() || 'fa-solid fa-question');
+      highlight();
+    });
+    setPreview(input.value);
+    render('');
+  })();
+
   document.querySelectorAll('[data-toggle]').forEach(t => {
     t.addEventListener('click', () => t.classList.toggle('on'));
   });
@@ -3959,7 +4595,7 @@ $can = static function (string $flag) use ($permFlags): bool {
         html += '<div class="row"><span class="k">IP</span><span class="v">' + esc(a.ip || '—') + '</span></div>';
         html += '<div class="row"><span class="k">Kayıt</span><span class="v">' + esc(a.create_label || '—') + '</span></div>';
         html += '<div class="row"><span class="k">Durum</span><span class="v"><span class="badge ' + esc(a.status_badge || '') + '">' + esc(a.status_label || '—') + '</span></span></div>';
-        html += '<div class="row"><span class="k">Cash</span><span class="v">' + Number(a.cash || 0).toLocaleString('tr-TR') + '</span></div>';
+        html += '<div class="row"><span class="k">Elmas</span><span class="v">' + Number(a.cash || 0).toLocaleString('tr-TR') + '</span></div>';
         html += '<div class="row"><span class="k">Kurallar</span><span class="v">' + esc(a.rules_accepted_label || 'Hayır') + '</span></div>';
         if (ban) {
           html += '<div class="row"><span class="k">Aktif Ceza</span><span class="v">' + esc(ban.penalty_name) + ' · ' + esc(ban.days_label) + '</span></div>';
@@ -3972,9 +4608,10 @@ $can = static function (string $flag) use ($permFlags): bool {
         html += '<div class="detail-block"><h4>Karakterler (' + chars.length + ')</h4>';
         if (!chars.length) html += '<div>Karakter yok.</div>';
         else {
-          html += '<table><thead><tr><th>Ad</th><th>Sınıf</th><th>Sv.</th></tr></thead><tbody>';
+          html += '<table><thead><tr><th>Ad</th><th>Sınıf</th><th>Sv.</th><th>Eş</th></tr></thead><tbody>';
           chars.forEach(ch => {
-            html += '<tr><td>' + esc(ch.name) + '</td><td>' + esc(ch.job_label) + '</td><td>' + esc(ch.level) + '</td></tr>';
+            const spouse = ch.spouse_name || (ch.spouse && ch.spouse.name) || (ch.married ? '—' : 'Bekar');
+            html += '<tr><td>' + esc(ch.name) + '</td><td>' + esc(ch.job_label) + '</td><td>' + esc(ch.level) + '</td><td>' + esc(spouse) + '</td></tr>';
           });
           html += '</tbody></table>';
         }

@@ -9,6 +9,15 @@ declare(strict_types=1);
 
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/');
 
+if (preg_match('#^/themes/([A-Za-z0-9_-]+)/nesnemarket/assets/(.+)$#', $uri, $m)) {
+    $_GET['theme'] = $m[1];
+    $_GET['module'] = 'nesnemarket';
+    $_GET['folder'] = 'assets';
+    $_GET['path'] = $m[2];
+    require __DIR__ . '/theme-asset.php';
+    return true;
+}
+
 if (preg_match('#^/themes/([A-Za-z0-9_-]+)/assets/(.+)$#', $uri, $m)) {
     $_GET['theme'] = $m[1];
     $_GET['path'] = $m[2];

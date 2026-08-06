@@ -169,12 +169,16 @@ final class AdminSiteController
         SiteContentService::set('logo', 'home_size', (string) max(16, min(160, (int) ($_POST['home_size'] ?? 48))));
         SiteContentService::set('logo', 'user_size', (string) max(16, min(120, (int) ($_POST['user_size'] ?? 36))));
         SiteContentService::set('logo', 'admin_size', (string) max(16, min(120, (int) ($_POST['admin_size'] ?? 36))));
+        SiteContentService::set('logo', 'market_size', (string) max(12, min(80, (int) ($_POST['market_size'] ?? 22))));
 
         if (!empty($_POST['remove_logo'])) {
             SiteContentService::clearBrandFile('logo');
         }
         if (!empty($_POST['remove_icon'])) {
             SiteContentService::clearBrandFile('icon');
+        }
+        if (!empty($_POST['remove_market_logo'])) {
+            SiteContentService::clearBrandFile('market');
         }
 
         if (!empty($_FILES['logo']['tmp_name']) && is_uploaded_file((string) $_FILES['logo']['tmp_name'])) {
@@ -199,6 +203,21 @@ final class AdminSiteController
             }
             $old = (string) (SiteContentService::get('logo', 'icon_path', '') ?? '');
             SiteContentService::set('logo', 'icon_path', $uploaded);
+            if ($old !== '' && $old !== $uploaded && str_starts_with($old, '/uploads/branding/')) {
+                $full = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . str_replace('/', DIRECTORY_SEPARATOR, $old);
+                if (is_file($full)) {
+                    @unlink($full);
+                }
+            }
+        }
+
+        if (!empty($_FILES['market_logo']['tmp_name']) && is_uploaded_file((string) $_FILES['market_logo']['tmp_name'])) {
+            $uploaded = $this->storeBrandingUpload($_FILES['market_logo'], 'logo');
+            if ($uploaded === null) {
+                $this->fail(['Nesne Market logosu yüklenemedi (png/jpg/webp/gif/svg, max 5MB).'], 'logo-ayarlari');
+            }
+            $old = (string) (SiteContentService::get('logo', 'market_logo_path', '') ?? '');
+            SiteContentService::set('logo', 'market_logo_path', $uploaded);
             if ($old !== '' && $old !== $uploaded && str_starts_with($old, '/uploads/branding/')) {
                 $full = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . str_replace('/', DIRECTORY_SEPARATOR, $old);
                 if (is_file($full)) {

@@ -161,7 +161,7 @@ final class Security
             . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
             . "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; "
             . "script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com https://www.recaptcha.net https://challenges.cloudflare.com; "
-            . "img-src 'self' data: https://www.gstatic.com https://www.google.com https://challenges.cloudflare.com; "
+            . "img-src 'self' data: https: http:; "
             . "frame-src 'self' https://www.google.com https://www.recaptcha.net https://challenges.cloudflare.com; "
             . "connect-src 'self' https://www.google.com https://challenges.cloudflare.com; "
             . "frame-ancestors 'self';"

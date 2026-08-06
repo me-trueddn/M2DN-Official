@@ -410,10 +410,10 @@ final class SiteContentService
      * Logo / ikon ayarları (Ayarlar → Logo).
      *
      * @return array{
-     *   logo_url:string, icon_url:string,
-     *   logo_path:string, icon_path:string,
-     *   home_size:int, user_size:int, admin_size:int,
-     *   has_custom_logo:bool, has_custom_icon:bool
+     *   logo_url:string, icon_url:string, market_logo_url:string,
+     *   logo_path:string, icon_path:string, market_logo_path:string,
+     *   home_size:int, user_size:int, admin_size:int, market_size:int,
+     *   has_custom_logo:bool, has_custom_icon:bool, has_custom_market_logo:bool
      * }
      */
     public static function branding(): array
@@ -421,42 +421,61 @@ final class SiteContentService
         $defaults = self::brandingDefaults();
         $logoPath = trim((string) (self::get('logo', 'logo_path', '') ?? ''));
         $iconPath = trim((string) (self::get('logo', 'icon_path', '') ?? ''));
+        $marketPath = trim((string) (self::get('logo', 'market_logo_path', '') ?? ''));
         $home = (int) (self::get('logo', 'home_size', (string) $defaults['home_size']) ?? $defaults['home_size']);
         $user = (int) (self::get('logo', 'user_size', (string) $defaults['user_size']) ?? $defaults['user_size']);
         $admin = (int) (self::get('logo', 'admin_size', (string) $defaults['admin_size']) ?? $defaults['admin_size']);
+        $market = (int) (self::get('logo', 'market_size', (string) $defaults['market_size']) ?? $defaults['market_size']);
+
+        $logoUrl = self::resolveBrandUrl($logoPath, $defaults['logo_url']);
 
         return [
             'logo_path' => $logoPath,
             'icon_path' => $iconPath,
-            'logo_url' => self::resolveBrandUrl($logoPath, $defaults['logo_url']),
+            'market_logo_path' => $marketPath,
+            'logo_url' => $logoUrl,
             'icon_url' => self::resolveBrandUrl($iconPath, $defaults['icon_url']),
+            'market_logo_url' => self::resolveBrandUrl($marketPath, $logoUrl),
             'home_size' => max(16, min(160, $home > 0 ? $home : $defaults['home_size'])),
             'user_size' => max(16, min(120, $user > 0 ? $user : $defaults['user_size'])),
             'admin_size' => max(16, min(120, $admin > 0 ? $admin : $defaults['admin_size'])),
+            'market_size' => max(12, min(80, $market > 0 ? $market : $defaults['market_size'])),
             'has_custom_logo' => $logoPath !== '',
             'has_custom_icon' => $iconPath !== '',
+            'has_custom_market_logo' => $marketPath !== '',
         ];
     }
 
-    /** @return array{logo_url:string, icon_url:string, logo_path:string, icon_path:string, home_size:int, user_size:int, admin_size:int, has_custom_logo:bool, has_custom_icon:bool} */
+    /** @return array{logo_url:string, icon_url:string, market_logo_url:string, logo_path:string, icon_path:string, market_logo_path:string, home_size:int, user_size:int, admin_size:int, market_size:int, has_custom_logo:bool, has_custom_icon:bool, has_custom_market_logo:bool} */
     public static function brandingDefaults(): array
     {
+        $logo = \App\Core\Theme::assetUrl('img/logo-nav.svg');
         return [
-            'logo_url' => \App\Core\Theme::assetUrl('img/logo-nav.svg'),
+            'logo_url' => $logo,
             'icon_url' => \App\Core\Theme::assetUrl('img/logo-mark.svg'),
+            'market_logo_url' => $logo,
             'logo_path' => '',
             'icon_path' => '',
+            'market_logo_path' => '',
             'home_size' => 48,
             'user_size' => 36,
             'admin_size' => 36,
+            'market_size' => 22,
             'has_custom_logo' => false,
             'has_custom_icon' => false,
+            'has_custom_market_logo' => false,
         ];
     }
 
     public static function clearBrandFile(string $which): void
     {
-        $key = $which === 'icon' ? 'icon_path' : 'logo_path';
+        $map = [
+            'icon' => 'icon_path',
+            'market' => 'market_logo_path',
+            'market_logo' => 'market_logo_path',
+            'logo' => 'logo_path',
+        ];
+        $key = $map[$which] ?? 'logo_path';
         $path = trim((string) (self::get('logo', $key, '') ?? ''));
         if ($path !== '' && str_starts_with($path, '/uploads/branding/')) {
             $full = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . str_replace('/', DIRECTORY_SEPARATOR, $path);

@@ -233,7 +233,7 @@ final class PlayerService
         }
 
         $job = (int) $row['job'];
-        return [
+        $character = [
             'id' => (int) $row['id'],
             'name' => (string) $row['name'],
             'job' => $job,
@@ -252,6 +252,9 @@ final class PlayerService
             'empire_label' => self::empireLabel($empire),
             'max_level' => self::resolveMaxLevel($serverKey),
         ];
+        $enriched = MarriageService::attachSpouses([$character], $serverKey);
+
+        return $enriched[0] ?? $character;
     }
 
     private static function resolveMaxLevel(?string $serverKey): int
@@ -373,6 +376,6 @@ final class PlayerService
             return $b['level'] <=> $a['level'];
         });
 
-        return $chars;
+        return MarriageService::attachSpouses($chars, $serverKey);
     }
 }

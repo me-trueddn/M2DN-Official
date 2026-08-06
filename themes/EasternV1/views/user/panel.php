@@ -32,6 +32,7 @@
 /** @var list<array> $guildWarHistory */
 /** @var list<array> $guildWarBoard */
 /** @var array $rankings */
+/** @var array $marriages */
 /** @var array $siteBrand */
 /** @var string $appVersion */
 
@@ -84,6 +85,14 @@ $rankPages = max(1, (int) ($rankings['pages'] ?? 1));
 $rankQ = (string) ($rankings['q'] ?? '');
 $rankPerPage = (int) ($rankings['per_page'] ?? 10);
 $rankPerOptions = is_array($rankings['per_page_options'] ?? null) ? $rankings['per_page_options'] : [10, 20, 30, 50, 100];
+$marriages = is_array($marriages ?? null) ? $marriages : [];
+$marriageRows = is_array($marriages['rows'] ?? null) ? $marriages['rows'] : [];
+$marriageTotal = (int) ($marriages['total'] ?? 0);
+$marriagePage = (int) ($marriages['page'] ?? 1);
+$marriagePages = max(1, (int) ($marriages['pages'] ?? 1));
+$marriageQ = (string) ($marriages['q'] ?? '');
+$marriagePerPage = (int) ($marriages['per_page'] ?? 20);
+$marriagePerOptions = is_array($marriages['per_page_options'] ?? null) ? $marriages['per_page_options'] : [10, 20, 30, 50, 100];
 if (!isset($siteBrand) || !is_array($siteBrand)) {
     $siteBrand = \App\Services\SiteContentService::brandingDefaults();
 }
@@ -311,6 +320,11 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:900; padding:18px;}
   .modal-overlay.open{display:flex;}
   .modal{width:680px; max-width:100%; max-height:88vh; overflow:auto; background:var(--obsidian-2); border:1px solid var(--gold); padding:26px; clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);}
+  .modal.market-modal{
+    width:min(1040px, 96vw); height:min(800px, 92vh); max-height:92vh;
+    padding:0; overflow:hidden; display:flex; flex-direction:column;
+  }
+  .modal.market-modal iframe{flex:1; width:100%; height:100%; border:0; background:#050403;}
   .modal h3{font-size:1.1rem; color:var(--gold-light); margin-bottom:14px;}
   .modal .modal-actions{display:flex; gap:12px; justify-content:flex-end; margin-top:18px;}
   .detail-meta{display:grid; gap:6px; margin-bottom:14px;}
@@ -527,8 +541,10 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
     <a class="nav-item<?= $panelSection === 'siralamalar' ? ' active' : '' ?>" data-target="siralamalar"><i class="fa-solid fa-ranking-star"></i> Oyuncu Sıralaması</a>
     <a class="nav-item<?= $panelSection === 'duyurular' ? ' active' : '' ?>" data-target="duyurular"><i class="fa-solid fa-bullhorn"></i> Duyurular</a>
     <a class="nav-item<?= $panelSection === 'karakterler' ? ' active' : '' ?>" data-target="karakterler"><i class="fa-solid fa-khanda"></i> Karakterlerim</a>
+    <a class="nav-item<?= $panelSection === 'evlilikler' ? ' active' : '' ?>" data-target="evlilikler"><i class="fa-solid fa-heart"></i> Evlilikler</a>
     <a class="nav-item<?= $panelSection === 'kayitlar' ? ' active' : '' ?>" data-target="kayitlar"><i class="fa-solid fa-clock-rotate-left"></i> Hesap Kayıtları</a>
     <a class="nav-item<?= $panelSection === 'lonca-savaslari' ? ' active' : '' ?>" data-target="lonca-savaslari"><i class="fa-solid fa-crosshairs"></i> Lonca Savaşları</a>
+    <a class="nav-item" href="<?= e(url('/nesne-market')) ?>" data-open-market><i class="fa-solid fa-store"></i> Nesne Market</a>
 
     <div class="nav-group-label">Hesap</div>
     <a class="nav-item" data-target="destek"><i class="fa-solid fa-headset"></i> Destek Talepleri</a>
@@ -678,7 +694,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
         <div class="card stat-card">
           <div class="icon"><i class="fa-solid fa-gem"></i></div>
           <strong><?= number_format((int) ($account['cash'] ?? 0), 0, ',', '.') ?></strong>
-          <span class="lbl">Oyun Parası (Cash)</span>
+          <span class="lbl">Elmas</span>
         </div>
         <div class="card stat-card">
           <div class="icon"><i class="fa-solid fa-khanda"></i></div>
@@ -1091,7 +1107,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
           <div style="color:var(--ash); font-size:.9rem; padding:8px 0;">Bu hesaba bağlı karakter yok.</div>
         <?php else: ?>
         <table>
-          <thead><tr><th>Karakter</th><th>Sınıf</th><th>Seviye</th><th>Klan</th><th>Yang</th><th>Oyun Süresi</th><th>Durum</th></tr></thead>
+          <thead><tr><th>Karakter</th><th>Sınıf</th><th>Seviye</th><th>Eş</th><th>Klan</th><th>Yang</th><th>Oyun Süresi</th><th>Durum</th></tr></thead>
           <tbody>
             <?php foreach ($characters as $ch): ?>
             <tr class="char-click" data-open-char="<?= (int) $ch['id'] ?>" style="cursor:pointer;">
@@ -1100,6 +1116,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
               </td>
               <td><?= e($ch['job_label']) ?></td>
               <td><?= (int) $ch['level'] ?> / <?= (int) $maxLevel ?></td>
+              <td><?= !empty($ch['married']) && !empty($ch['spouse_name']) ? e((string) $ch['spouse_name']) : 'Bekar' ?></td>
               <td><?= e($ch['guild'] ?? '—') ?></td>
               <td><?= number_format((int) $ch['gold'], 0, ',', '.') ?></td>
               <td><?= e($ch['playtime_label']) ?></td>
@@ -1108,6 +1125,83 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
             <?php endforeach; ?>
           </tbody>
         </table>
+        <?php endif; ?>
+      </div>
+    </section>
+
+    <!-- ===================== EVLİLİKLER ===================== -->
+    <section class="section<?= $panelSection === 'evlilikler' ? ' active' : '' ?>" id="evlilikler">
+      <div class="card">
+        <div class="card-head">
+          <h3>Evlilikler</h3>
+          <span style="font-size:.8rem;color:var(--ash);"><?= number_format($marriageTotal, 0, ',', '.') ?> kayıt · salt görüntüleme</span>
+        </div>
+        <form class="filters" method="get" action="<?= e(url('/panel')) ?>" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+          <input type="hidden" name="section" value="evlilikler">
+          <input name="marriage_q" value="<?= e($marriageQ) ?>" placeholder="Karakter adı ara..." style="flex:1; min-width:180px;">
+          <select name="marriage_per" title="Sayfa başına">
+            <?php foreach ($marriagePerOptions as $opt): ?>
+              <option value="<?= (int) $opt ?>"<?= $marriagePerPage === (int) $opt ? ' selected' : '' ?>><?= (int) $opt ?> / sayfa</option>
+            <?php endforeach; ?>
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Filtrele</button>
+        </form>
+        <table>
+          <thead><tr><th>Karakter 1</th><th>Karakter 2</th><th>Aşk Puanı</th><th>Tarih</th></tr></thead>
+          <tbody>
+            <?php if ($marriageRows === []): ?>
+              <tr><td colspan="4" style="color:var(--ash);">Evlilik kaydı yok.</td></tr>
+            <?php else: ?>
+              <?php foreach ($marriageRows as $mr): ?>
+              <tr>
+                <td>
+                  <div><?= e((string) $mr['name1']) ?></div>
+                  <div style="font-size:.72rem;color:var(--ash);">Sv. <?= (int) $mr['level1'] ?> · <?= e((string) $mr['job_label1']) ?></div>
+                </td>
+                <td>
+                  <div><?= e((string) $mr['name2']) ?></div>
+                  <div style="font-size:.72rem;color:var(--ash);">Sv. <?= (int) $mr['level2'] ?> · <?= e((string) $mr['job_label2']) ?></div>
+                </td>
+                <td><?= $mr['love_point'] !== null ? number_format((int) $mr['love_point'], 0, ',', '.') : '—' ?></td>
+                <td><?= e((string) $mr['time_label']) ?></td>
+              </tr>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </tbody>
+        </table>
+        <?php
+          $mkUserMarriage = static function (int $p) use ($marriageQ, $marriagePerPage): string {
+              $qs = http_build_query(array_filter([
+                  'section' => 'evlilikler',
+                  'marriage_q' => $marriageQ !== '' ? $marriageQ : null,
+                  'marriage_per' => $marriagePerPage !== 20 ? $marriagePerPage : null,
+                  'marriage_page' => $p > 1 ? $p : null,
+              ], static fn($v) => $v !== null && $v !== ''));
+              return url('/panel' . ($qs !== '' ? '?' . $qs : '?section=evlilikler'));
+          };
+        ?>
+        <?php if ($marriagePages > 1 || $marriageTotal > $marriagePerPage): ?>
+        <div class="pager">
+          <div>
+            Sayfa <?= (int) $marriagePage ?> / <?= (int) $marriagePages ?>
+            · Toplam <?= number_format($marriageTotal, 0, ',', '.') ?>
+          </div>
+          <div class="links">
+            <a class="<?= $marriagePage <= 1 ? 'disabled' : '' ?>" href="<?= e($mkUserMarriage(max(1, $marriagePage - 1))) ?>">Önceki</a>
+            <?php
+              $umStart = max(1, $marriagePage - 2);
+              $umEnd = min($marriagePages, $marriagePage + 2);
+              for ($i = $umStart; $i <= $umEnd; $i++):
+            ?>
+              <?php if ($i === $marriagePage): ?>
+                <span class="cur"><?= $i ?></span>
+              <?php else: ?>
+                <a href="<?= e($mkUserMarriage($i)) ?>"><?= $i ?></a>
+              <?php endif; ?>
+            <?php endfor; ?>
+            <a class="<?= $marriagePage >= $marriagePages ? 'disabled' : '' ?>" href="<?= e($mkUserMarriage(min($marriagePages, $marriagePage + 1))) ?>">Sonraki</a>
+          </div>
+        </div>
         <?php endif; ?>
       </div>
     </section>
@@ -1345,6 +1439,8 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
           'empire_label' => (string) ($ch['empire_label'] ?? ''),
           'gold' => (int) ($ch['gold'] ?? 0),
           'playtime_label' => (string) ($ch['playtime_label'] ?? '—'),
+          'married' => !empty($ch['married']),
+          'spouse_name' => (string) ($ch['spouse_name'] ?? ''),
       ];
   }
   $modalPayload = [
@@ -1459,6 +1555,12 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   </div>
 </div>
 
+<div class="modal-overlay" id="marketModal" aria-hidden="true">
+  <div class="modal market-modal" role="dialog" aria-label="Nesne Market">
+    <iframe id="marketFrame" title="Nesne Market" src="about:blank" allow="same-origin"></iframe>
+  </div>
+</div>
+
 <script>
   const navItems = document.querySelectorAll('.nav-item');
   const sections = document.querySelectorAll('.section');
@@ -1472,6 +1574,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   const notifListUrl = <?= json_encode(url('/bildirimler/json'), JSON_UNESCAPED_UNICODE) ?>;
   const notifReadUrl = <?= json_encode(url('/bildirimler/okundu'), JSON_UNESCAPED_UNICODE) ?>;
   const guildPublicJsonUrl = <?= json_encode(url('/panel/lonca/json'), JSON_UNESCAPED_UNICODE) ?>;
+  const marketEmbedUrl = <?= json_encode(url('/nesne-market?embed=1'), JSON_UNESCAPED_UNICODE) ?>;
 
   const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1561,6 +1664,37 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   });
   document.getElementById('rankDetailClose')?.addEventListener('click', () => rankDetailModal?.classList.remove('open'));
   rankDetailModal?.addEventListener('click', (e) => { if (e.target === rankDetailModal) rankDetailModal.classList.remove('open'); });
+
+  (function marketModal() {
+    const overlay = document.getElementById('marketModal');
+    const frame = document.getElementById('marketFrame');
+    if (!overlay || !frame) return;
+
+    const openMarket = () => {
+      frame.setAttribute('src', marketEmbedUrl);
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden', 'false');
+      document.getElementById('sidebar')?.classList.remove('open');
+    };
+    const closeMarket = () => {
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden', 'true');
+      frame.setAttribute('src', 'about:blank');
+    };
+
+    document.querySelectorAll('[data-open-market]').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        openMarket();
+      });
+    });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeMarket();
+    });
+    window.addEventListener('message', (ev) => {
+      if (ev && ev.data && ev.data.type === 'm2dn-market-close') closeMarket();
+    });
+  })();
 
   document.getElementById('userWarTabs')?.querySelectorAll('[data-war-tab]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1713,6 +1847,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
         html += '<div class="row"><span class="k">Krallık</span><span class="v">' + esc(char.empire_label || '—') + '</span></div>';
         html += '<div class="row"><span class="k">Yang</span><span class="v">' + Number(char.gold || 0).toLocaleString('tr-TR') + '</span></div>';
         html += '<div class="row"><span class="k">Oyun Süresi</span><span class="v">' + esc(char.playtime_label || '—') + '</span></div>';
+        html += '<div class="row"><span class="k">Eş</span><span class="v">' + esc(char.married && char.spouse_name ? char.spouse_name : 'Bekar') + '</span></div>';
       } else {
         html += '<div class="row"><span class="k">Hesap</span><span class="v">' + esc(acc.login || '—') + '</span></div>';
         html += '<div class="row"><span class="k">E-posta</span><span class="v">' + esc(acc.email || '—') + '</span></div>';

@@ -3,12 +3,16 @@
 declare(strict_types=1);
 
 /**
- * Tema asset sunucusu: /themes/{Tema}/assets/...
+ * Tema asset sunucusu:
+ *  /themes/{Tema}/assets/...
+ *  /themes/{Tema}/nesnemarket/assets/...
  * public/.htaccess veya router.php üzerinden çağrılır.
  */
 
 $theme = $_GET['theme'] ?? '';
 $path = $_GET['path'] ?? '';
+$module = $_GET['module'] ?? '';
+$folder = $_GET['folder'] ?? 'assets';
 
 if (!is_string($theme) || !preg_match('/^[A-Za-z0-9_-]+$/', $theme)) {
     http_response_code(400);
@@ -20,10 +24,28 @@ if (!is_string($path) || $path === '' || str_contains($path, '..')) {
     exit('Geçersiz yol.');
 }
 
-$path = str_replace(['\\', "\0"], ['/', ''], $path);
-$file = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR . $theme . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path);
+$module = is_string($module) ? $module : '';
+if ($module !== '' && !preg_match('/^[A-Za-z0-9_-]+$/', $module)) {
+    http_response_code(400);
+    exit('Geçersiz modül.');
+}
 
-$realBase = realpath(dirname(__DIR__) . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR . $theme . DIRECTORY_SEPARATOR . 'assets');
+$folder = is_string($folder) ? $folder : 'assets';
+if (!preg_match('/^[A-Za-z0-9_-]+$/', $folder)) {
+    http_response_code(400);
+    exit('Geçersiz klasör.');
+}
+
+$path = str_replace(['\\', "\0"], ['/', ''], $path);
+$themeRoot = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR . $theme;
+if ($module !== '') {
+    $baseDir = $themeRoot . DIRECTORY_SEPARATOR . $module . DIRECTORY_SEPARATOR . $folder;
+} else {
+    $baseDir = $themeRoot . DIRECTORY_SEPARATOR . $folder;
+}
+$file = $baseDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path);
+
+$realBase = realpath($baseDir);
 $realFile = realpath($file);
 
 if ($realBase === false || $realFile === false || !str_starts_with($realFile, $realBase) || !is_file($realFile)) {

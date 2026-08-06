@@ -110,6 +110,7 @@ if (!empty($character['last_play']) && $character['last_play'] !== '0000-00-00 0
             <span>Seviye <b><?= (int) ($character['level'] ?? 0) ?> / <?= (int) $maxLevel ?></b></span>
             <span>Krallık <b><?= e((string) ($character['empire_label'] ?? '—')) ?></b></span>
             <span>Klan <b><?= e((string) ($character['guild'] ?? '—')) ?></b></span>
+            <span>Eş <b><?= !empty($character['married']) && !empty($character['spouse_name']) ? e((string) $character['spouse_name']) : 'Bekar' ?></b></span>
           </div>
           <div class="exp-bar">
             <div class="track"><div class="fill" style="width:<?= (int) $levelPct ?>%"></div></div>

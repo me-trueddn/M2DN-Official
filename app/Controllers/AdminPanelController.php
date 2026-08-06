@@ -25,6 +25,7 @@ use App\Services\CaptchaService;
 use App\Services\CommunityRulesService;
 use App\Services\LegalContentService;
 use App\Services\MailService;
+use App\Services\MarriageService;
 use App\Services\PenaltyService;
 use App\Services\PermissionService;
 use App\Services\PasswordResetService;
@@ -65,6 +66,13 @@ final class AdminPanelController
         $ipBanQ = trim((string) ($_GET['ipban_q'] ?? ''));
         $ipBanPage = (int) ($_GET['ipban_page'] ?? 1);
         $ipBanPer = (int) ($_GET['ipban_per'] ?? 20);
+        $marketItemQ = trim((string) ($_GET['market_item_q'] ?? ''));
+        $marketItemCat = (int) ($_GET['market_item_cat'] ?? 0);
+        $marketSaleQ = trim((string) ($_GET['market_sale_q'] ?? ''));
+        $marketSalePage = (int) ($_GET['market_sale_page'] ?? 1);
+        $marriageQ = trim((string) ($_GET['marriage_q'] ?? ''));
+        $marriagePage = (int) ($_GET['marriage_page'] ?? 1);
+        $marriagePer = (int) ($_GET['marriage_per'] ?? 20);
         $players = AdminPlayerService::listAccounts($q, $status, $page, $per);
         $ticketQ = trim((string) ($_GET['ticket_q'] ?? ''));
         $logQ = trim((string) ($_GET['log_q'] ?? ''));
@@ -92,17 +100,23 @@ final class AdminPanelController
             $section = 'siralamalar';
         } elseif ($ipBanQ !== '' || isset($_GET['ipban_page']) || isset($_GET['ipban_per'])) {
             $section = 'ip-ban';
+        } elseif ($marketItemQ !== '' || isset($_GET['market_item_cat']) || isset($_GET['market_item_q'])) {
+            $section = 'nesne-market-urunler';
+        } elseif ($marketSaleQ !== '' || isset($_GET['market_sale_page']) || isset($_GET['market_sale_q'])) {
+            $section = 'nesne-market-satis-loglari';
+        } elseif ($marriageQ !== '' || isset($_GET['marriage_page']) || isset($_GET['marriage_per'])) {
+            $section = 'evlilikler';
         } elseif ($q !== '' || $status !== '' || isset($_GET['page']) || isset($_GET['per'])) {
             $section = 'oyuncular';
         } elseif ($mailQ !== '' || isset($_GET['mail_tab'])) {
             $section = 'mail-ayarlari';
         }
         $allowed = [
-            'ozet', 'oyuncular', 'siralamalar', 'binek', 'gm', 'ip-ban', 'loncalar', 'lonca-savaslari', 'banlar', 'duyurular', 'destekler', 'sunucu', 'yasakli-kelimeler', 'loglar',
+            'ozet', 'oyuncular', 'evlilikler', 'siralamalar', 'binek', 'gm', 'ip-ban', 'loncalar', 'lonca-savaslari', 'banlar', 'duyurular', 'destekler', 'sunucu', 'yasakli-kelimeler', 'loglar',
             'ceza-ayarlari', 'patch-linkleri', 'ozellikler-ayarlari', 'siniflar-ayarlari',
             'oranlar-ayarlari', 'siradaki-bolum', 'galeri-ayarlari', 'footer-ayarlari',
             'logo-ayarlari', 'mail-ayarlari', 'yetki-gruplari', 'ticket-ayarlari', 'duyuru-turleri',
-            'kurallar-ayarlari', 'captcha-ayarlari', 'gizlilik-ayarlari',
+            'kurallar-ayarlari', 'captcha-ayarlari', 'gizlilik-ayarlari', 'nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari',
         ];
         if (!in_array($section, $allowed, true)) {
             $section = 'ozet';
@@ -131,6 +145,7 @@ final class AdminPanelController
 
         $menuGate = [
             'oyuncular' => PermissionService::FLAG_MENU_OYUNCULAR,
+            'evlilikler' => PermissionService::FLAG_MENU_OYUNCULAR,
             'siralamalar' => PermissionService::FLAG_MENU_SIRALAMALAR,
             'binek' => PermissionService::FLAG_MENU_BINEK,
             'gm' => PermissionService::FLAG_MENU_GM,
@@ -143,6 +158,9 @@ final class AdminPanelController
             'sunucu' => PermissionService::FLAG_MENU_SUNUCU,
             'yasakli-kelimeler' => PermissionService::FLAG_MENU_YASAKLI_KELIMELER,
             'loglar' => PermissionService::FLAG_MENU_LOGLAR,
+            'nesne-market-kategoriler' => PermissionService::FLAG_MENU_NESNE_MARKET,
+            'nesne-market-urunler' => PermissionService::FLAG_MENU_NESNE_MARKET,
+            'nesne-market-satis-loglari' => PermissionService::FLAG_MENU_NESNE_MARKET,
         ];
         if ($section === 'duyurular'
             && empty($permFlags[PermissionService::FLAG_MENU_DUYURULAR])
@@ -150,7 +168,16 @@ final class AdminPanelController
         ) {
             Session::flash('panel_errors', ['Duyuru yetkin yok.']);
             $section = 'ozet';
-        } elseif (isset($menuGate[$section]) && $section !== 'duyurular' && empty($permFlags[$menuGate[$section]])) {
+        } elseif (in_array($section, ['nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari'], true)
+            && empty($permFlags[PermissionService::FLAG_MENU_NESNE_MARKET])
+            && empty($permFlags[PermissionService::FLAG_SITE_SETTINGS])
+        ) {
+            Session::flash('panel_errors', ['Nesne Market yetkin yok.']);
+            $section = 'ozet';
+        } elseif (isset($menuGate[$section]) && $section !== 'duyurular'
+            && !in_array($section, ['nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari'], true)
+            && empty($permFlags[$menuGate[$section]])
+        ) {
             Session::flash('panel_errors', ['Bu menüye erişim yetkin yok.']);
             $section = 'ozet';
         }
@@ -183,6 +210,11 @@ final class AdminPanelController
         $ipBans = ['bans' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 20, 'q' => '', 'per_page_options' => AdminIpBanService::PER_PAGE_OPTIONS];
         if (!empty($permFlags[PermissionService::FLAG_MENU_IP_BAN])) {
             $ipBans = AdminIpBanService::list($ipBanQ, $ipBanPage, $ipBanPer);
+        }
+
+        $marriages = ['rows' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 20, 'q' => '', 'per_page_options' => MarriageService::PER_PAGE_OPTIONS];
+        if (!empty($permFlags[PermissionService::FLAG_MENU_OYUNCULAR])) {
+            $marriages = MarriageService::list($marriageQ, $marriagePage, $marriagePer);
         }
 
         $gameLogTables = [];
@@ -233,6 +265,7 @@ final class AdminPanelController
             'gms' => $gms,
             'rankings' => $rankings,
             'ipBans' => $ipBans,
+            'marriages' => $marriages,
             'gameLogTables' => $gameLogTables,
             'gameLogs' => $gameLogs,
             'logTab' => $logTab,
@@ -285,6 +318,24 @@ final class AdminPanelController
             'captchaConfig' => CaptchaService::config(),
             'privacyTitle' => LegalContentService::privacyTitle(),
             'privacyHtml' => LegalContentService::privacyHtml(),
+            'marketCategories' => (!empty($permFlags[PermissionService::FLAG_MENU_NESNE_MARKET])
+                || !empty($permFlags[PermissionService::FLAG_SITE_SETTINGS]))
+                ? \App\Services\MarketCategoryService::list(false)
+                : [],
+            'marketItems' => (!empty($permFlags[PermissionService::FLAG_MENU_NESNE_MARKET])
+                || !empty($permFlags[PermissionService::FLAG_SITE_SETTINGS]))
+                ? \App\Services\MarketItemService::list(false, $marketItemQ, $marketItemCat)
+                : [],
+            'marketItemNextSort' => (!empty($permFlags[PermissionService::FLAG_MENU_NESNE_MARKET])
+                || !empty($permFlags[PermissionService::FLAG_SITE_SETTINGS]))
+                ? \App\Services\MarketItemService::nextSortOrder()
+                : 1,
+            'marketItemQ' => $marketItemQ,
+            'marketItemCat' => $marketItemCat,
+            'marketSales' => (!empty($permFlags[PermissionService::FLAG_MENU_NESNE_MARKET])
+                || !empty($permFlags[PermissionService::FLAG_SITE_SETTINGS]))
+                ? \App\Services\MarketPurchaseService::salesLogs($marketSaleQ, $marketSalePage, 20)
+                : ['logs' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 20, 'q' => ''],
             'mailTab' => (static function () use ($mailQ): string {
                 $flash = Session::flash('mail_tab');
                 if (is_string($flash) && $flash !== '') {
@@ -595,6 +646,38 @@ final class AdminPanelController
         }
         $this->flashResult($result, 'IP silindi.', 'ip-ban');
         redirect('/admin?section=ip-ban');
+    }
+
+    public function divorce(): void
+    {
+        $user = AuthService::requireAdmin();
+        if (!PermissionService::userHasFlag($user, PermissionService::FLAG_MENU_OYUNCULAR)) {
+            Session::flash('panel_errors', ['Bu işlem için yetkin yok.']);
+            Session::flash('panel_section', 'ozet');
+            redirect('/admin');
+        }
+        Security::requireCsrf('login');
+
+        $pid1 = (int) ($_POST['pid1'] ?? 0);
+        $pid2 = (int) ($_POST['pid2'] ?? 0);
+        $result = MarriageService::divorce($pid1, $pid2);
+
+        if (!empty($result['ok'])) {
+            $n1 = (string) ($result['name1'] ?? ('#' . $pid1));
+            $n2 = (string) ($result['name2'] ?? ('#' . $pid2));
+            AdminLogService::write(
+                $user,
+                'Evlilik bitirildi',
+                $n1 . ' ↔ ' . $n2,
+                (int) ($result['account_id1'] ?? 0) ?: null,
+                $n1
+            );
+            $this->flashResult(['ok' => true, 'errors' => []], 'Evlilik sonlandırıldı.', 'evlilikler');
+        } else {
+            $msg = (string) ($result['error'] ?? 'İşlem başarısız.');
+            $this->flashResult(['ok' => false, 'errors' => [$msg]], '', 'evlilikler');
+        }
+        redirect('/admin?section=evlilikler');
     }
 
     public function ban(): void

@@ -235,6 +235,9 @@ final class Schema
         self::ensureIpBans($pdo);
         self::ensureAnnouncementTables($pdo);
         self::ensureMailAndNotificationTables($pdo);
+        self::ensureMarketCategories($pdo);
+        self::ensureMarketItems($pdo);
+        self::ensureMarketSalesLogs($pdo);
 
         $seed = $pdo->prepare(
             "INSERT INTO `settings` (`group_key`, `setting_key`, `setting_value`) VALUES
@@ -668,7 +671,7 @@ final class Schema
             $superId = (int) $pdo->query('SELECT id FROM permission_groups WHERE web_permission = 2 AND is_system = 1 LIMIT 1')->fetchColumn();
             $flags = [
                 'ban', 'player_detail', 'announcements', 'tickets', 'site_settings',
-                'menu_oyuncular', 'menu_siralamalar', 'menu_binek', 'menu_gm', 'menu_ip_ban', 'menu_loncalar', 'menu_lonca_savaslari', 'menu_banlar', 'menu_duyurular', 'menu_destekler', 'menu_sunucu', 'menu_yasakli_kelimeler', 'menu_loglar',
+                'menu_oyuncular', 'menu_siralamalar', 'menu_binek', 'menu_gm', 'menu_ip_ban', 'menu_loncalar', 'menu_lonca_savaslari', 'menu_banlar', 'menu_duyurular', 'menu_destekler', 'menu_sunucu', 'menu_yasakli_kelimeler', 'menu_loglar', 'menu_nesne_market',
             ];
             $stmt = $pdo->prepare(
                 'INSERT INTO permission_group_flags (group_id, flag_key, is_enabled) VALUES (?,?,1)'
@@ -700,6 +703,7 @@ final class Schema
                 $insFlag->execute([(int) $gid, 'menu_gm']);
                 $insFlag->execute([(int) $gid, 'menu_siralamalar']);
                 $insFlag->execute([(int) $gid, 'menu_ip_ban']);
+                $insFlag->execute([(int) $gid, 'menu_nesne_market']);
             }
         } catch (\Throwable) {
             // ignore
@@ -906,6 +910,94 @@ final class Schema
               PRIMARY KEY (`id`),
               UNIQUE KEY `uk_ip_bans_ip` (`ip`),
               KEY `idx_ip_bans_pcbang` (`pcbang_ip_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+    }
+
+    private static function ensureMarketCategories(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `market_categories` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `slug` VARCHAR(40) NOT NULL,
+              `name` VARCHAR(120) NOT NULL,
+              `icon` VARCHAR(80) NOT NULL DEFAULT 'fa-solid fa-box',
+              `sort_order` INT NOT NULL DEFAULT 0,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `uq_market_cat_slug` (`slug`),
+              KEY `idx_market_cat_sort` (`sort_order`, `is_active`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+
+        if (!(int) $pdo->query('SELECT COUNT(*) FROM market_categories')->fetchColumn()) {
+            $pdo->exec(
+                "INSERT INTO market_categories (slug, name, icon, sort_order, is_active, created_at, updated_at) VALUES
+                  ('silah', 'Silah', 'fa-solid fa-khanda', 1, 1, NOW(), NOW()),
+                  ('zirh', 'Zırh', 'fa-solid fa-shirt', 2, 1, NOW(), NOW()),
+                  ('binek', 'Binek', 'fa-solid fa-horse', 3, 1, NOW(), NOW()),
+                  ('sarf', 'Sarf', 'fa-solid fa-flask', 4, 1, NOW(), NOW()),
+                  ('paket', 'Paket', 'fa-solid fa-box-open', 5, 1, NOW(), NOW())"
+            );
+        }
+    }
+
+    private static function ensureMarketItems(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `market_items` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `category_id` INT UNSIGNED NOT NULL,
+              `item_code` VARCHAR(32) NOT NULL DEFAULT '',
+              `name` VARCHAR(160) NOT NULL,
+              `description` TEXT NOT NULL,
+              `price` INT UNSIGNED NOT NULL DEFAULT 0,
+              `discount_active` TINYINT(1) NOT NULL DEFAULT 0,
+              `discount_percent` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+              `image_url` VARCHAR(500) NOT NULL DEFAULT '',
+              `duration_type` VARCHAR(16) NOT NULL DEFAULT 'permanent',
+              `sort_order` INT NOT NULL DEFAULT 0,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_market_items_cat` (`category_id`, `is_active`, `sort_order`),
+              KEY `idx_market_items_sort` (`sort_order`, `id`),
+              KEY `idx_market_items_code` (`item_code`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+        self::ensureColumn($pdo, 'market_items', 'duration_type', "VARCHAR(16) NOT NULL DEFAULT 'permanent' AFTER `image_url`");
+        self::ensureColumn($pdo, 'market_items', 'item_code', "VARCHAR(32) NOT NULL DEFAULT '' AFTER `category_id`");
+        try {
+            $pdo->exec('ALTER TABLE `market_items` ADD KEY `idx_market_items_code` (`item_code`)');
+        } catch (\Throwable) {
+            // index already exists
+        }
+    }
+
+    private static function ensureMarketSalesLogs(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `market_sales_logs` (
+              `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `account_id` INT UNSIGNED NOT NULL,
+              `account_login` VARCHAR(30) NOT NULL DEFAULT '',
+              `market_item_id` INT UNSIGNED NOT NULL DEFAULT 0,
+              `item_code` VARCHAR(32) NOT NULL DEFAULT '',
+              `item_name` VARCHAR(160) NOT NULL DEFAULT '',
+              `price` INT UNSIGNED NOT NULL DEFAULT 0,
+              `cash_before` INT NOT NULL DEFAULT 0,
+              `cash_after` INT NOT NULL DEFAULT 0,
+              `safebox_pos` INT NOT NULL DEFAULT -1,
+              `player_item_id` INT UNSIGNED NOT NULL DEFAULT 0,
+              `ip` VARCHAR(45) NOT NULL DEFAULT '',
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_msl_account` (`account_id`, `created_at`),
+              KEY `idx_msl_item` (`market_item_id`),
+              KEY `idx_msl_created` (`created_at`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
         );
     }

@@ -17,7 +17,7 @@ return [
         'name'       => 'M2DN',
         'tagline'    => 'Metin2 Pvp Sunucusu',
         'url'        => 'http://127.0.0.1:8080',
-        'version'    => '3.0.0',
+        'version'    => '3.2.0',
         'timezone'   => 'Europe/Istanbul',
         'locale'     => 'tr',
         'charset'    => 'utf-8',
@@ -173,6 +173,23 @@ return [
     */
     'admin' => [
         'online_window_minutes' => 15,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Nesne Market (web modal + oyun içi CEF)
+    |--------------------------------------------------------------------------
+    | Oyun istemcisi URL örneği:
+    | /nesne-market?mode=ingame&login=LOGIN&aid=ID&pid=PID&char=NAME&ts=UNIX&sig=HMAC
+    | sig = hash_hmac('sha256', "{login}|{aid}|{pid}|{ts}", ingame_secret)
+    */
+    'nesne_market' => [
+        'enabled'            => true,
+        'ingame_secret'      => 'M2DN-market-change-me',
+        'ingame_ttl'         => 120, // saniye
+        // Klasik safebox: size = sayfa sayısı, sayfa başına slot
+        'safebox_page_size'  => 45,
+        'safebox_default_pages' => 1,
     ],
 
 ];

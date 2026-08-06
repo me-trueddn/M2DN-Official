@@ -75,6 +75,15 @@ final class AuthService
     }
 
     /**
+     * Güvenilir kaynak (ör. imzalı oyun içi market SSO) için oturum aç.
+     * Parola / 2FA atlanır — yalnızca sunucu tarafı doğrulama sonrası çağrılmalı.
+     */
+    public static function loginTrusted(int $accountId, string $login, int $permission): void
+    {
+        self::establishSession($accountId, $login, self::normalizePermission($permission));
+    }
+
+    /**
      * @return array{ok:bool, errors:list<string>, permission?:int}
      */
     public static function completeTwoFactor(string $code): array

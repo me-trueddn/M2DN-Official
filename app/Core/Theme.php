@@ -42,6 +42,26 @@ final class Theme
 
     public static function render(string $view, array $data = []): void
     {
+        self::renderInternal(self::viewPath($view), $view, $data);
+    }
+
+    /**
+     * Tema altı modül (örn. EasternV1/nesnemarket/index.php).
+     */
+    public static function renderModule(string $module, string $view, array $data = []): void
+    {
+        if (!preg_match('/^[A-Za-z0-9_-]+$/', $module) || !preg_match('/^[A-Za-z0-9_-]+$/', $view)) {
+            throw new \RuntimeException('Geçersiz modül/view.');
+        }
+        $file = self::path() . DIRECTORY_SEPARATOR . $module . DIRECTORY_SEPARATOR . $view . '.php';
+        if (!is_file($file)) {
+            throw new \RuntimeException("Modül view bulunamadı: {$module}/{$view}");
+        }
+        self::renderInternal($file, $module . '/' . $view, $data);
+    }
+
+    private static function renderInternal(string $file, string $viewKey, array $data = []): void
+    {
         $data['appName'] = Config::get('app.name', 'M2DN');
         $data['appTagline'] = Config::get('app.tagline', 'Metin2 Sunucusu');
         $data['appVersion'] = (string) Config::get('app.version', '1.0.0');
@@ -66,13 +86,17 @@ final class Theme
             $data['siteBrand'] = [
                 'logo_url' => self::assetUrl('img/logo-nav.svg'),
                 'icon_url' => self::assetUrl('img/logo-mark.svg'),
+                'market_logo_url' => self::assetUrl('img/logo-nav.svg'),
                 'logo_path' => '',
                 'icon_path' => '',
+                'market_logo_path' => '',
                 'home_size' => 48,
                 'user_size' => 36,
                 'admin_size' => 36,
+                'market_size' => 22,
                 'has_custom_logo' => false,
                 'has_custom_icon' => false,
+                'has_custom_market_logo' => false,
             ];
         }
         $data['servers'] = ServerManager::all();
@@ -102,8 +126,9 @@ final class Theme
 
         $data['forceRulesAcceptance'] = false;
         $data['forceRulesList'] = [];
-        $isAdminView = str_starts_with($view, 'admin/');
-        if (!$isAdminView && class_exists(\App\Services\AuthService::class)
+        $isAdminView = str_starts_with($viewKey, 'admin/');
+        $skipRules = str_starts_with($viewKey, 'nesnemarket/');
+        if (!$isAdminView && !$skipRules && class_exists(\App\Services\AuthService::class)
             && class_exists(\App\Services\AccountConsentService::class)
         ) {
             try {
@@ -126,7 +151,7 @@ final class Theme
 
         extract($data, EXTR_SKIP);
         ob_start();
-        require self::viewPath($view);
+        require $file;
         $html = ob_get_clean();
         if (!empty($data['forceRulesAcceptance']) && is_string($html) && $html !== '') {
             ob_start();
