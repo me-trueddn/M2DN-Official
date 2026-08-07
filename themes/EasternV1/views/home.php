@@ -244,13 +244,19 @@ $footerHref = static function (string $url): string {
     padding:28px 26px 22px;
     clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
     position:relative;
-    max-height:min(92vh, 640px); overflow-y:auto;
+    max-height:min(92vh, 640px); overflow-x:hidden; overflow-y:auto;
     animation:modalIn .28s ease;
+  }
+  #loginModal .modal-card,
+  #registerModal .modal-card,
+  #forgotModal .modal-card{
+    /* Captcha iframe / challenge taşmasın diye alt boşluk */
+    padding-bottom:28px;
   }
   #registerModal .modal-card{
     max-width:480px;
-    max-height:min(94vh, 880px);
-    padding:32px 32px 26px;
+    max-height:min(94vh, 900px);
+    padding:32px 32px 28px;
   }
   #registerModal .modal-card .sub{margin-bottom:20px;}
   #registerModal .modal-form .form-row{margin-bottom:16px;}
@@ -273,16 +279,16 @@ $footerHref = static function (string $url): string {
     display:block; font-size:.7rem; text-transform:uppercase; letter-spacing:.08em;
     color:var(--ash); margin-bottom:7px;
   }
-  .modal-form input{
+  .modal-form input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]){
     width:100%; background:var(--obsidian); border:1px solid rgba(201,151,74,.15);
     padding:11px 13px; color:var(--parchment); font-size:.9rem; outline:none; font-family:inherit;
     border-radius:0; -webkit-appearance:none; appearance:none;
   }
-  .modal-form input:focus{border-color:var(--gold);}
+  .modal-form input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):focus{border-color:var(--gold);}
   /* Tarayıcı autofill mavisini tema rengine çek */
-  .modal-form input:-webkit-autofill,
-  .modal-form input:-webkit-autofill:hover,
-  .modal-form input:-webkit-autofill:focus{
+  .modal-form input:not([type="checkbox"]):-webkit-autofill,
+  .modal-form input:not([type="checkbox"]):-webkit-autofill:hover,
+  .modal-form input:not([type="checkbox"]):-webkit-autofill:focus{
     -webkit-text-fill-color:var(--parchment) !important;
     caret-color:var(--parchment);
     box-shadow:0 0 0 1000px var(--obsidian) inset !important;
@@ -290,11 +296,29 @@ $footerHref = static function (string $url): string {
     border:1px solid rgba(201,151,74,.15);
   }
   .modal-form .hint{font-size:.7rem; color:var(--ash); margin-top:5px;}
-  .modal-form .captcha-wrap{margin:4px 0 16px; min-height:78px; display:flex; justify-content:flex-start; align-items:center;}
-  .modal-form .captcha-wrap [data-captcha-mount]{min-height:74px;}
+  .modal-form .captcha-wrap{
+    margin:8px 0 16px; min-height:78px; width:100%;
+    display:flex; justify-content:flex-start; align-items:center;
+    position:relative; z-index:5; overflow:visible;
+  }
+  .modal-form .captcha-wrap [data-captcha-mount]{
+    min-height:74px; min-width:min(100%,304px); width:100%;
+    overflow:visible;
+  }
   .modal-form .captcha-wrap iframe{max-width:100%;}
-  .modal-form .rules-accept{display:flex;align-items:flex-start;gap:10px;margin:4px 0 16px;font-size:.85rem;color:var(--ash);line-height:1.45;}
-  .modal-form .rules-accept input{width:auto;margin-top:3px;flex-shrink:0;}
+  .modal-form .rules-accept{
+    display:flex;align-items:flex-start;gap:10px;margin:4px 0 14px;
+    font-size:.85rem;color:var(--ash);line-height:1.45;
+    text-transform:none; letter-spacing:normal; cursor:pointer;
+  }
+  .modal-form .rules-accept input[type="checkbox"]{
+    -webkit-appearance:auto; appearance:auto;
+    width:1.15rem; height:1.15rem; min-width:1.15rem;
+    margin:2px 0 0; padding:0; flex-shrink:0;
+    background:var(--obsidian); border:1px solid rgba(201,151,74,.45);
+    accent-color:var(--gold); cursor:pointer; box-shadow:none;
+    color:inherit; font-size:inherit;
+  }
   .modal-form .rules-accept a{color:var(--gold-light);text-decoration:underline;}
   .modal-form .btn{
     width:100%; justify-content:center; margin-top:6px; border:none; cursor:pointer; font-family:inherit;

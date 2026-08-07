@@ -82,16 +82,16 @@ $brandHomeSize = (int) ($siteBrand['home_size'] ?? 48);
     display:block; font-size:.72rem; text-transform:uppercase; letter-spacing:.08em;
     color:var(--ash); margin-bottom:8px;
   }
-  .form-row input{
+  .form-row input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]){
     width:100%; background:var(--obsidian); border:1px solid var(--line);
     padding:12px 14px; color:var(--parchment); font-size:.92rem; outline:none;
     font-family:inherit; transition:border-color .2s;
     border-radius:0; -webkit-appearance:none; appearance:none;
   }
-  .form-row input:focus{border-color:var(--gold);}
-  .form-row input:-webkit-autofill,
-  .form-row input:-webkit-autofill:hover,
-  .form-row input:-webkit-autofill:focus{
+  .form-row input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):focus{border-color:var(--gold);}
+  .form-row input:not([type="checkbox"]):-webkit-autofill,
+  .form-row input:not([type="checkbox"]):-webkit-autofill:hover,
+  .form-row input:not([type="checkbox"]):-webkit-autofill:focus{
     -webkit-text-fill-color:var(--parchment) !important;
     caret-color:var(--parchment);
     box-shadow:0 0 0 1000px var(--obsidian) inset !important;

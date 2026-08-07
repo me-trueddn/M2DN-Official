@@ -171,6 +171,7 @@ window.M2DN_CAPTCHA = { provider: {$providerJson}, siteKey: {$siteKeyJson} };
     setTimeout(function () { refresh(root); }, 80);
     setTimeout(function () { refresh(root); }, 250);
     setTimeout(function () { refresh(root); }, 600);
+    setTimeout(function () { refresh(root); }, 1200);
   }
 
   window.m2dnCaptchaRefresh = refreshSoon;
