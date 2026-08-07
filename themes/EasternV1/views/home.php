@@ -247,6 +247,22 @@ $footerHref = static function (string $url): string {
     max-height:min(92vh, 640px); overflow-y:auto;
     animation:modalIn .28s ease;
   }
+  #registerModal .modal-card{
+    max-width:560px;
+    max-height:min(94vh, 820px);
+    padding:32px 32px 26px;
+  }
+  #registerModal .modal-card .sub{margin-bottom:20px;}
+  #registerModal .modal-form .form-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0 16px;
+  }
+  #registerModal .modal-form .form-row{margin-bottom:16px;}
+  #registerModal .modal-form .form-row-full{grid-column:1 / -1;}
+  @media (max-width:560px){
+    #registerModal .modal-form .form-grid{grid-template-columns:1fr;}
+  }
   @keyframes modalIn{
     from{opacity:0; transform:translateY(12px) scale(.98);}
     to{opacity:1; transform:none;}
@@ -269,8 +285,19 @@ $footerHref = static function (string $url): string {
   .modal-form input{
     width:100%; background:var(--obsidian); border:1px solid rgba(201,151,74,.15);
     padding:11px 13px; color:var(--parchment); font-size:.9rem; outline:none; font-family:inherit;
+    border-radius:0; -webkit-appearance:none; appearance:none;
   }
   .modal-form input:focus{border-color:var(--gold);}
+  /* Tarayıcı autofill mavisini tema rengine çek */
+  .modal-form input:-webkit-autofill,
+  .modal-form input:-webkit-autofill:hover,
+  .modal-form input:-webkit-autofill:focus{
+    -webkit-text-fill-color:var(--parchment) !important;
+    caret-color:var(--parchment);
+    box-shadow:0 0 0 1000px var(--obsidian) inset !important;
+    transition:background-color 99999s ease-out 0s;
+    border:1px solid rgba(201,151,74,.15);
+  }
   .modal-form .hint{font-size:.7rem; color:var(--ash); margin-top:5px;}
   .modal-form .captcha-wrap{margin:4px 0 16px; min-height:78px; display:flex; justify-content:flex-start; align-items:center;}
   .modal-form .captcha-wrap [data-captcha-mount]{min-height:74px;}
@@ -1047,24 +1074,33 @@ $footerHref = static function (string $url): string {
 
     <form class="modal-form" method="post" action="<?= e(url('/kayit')) ?>" autocomplete="off">
       <?= $csrf ?>
-      <div class="form-row">
-        <label for="reg-login">Kullanıcı Adı</label>
-        <input id="reg-login" name="login" type="text" maxlength="16" required
-               value="<?= e((string) ($registerOld['login'] ?? '')) ?>">
-      </div>
-      <div class="form-row">
-        <label for="reg-password">Parola</label>
-        <input id="reg-password" name="password" type="password" maxlength="16" required>
-      </div>
-      <div class="form-row">
-        <label for="reg-email">E-posta</label>
-        <input id="reg-email" name="email" type="email" maxlength="64" required
-               value="<?= e((string) ($registerOld['email'] ?? '')) ?>">
-      </div>
-      <div class="form-row">
-        <label for="reg-security">Güvenlik Kodu</label>
-        <input id="reg-security" name="securitycode" type="text" inputmode="numeric"
-               pattern="\d{1,6}" maxlength="6" required>
+      <div class="form-grid">
+        <div class="form-row">
+          <label for="reg-login">Kullanıcı Adı</label>
+          <input id="reg-login" name="login" type="text" maxlength="16" required
+                 autocomplete="username"
+                 value="<?= e((string) ($registerOld['login'] ?? '')) ?>">
+          <div class="hint">En fazla 16 karakter</div>
+        </div>
+        <div class="form-row">
+          <label for="reg-password">Parola</label>
+          <input id="reg-password" name="password" type="password" maxlength="16" required
+                 autocomplete="new-password">
+          <div class="hint">En fazla 16 karakter</div>
+        </div>
+        <div class="form-row">
+          <label for="reg-email">E-posta</label>
+          <input id="reg-email" name="email" type="email" maxlength="64" required
+                 autocomplete="email"
+                 value="<?= e((string) ($registerOld['email'] ?? '')) ?>">
+        </div>
+        <div class="form-row">
+          <label for="reg-security">Güvenlik Kodu</label>
+          <input id="reg-security" name="securitycode" type="text" inputmode="numeric"
+                 pattern="\d{1,6}" maxlength="6" required
+                 autocomplete="off" placeholder="örn. 123456">
+          <div class="hint">1–6 haneli sayı (oyun / panel güvenliği)</div>
+        </div>
       </div>
       <label class="rules-accept">
         <input type="checkbox" name="accept_rules" value="1" required<?= !empty($registerOld['accept_rules']) ? ' checked' : '' ?>>
