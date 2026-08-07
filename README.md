@@ -10,6 +10,20 @@ M2DN, Metin2 özel sunucuları için PHP tabanlı web sitesi ve yönetim panelid
 
 ## Son güncellemeler
 
+### 2026-08-07 — Sürüm 3.6.10 · Şifre sıfırlama logo boyutu
+
+| Konu | Açıklama |
+|------|----------|
+| **Logo menü** | **Şifre sıfırlama logo (yükseklik)** (24–160 px, varsayılan 48) |
+| **Sayfa** | `/sifre-sifirla` logosu bu boyuta göre render edilir |
+
+### 2026-08-07 — Sürüm 3.6.9 · Mail logo boyutu
+
+| Konu | Açıklama |
+|------|----------|
+| **Logo menü** | **Mail bildirimi logo (genişlik)** alanı (40–320 px, varsayılan 160) |
+| **Şablon** | `{{logo_width}}` — bildirim kartında logo genişliği |
+
 ### 2026-08-07 — Sürüm 3.6.8 · Mail logo PNG
 
 | Konu | Açıklama |

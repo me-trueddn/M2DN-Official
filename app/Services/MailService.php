@@ -408,7 +408,7 @@ HTML;
         </tr>
         <tr>
           <td align="center" valign="middle" style="padding:24px 20px 16px 20px;background-color:#14100e;border-bottom:1px solid #28201a;">
-            <img src="{{logo}}" alt="{{app}}" width="160" style="max-width:160px;height:auto;display:block;border:0;margin:0 auto;">
+            <img src="{{logo}}" alt="{{app}}" width="{{logo_width}}" style="max-width:{{logo_width}}px;height:auto;display:block;border:0;margin:0 auto;">
           </td>
         </tr>
         <tr>
@@ -528,6 +528,19 @@ HTML;
             return $logo;
         }
         return $base . '/' . ltrim($logo, '/');
+    }
+
+    /** Mail logosu genişliği (px). Logo menüsünden ayarlanır. */
+    public static function logoWidth(): int
+    {
+        try {
+            $brand = SiteContentService::branding();
+            $w = (int) ($brand['mail_size'] ?? 160);
+        } catch (\Throwable) {
+            $w = 160;
+        }
+
+        return max(40, min(320, $w > 0 ? $w : 160));
     }
 
     /**
@@ -696,6 +709,7 @@ HTML;
             'email' => $toEmail,
             'link' => rtrim((string) Config::get('app.url', ''), '/'),
             'logo' => self::logoUrl(),
+            'logo_width' => (string) self::logoWidth(),
             'reason' => '',
             'code' => '',
             'subject' => '',
@@ -716,6 +730,11 @@ HTML;
             if (str_ends_with($logoPath, '.svg')) {
                 $vars['logo'] = self::logoUrl();
             }
+        }
+        if (trim((string) ($vars['logo_width'] ?? '')) === '' || (int) $vars['logo_width'] <= 0) {
+            $vars['logo_width'] = (string) self::logoWidth();
+        } else {
+            $vars['logo_width'] = (string) max(40, min(320, (int) $vars['logo_width']));
         }
         $subjectTpl = (string) ($tpl['subject'] ?? '');
         if ($subjectTpl === '') {

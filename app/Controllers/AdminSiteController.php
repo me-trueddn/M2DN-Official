@@ -170,6 +170,8 @@ final class AdminSiteController
         SiteContentService::set('logo', 'user_size', (string) max(16, min(120, (int) ($_POST['user_size'] ?? 36))));
         SiteContentService::set('logo', 'admin_size', (string) max(16, min(120, (int) ($_POST['admin_size'] ?? 36))));
         SiteContentService::set('logo', 'market_size', (string) max(12, min(80, (int) ($_POST['market_size'] ?? 22))));
+        SiteContentService::set('logo', 'mail_size', (string) max(40, min(320, (int) ($_POST['mail_size'] ?? 160))));
+        SiteContentService::set('logo', 'reset_size', (string) max(24, min(160, (int) ($_POST['reset_size'] ?? 48))));
 
         if (!empty($_POST['remove_logo'])) {
             SiteContentService::clearBrandFile('logo');

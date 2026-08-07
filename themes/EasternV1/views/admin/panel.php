@@ -2651,11 +2651,30 @@ $can = static function (string $flag) use ($permFlags): bool {
             </div>
           </div>
           <div class="card-head" style="margin-top:8px;"><h3 style="font-size:.95rem;">Boyutlar (px)</h3></div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px;">
             <div class="form-row"><label>Ana sayfa logo yüksekliği</label><input type="number" name="home_size" min="16" max="160" value="<?= (int) ($siteBrand['home_size'] ?? 48) ?>"></div>
             <div class="form-row"><label>Kullanıcı paneli ikon</label><input type="number" name="user_size" min="16" max="120" value="<?= (int) ($siteBrand['user_size'] ?? 36) ?>"></div>
             <div class="form-row"><label>Admin paneli ikon</label><input type="number" name="admin_size" min="16" max="120" value="<?= (int) ($siteBrand['admin_size'] ?? 36) ?>"></div>
             <div class="form-row"><label>Nesne Market logo</label><input type="number" name="market_size" min="12" max="80" value="<?= (int) ($siteBrand['market_size'] ?? 22) ?>"></div>
+            <div class="form-row"><label>Mail bildirimi logo (genişlik)</label><input type="number" name="mail_size" min="40" max="320" value="<?= (int) ($siteBrand['mail_size'] ?? 160) ?>"></div>
+            <div class="form-row"><label>Şifre sıfırlama logo (yükseklik)</label><input type="number" name="reset_size" min="24" max="160" value="<?= (int) ($siteBrand['reset_size'] ?? 48) ?>"></div>
+          </div>
+          <p style="font-size:.72rem;color:var(--ash);margin:4px 0 0;">Mail: <code>{{logo}}</code> / <code>{{logo_width}}</code> (40–320 px). Şifre sıfırlama sayfası logo yüksekliği (24–160 px).</p>
+          <?php
+            $mailLogoPreview = \App\Services\MailService::logoUrl();
+            $mailLogoW = max(40, min(320, (int) ($siteBrand['mail_size'] ?? 160)));
+            $resetLogoPreview = (string) ($siteBrand['logo_url'] ?? $brandLogo);
+            $resetLogoH = max(24, min(160, (int) ($siteBrand['reset_size'] ?? 48)));
+          ?>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0 4px;">
+            <div style="display:flex;align-items:center;gap:14px;padding:12px;border:1px solid var(--line);background:var(--obsidian);">
+              <img src="<?= e($mailLogoPreview) ?>" alt="Mail logo" width="<?= $mailLogoW ?>" style="max-width:<?= $mailLogoW ?>px;height:auto;display:block;object-fit:contain;">
+              <span style="font-size:.75rem;color:var(--ash);">Mail · <?= $mailLogoW ?>px</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;padding:12px;border:1px solid var(--line);background:var(--obsidian);">
+              <img src="<?= e($resetLogoPreview) ?>" alt="Şifre sıfırlama logo" style="max-height:<?= $resetLogoH ?>px;width:auto;display:block;object-fit:contain;">
+              <span style="font-size:.75rem;color:var(--ash);">Şifre sıfırlama · <?= $resetLogoH ?>px</span>
+            </div>
           </div>
           <div class="card-head" style="margin-top:18px;"><h3 style="font-size:.95rem;">Nesne Market logosu</h3></div>
           <div class="form-row" style="margin-bottom:12px;">
@@ -3591,7 +3610,7 @@ $can = static function (string $flag) use ($permFlags): bool {
       <div class="mail-pane<?= $mailTab === 'bildirimler' ? ' active' : '' ?>" data-mail-pane="bildirimler">
         <div class="card">
           <div class="card-head"><h3>E-posta bildirim şablonları</h3>
-            <span style="font-size:.78rem;color:var(--ash);">Varsayılan: kapalı · Değişkenler: {{login}} {{email}} {{link}} {{reason}} {{code}} {{subject}} {{app}}</span>
+            <span style="font-size:.78rem;color:var(--ash);">Varsayılan: kapalı · Değişkenler: {{login}} {{email}} {{link}} {{reason}} {{code}} {{subject}} {{app}} {{logo}} {{logo_width}}</span>
           </div>
           <?php if ($mailTemplates === []): ?>
             <p style="color:var(--ash);">Şablon bulunamadı.</p>
@@ -3632,6 +3651,7 @@ $can = static function (string $flag) use ($permFlags): bool {
                         <option value="{{email}}">{{email}}</option>
                         <option value="{{link}}">{{link}}</option>
                         <option value="{{logo}}">{{logo}}</option>
+                        <option value="{{logo_width}}">{{logo_width}}</option>
                         <option value="{{reason}}">{{reason}}</option>
                         <option value="{{code}}">{{code}}</option>
                         <option value="{{subject}}">{{subject}}</option>
@@ -6358,6 +6378,7 @@ $can = static function (string $flag) use ($permFlags): bool {
       email: 'ornek@mail.com',
       link: <?= json_encode(rtrim((string) (\App\Core\Config::get('app.url', 'http://127.0.0.1:8080')), '/'), JSON_UNESCAPED_UNICODE) ?>,
       logo: <?= json_encode(\App\Services\MailService::logoUrl(), JSON_UNESCAPED_UNICODE) ?>,
+      logo_width: <?= json_encode((string) \App\Services\MailService::logoWidth(), JSON_UNESCAPED_UNICODE) ?>,
       reason: 'Kural ihlali örneği',
       code: 'M2DN-4821',
       subject: 'Destek konusu örneği',

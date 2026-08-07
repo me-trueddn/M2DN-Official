@@ -1306,6 +1306,7 @@ final class Schema
                 $current = (string) ($stmt->fetchColumn() ?: '');
                 $needsSync = $current === ''
                     || !str_contains($current, 'm2dn-mail-card-v2')
+                    || !str_contains($current, '{{logo_width}}')
                     || str_contains($current, '#f4efe6')
                     || str_contains($current, '127.0.0.1')
                     || str_contains(strtolower($current), '.svg')

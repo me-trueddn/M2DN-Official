@@ -412,7 +412,7 @@ final class SiteContentService
      * @return array{
      *   logo_url:string, icon_url:string, market_logo_url:string,
      *   logo_path:string, icon_path:string, market_logo_path:string,
-     *   home_size:int, user_size:int, admin_size:int, market_size:int,
+     *   home_size:int, user_size:int, admin_size:int, market_size:int, mail_size:int, reset_size:int,
      *   has_custom_logo:bool, has_custom_icon:bool, has_custom_market_logo:bool
      * }
      */
@@ -426,6 +426,8 @@ final class SiteContentService
         $user = (int) (self::get('logo', 'user_size', (string) $defaults['user_size']) ?? $defaults['user_size']);
         $admin = (int) (self::get('logo', 'admin_size', (string) $defaults['admin_size']) ?? $defaults['admin_size']);
         $market = (int) (self::get('logo', 'market_size', (string) $defaults['market_size']) ?? $defaults['market_size']);
+        $mail = (int) (self::get('logo', 'mail_size', (string) $defaults['mail_size']) ?? $defaults['mail_size']);
+        $reset = (int) (self::get('logo', 'reset_size', (string) $defaults['reset_size']) ?? $defaults['reset_size']);
 
         $logoUrl = self::resolveBrandUrl($logoPath, $defaults['logo_url']);
 
@@ -440,13 +442,15 @@ final class SiteContentService
             'user_size' => max(16, min(120, $user > 0 ? $user : $defaults['user_size'])),
             'admin_size' => max(16, min(120, $admin > 0 ? $admin : $defaults['admin_size'])),
             'market_size' => max(12, min(80, $market > 0 ? $market : $defaults['market_size'])),
+            'mail_size' => max(40, min(320, $mail > 0 ? $mail : $defaults['mail_size'])),
+            'reset_size' => max(24, min(160, $reset > 0 ? $reset : $defaults['reset_size'])),
             'has_custom_logo' => $logoPath !== '',
             'has_custom_icon' => $iconPath !== '',
             'has_custom_market_logo' => $marketPath !== '',
         ];
     }
 
-    /** @return array{logo_url:string, icon_url:string, market_logo_url:string, logo_path:string, icon_path:string, market_logo_path:string, home_size:int, user_size:int, admin_size:int, market_size:int, has_custom_logo:bool, has_custom_icon:bool, has_custom_market_logo:bool} */
+    /** @return array{logo_url:string, icon_url:string, market_logo_url:string, logo_path:string, icon_path:string, market_logo_path:string, home_size:int, user_size:int, admin_size:int, market_size:int, mail_size:int, reset_size:int, has_custom_logo:bool, has_custom_icon:bool, has_custom_market_logo:bool} */
     public static function brandingDefaults(): array
     {
         $logo = \App\Core\Theme::assetUrl('img/logo-nav.svg');
@@ -461,6 +465,8 @@ final class SiteContentService
             'user_size' => 36,
             'admin_size' => 36,
             'market_size' => 22,
+            'mail_size' => 160,
+            'reset_size' => 48,
             'has_custom_logo' => false,
             'has_custom_icon' => false,
             'has_custom_market_logo' => false,

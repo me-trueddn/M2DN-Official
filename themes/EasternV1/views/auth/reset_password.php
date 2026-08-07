@@ -14,6 +14,7 @@ if (!isset($siteBrand) || !is_array($siteBrand)) {
     $siteBrand = \App\Services\SiteContentService::brandingDefaults();
 }
 $brandLogo = (string) ($siteBrand['logo_url'] ?? '');
+$brandResetSize = max(24, min(160, (int) ($siteBrand['reset_size'] ?? 48)));
 $token = isset($token) && is_string($token) ? $token : '';
 $resetErrors = isset($resetErrors) && is_array($resetErrors) ? $resetErrors : [];
 $csrf = isset($csrf) && is_string($csrf) ? $csrf : \App\Core\Security::csrfField();
@@ -32,7 +33,7 @@ $captchaScripts = isset($captchaScripts) && is_string($captchaScripts) ? $captch
     :root{--obsidian:#0b0906;--obsidian-2:#14110c;--line:rgba(201,151,74,.22);--gold:#c9974a;--gold-light:#e8c078;--ash:#9a8f7e;--blood-light:#e07070;--paper:#f3ebe0;}
     *{box-sizing:border-box} body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 30% 20%,#1a140c,#0b0906 60%);font-family:Georgia,"Times New Roman",serif;color:var(--paper);padding:24px;}
     .card{width:100%;max-width:420px;background:var(--obsidian-2);border:1px solid var(--line);padding:28px 26px;}
-    .logo{display:block;max-height:48px;margin:0 auto 18px;}
+    .logo{display:block;max-height:<?= $brandResetSize ?>px;width:auto;max-width:100%;margin:0 auto 18px;object-fit:contain;}
     h1{font-size:1.35rem;margin:0 0 8px;text-align:center;font-weight:600;}
     .sub{text-align:center;color:var(--ash);font-size:.9rem;margin:0 0 20px;}
     label{display:block;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;color:var(--ash);margin-bottom:6px;}

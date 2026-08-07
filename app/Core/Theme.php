@@ -94,6 +94,8 @@ final class Theme
                 'user_size' => 36,
                 'admin_size' => 36,
                 'market_size' => 22,
+                'mail_size' => 160,
+                'reset_size' => 48,
                 'has_custom_logo' => false,
                 'has_custom_icon' => false,
                 'has_custom_market_logo' => false,

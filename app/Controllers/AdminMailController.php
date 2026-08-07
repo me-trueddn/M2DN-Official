@@ -109,6 +109,7 @@ final class AdminMailController
             'email' => $to,
             'login' => $login,
             'logo' => MailService::logoUrl(),
+            'logo_width' => (string) MailService::logoWidth(),
             'link' => rtrim((string) \App\Core\Config::get('app.url', ''), '/'),
         ]);
         $result = MailService::sendRaw(
