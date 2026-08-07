@@ -10,6 +10,13 @@ M2DN, Metin2 özel sunucuları için PHP tabanlı web sitesi ve yönetim panelid
 
 ## Son güncellemeler
 
+### 2026-08-07 — Sürüm 3.6.8 · Mail logo PNG
+
+| Konu | Açıklama |
+|------|----------|
+| **Logo** | `themes/EasternV1/assets/img/logo-mail.png` — SVG’den üretildi; `{{logo}}` artık PNG |
+| **Bildirimler** | Şablonlardaki `.svg` logo `src` → `{{logo}}` (PNG); SVG’ye düşülmez |
+
 ### 2026-08-07 — Sürüm 3.6.7 · Mail test modal
 
 | Konu | Açıklama |

@@ -497,26 +497,27 @@ HTML;
         ];
     }
 
-    /** Mail içinde kullanılacak mutlak logo URL (PNG tercih). */
+    /** Mail içinde kullanılacak mutlak logo URL (yalnızca PNG — SVG e-posta istemcilerinde bozulur). */
     public static function logoUrl(): string
     {
         $pngRel = \App\Core\Theme::assetUrl('img/logo-mail.png');
         $pngFs = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR
             . \App\Core\Theme::active() . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'img' . DIRECTORY_SEPARATOR . 'logo-mail.png';
 
-        $logo = '';
-        if (is_file($pngFs)) {
+        $logo = is_file($pngFs) ? $pngRel : '';
+        if ($logo === '') {
+            // PNG yoksa bile SVG'ye düşme — kırık img yerine boş bırakma riski düşük; relative png yolu dene
+            $logo = $pngRel !== '' ? $pngRel : '';
+        }
+
+        if ($logo === '') {
+            return '';
+        }
+
+        // Yanlışlıkla SVG kaldıysa yine PNG'ye zorla
+        $pathOnly = strtolower((string) (parse_url($logo, PHP_URL_PATH) ?? $logo));
+        if (str_ends_with($pathOnly, '.svg')) {
             $logo = $pngRel;
-        } else {
-            try {
-                $brand = SiteContentService::branding();
-                $logo = trim((string) ($brand['logo_url'] ?? ''));
-            } catch (\Throwable) {
-                $logo = '';
-            }
-            if ($logo === '' || str_ends_with(strtolower($logo), '.svg')) {
-                $logo = $pngRel !== '' ? $pngRel : \App\Core\Theme::assetUrl('img/logo-nav.svg');
-            }
         }
 
         if (preg_match('#^https?://#i', $logo) === 1) {
@@ -527,6 +528,36 @@ HTML;
             return $logo;
         }
         return $base . '/' . ltrim($logo, '/');
+    }
+
+    /**
+     * Şablon HTML içindeki SVG logo src'lerini {{logo}} ile değiştirir (mail-safe PNG).
+     */
+    public static function replaceSvgLogosInHtml(string $html): string
+    {
+        $html = trim($html);
+        if ($html === '') {
+            return '';
+        }
+        // logo-nav / logo-mark / herhangi .svg img → {{logo}}
+        $html = preg_replace(
+            '#(<img\b[^>]*\bsrc=["\'])([^"\']*?logo[^"\']*?\.svg[^"\']*)(["\'])#i',
+            '$1{{logo}}$3',
+            $html
+        ) ?? $html;
+        $html = preg_replace(
+            '#(<img\b[^>]*\bsrc=["\'])([^"\']+\.svg)(["\'])#i',
+            '$1{{logo}}$3',
+            $html
+        ) ?? $html;
+        // Zaten çözülmüş mutlak SVG URL'leri (gönderilmiş kopya / önizleme)
+        $html = preg_replace(
+            '#(src=["\'])(https?://[^"\']+\.svg)(["\'])#i',
+            '$1{{logo}}$3',
+            $html
+        ) ?? $html;
+
+        return $html;
     }
 
     /** contenteditable'ın parçaladığı / siyah arka planlı bozuk şablonları tespit eder. */
@@ -605,7 +636,7 @@ HTML;
         }
         // NBSP / contenteditable boşluk temizliği (düz metin alternatifini de bozuyordu)
         $html = str_replace(["\xc2\xa0", '&nbsp;'], ' ', $html);
-        return $html;
+        return self::replaceSvgLogosInHtml($html);
     }
 
     /** Bozuk kayıt şablonunu varsayılana çeker (Schema / gönderim). */
@@ -680,6 +711,11 @@ HTML;
         }
         if (trim((string) ($vars['logo'] ?? '')) === '') {
             $vars['logo'] = self::logoUrl();
+        } else {
+            $logoPath = strtolower((string) (parse_url((string) $vars['logo'], PHP_URL_PATH) ?? (string) $vars['logo']));
+            if (str_ends_with($logoPath, '.svg')) {
+                $vars['logo'] = self::logoUrl();
+            }
         }
         $subjectTpl = (string) ($tpl['subject'] ?? '');
         if ($subjectTpl === '') {
@@ -687,6 +723,7 @@ HTML;
         }
         $subject = self::render($subjectTpl, $vars);
         $rawBody = self::repairTemplateIfBroken($code, (string) ($tpl['body_html'] ?? ''));
+        $rawBody = self::replaceSvgLogosInHtml($rawBody);
         if ($rawBody === '' && isset($defaults[$code])) {
             $rawBody = $defaults[$code];
         }
