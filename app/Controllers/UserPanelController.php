@@ -49,9 +49,10 @@ final class UserPanelController
         $pendingSecret = (string) ($security['totp_secret'] ?? '');
         $totpSetup = null;
         if ($pendingSecret !== '' && !$security['totp_enabled']) {
+            $issuer = (string) (\App\Core\Config::get('app.name', 'M2DN') ?: 'M2DN');
             $totpSetup = [
                 'secret' => $pendingSecret,
-                'uri' => Totp::provisioningUri($pendingSecret, (string) $user['login']),
+                'uri' => Totp::provisioningUri($pendingSecret, (string) $user['login'], $issuer),
             ];
         }
 
@@ -194,7 +195,7 @@ final class UserPanelController
         $result = AccountSecurityService::enableTotp((int) $user['account_id']);
         if ($result['ok'] && !empty($result['secret'])) {
             Session::set('totp_setup_secret', $result['secret']);
-            Session::flash('panel_success', '2FA kurulumu başlatıldı. Uygulamadaki kodu girerek onayla.');
+            Session::flash('panel_success', '2FA kurulumu başlatıldı. QR kodu tara veya anahtarı gir, ardından kodu onayla.');
         } else {
             Session::flash('panel_errors', $result['errors'] ?: ['2FA başlatılamadı.']);
         }

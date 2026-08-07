@@ -485,6 +485,13 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   .search-drop a:hover{background:rgba(201,151,74,.08);}
   .search-drop .empty{padding:12px; font-size:.8rem; color:var(--ash);}
   .secret-box{font-family:ui-monospace,monospace; letter-spacing:.08em; background:var(--obsidian); border:1px solid var(--line); padding:10px 12px; font-size:.85rem; word-break:break-all; margin:8px 0 14px;}
+  .totp-qr-wrap{display:flex; flex-direction:column; align-items:flex-start; gap:12px; margin:10px 0 14px;}
+  .totp-qr{
+    width:180px; height:180px; padding:10px; background:#fff; border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .totp-qr img{width:160px; height:160px; display:block;}
+  .totp-qr-hint{font-size:.75rem; color:var(--ash); line-height:1.45; max-width:280px;}
   .btn-block{width:100%; justify-content:center;}
   button.btn{border:none; display:inline-flex; align-items:center; gap:8px;}
   button.toggle-btn{background:none; border:none; padding:0;}
@@ -1393,8 +1400,23 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
               <button type="submit" class="btn btn-ghost btn-block">2FA’yı Kapat</button>
             </form>
           <?php elseif ($totpSetup): ?>
-            <div style="font-size:.8rem;color:var(--ash);margin:8px 0;">Authenticator uygulamasına bu anahtarı ekle, ardından 6 haneli kodu onayla:</div>
-            <div class="secret-box"><?= e($totpSetup['secret']) ?></div>
+            <?php
+              $totpUri = (string) ($totpSetup['uri'] ?? '');
+              $totpSecret = (string) ($totpSetup['secret'] ?? '');
+              $totpQrSrc = $totpUri !== ''
+                  ? 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&ecc=M&margin=8&data=' . rawurlencode($totpUri)
+                  : '';
+            ?>
+            <div style="font-size:.8rem;color:var(--ash);margin:8px 0;">Authenticator uygulamasıyla QR kodu tara. Olmazsa anahtarı elle gir, ardından 6 haneli kodu onayla:</div>
+            <?php if ($totpQrSrc !== ''): ?>
+            <div class="totp-qr-wrap">
+              <div class="totp-qr">
+                <img src="<?= e($totpQrSrc) ?>" alt="2FA QR kodu" width="160" height="160" loading="lazy">
+              </div>
+              <div class="totp-qr-hint">Google Authenticator, Authy vb. ile tara. QR görünmezse aşağıdaki anahtarı kullan.</div>
+            </div>
+            <?php endif; ?>
+            <div class="secret-box"><?= e($totpSecret) ?></div>
             <form method="post" action="<?= e(url('/panel/guvenlik/2fa/onayla')) ?>" autocomplete="off" style="margin-bottom:18px;">
               <?= $csrf ?>
               <div class="form-row"><label for="totp-code">Doğrulama Kodu</label><input id="totp-code" name="code" type="text" inputmode="numeric" pattern="\d{6}" maxlength="6" required placeholder="000000"></div>
