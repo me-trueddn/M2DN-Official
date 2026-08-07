@@ -447,6 +447,9 @@ $can = static function (string $flag) use ($permFlags): bool {
   .actions-cell button{width:30px; height:30px; display:flex; align-items:center; justify-content:center; background:var(--obsidian); border:1px solid var(--line); color:var(--ash); font-size:.75rem; transition:color .2s, border-color .2s;}
   .actions-cell button:hover{color:var(--gold-light); border-color:var(--gold);}
   .actions-cell button.danger:hover{color:var(--blood-light); border-color:var(--blood-light);}
+  .mail-server-actions{flex-wrap:wrap; justify-content:flex-end; max-width:140px;}
+  .mail-server-actions form{display:inline-flex; margin:0;}
+  .mail-server-actions .btn-sm{width:30px; min-width:30px; padding:0; font-size:.75rem;}
 
   .badge{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; font-weight:600;}
   .badge.online{background:rgba(51,89,74,.2); color:var(--jade-light);}
@@ -3520,12 +3523,21 @@ $can = static function (string $flag) use ($permFlags): bool {
               <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:.82rem;color:var(--ash);cursor:pointer;">
                 <input type="checkbox" name="activate" value="1" checked style="width:auto;"> Aktif sunucu yap
               </label>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                 <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
                 <button type="button" class="btn btn-ghost btn-sm" id="mailServerReset">Formu temizle</button>
+                <button type="button" class="btn btn-jade btn-sm" id="mailQuickTest" title="Kayıtlı sunucu ile test maili gönder">
+                  <i class="fa-solid fa-paper-plane"></i> Test gönder
+                </button>
               </div>
-              <p style="font-size:.75rem;color:var(--ash);margin-top:12px;">Parola veritabanında şifreli saklanır.</p>
+              <p style="font-size:.75rem;color:var(--ash);margin-top:12px;">Parola veritabanında şifreli saklanır. Önce kaydedin, sonra Test ile doğrulayın.</p>
               <div id="mailProviderHint" style="display:none;font-size:.78rem;color:var(--gold-light);margin-top:10px;padding:12px;border:1px solid rgba(201,151,74,.25);background:rgba(201,151,74,.06);line-height:1.45;"></div>
+            </form>
+            <form method="post" action="<?= e(url('/admin/ayarlar/mail/test')) ?>" id="mailQuickTestForm" style="display:none;">
+              <?= $csrf ?>
+              <input type="hidden" name="mail_tab" value="sunucu">
+              <input type="hidden" name="server_id" id="mailQuickTestServerId" value="">
+              <input type="hidden" name="to_email" id="mailQuickTestTo" value="">
             </form>
           </div>
           <div class="card">
@@ -3534,15 +3546,21 @@ $can = static function (string $flag) use ($permFlags): bool {
               <p style="color:var(--ash);font-size:.88rem;">Henüz sunucu yok.</p>
             <?php else: ?>
               <table>
-                <thead><tr><th>Ad</th><th>Sağlayıcı</th><th>Hesap</th><th></th></tr></thead>
+                <thead><tr><th>Ad</th><th>Sağlayıcı</th><th>Hesap</th><th style="width:1%;">İşlem</th></tr></thead>
                 <tbody>
                   <?php foreach ($mailServers as $ms): ?>
+                  <?php
+                    $msTestTo = trim((string) ($ms['from_email'] ?? ''));
+                    if ($msTestTo === '' || !filter_var($msTestTo, FILTER_VALIDATE_EMAIL)) {
+                        $msTestTo = trim((string) ($ms['username'] ?? ''));
+                    }
+                  ?>
                   <tr>
                     <td><?= e((string) $ms['name']) ?><?php if (!empty($ms['is_active'])): ?> <span class="badge ok">Aktif</span><?php endif; ?></td>
                     <td><?= e((string) $ms['provider']) ?></td>
-                    <td style="font-size:.78rem;"><?= e((string) $ms['username']) ?></td>
-                    <td class="actions-cell" style="white-space:nowrap;">
-                      <button type="button" class="btn btn-ghost btn-sm" data-edit-mail
+                    <td style="font-size:.78rem;word-break:break-all;"><?= e((string) $ms['username']) ?></td>
+                    <td class="actions-cell mail-server-actions">
+                      <button type="button" title="Düzenle" data-edit-mail
                         data-id="<?= (int) $ms['id'] ?>"
                         data-name="<?= e((string) $ms['name']) ?>"
                         data-provider="<?= e((string) $ms['provider']) ?>"
@@ -3551,16 +3569,23 @@ $can = static function (string $flag) use ($permFlags): bool {
                         data-encryption="<?= e((string) $ms['encryption']) ?>"
                         data-username="<?= e((string) $ms['username']) ?>"
                         data-from="<?= e((string) $ms['from_email']) ?>"
-                        data-from-name="<?= e((string) $ms['from_name']) ?>">Düzenle</button>
+                        data-from-name="<?= e((string) $ms['from_name']) ?>"><i class="fa-solid fa-pen"></i></button>
+                      <form method="post" action="<?= e(url('/admin/ayarlar/mail/test')) ?>" onsubmit="return confirm('Bu sunucu ile test maili gönderilsin mi?');">
+                        <?= $csrf ?>
+                        <input type="hidden" name="mail_tab" value="sunucu">
+                        <input type="hidden" name="server_id" value="<?= (int) $ms['id'] ?>">
+                        <input type="hidden" name="to_email" value="<?= e($msTestTo) ?>">
+                        <button type="submit" title="Test gönder (<?= e($msTestTo) ?>)"><i class="fa-solid fa-paper-plane"></i></button>
+                      </form>
                       <?php if (empty($ms['is_active'])): ?>
-                      <form method="post" action="<?= e(url('/admin/ayarlar/mail/aktif')) ?>" style="display:inline;">
+                      <form method="post" action="<?= e(url('/admin/ayarlar/mail/aktif')) ?>">
                         <?= $csrf ?><input type="hidden" name="mail_tab" value="sunucu"><input type="hidden" name="id" value="<?= (int) $ms['id'] ?>">
-                        <button type="submit" class="btn btn-jade btn-sm">Aktif</button>
+                        <button type="submit" title="Aktif yap"><i class="fa-solid fa-check"></i></button>
                       </form>
                       <?php endif; ?>
-                      <form method="post" action="<?= e(url('/admin/ayarlar/mail/sil')) ?>" style="display:inline;" onsubmit="return confirm('Silinsin mi?');">
+                      <form method="post" action="<?= e(url('/admin/ayarlar/mail/sil')) ?>" onsubmit="return confirm('Silinsin mi?');">
                         <?= $csrf ?><input type="hidden" name="mail_tab" value="sunucu"><input type="hidden" name="id" value="<?= (int) $ms['id'] ?>">
-                        <button type="submit" class="btn btn-ghost btn-sm">Sil</button>
+                        <button type="submit" class="danger" title="Sil"><i class="fa-solid fa-trash"></i></button>
                       </form>
                     </td>
                   </tr>
@@ -6116,6 +6141,24 @@ $can = static function (string $flag) use ($permFlags): bool {
       document.getElementById('mailServerForm')?.reset();
       document.getElementById('mailServerId').value = '';
       syncProvider();
+    });
+    document.getElementById('mailQuickTest')?.addEventListener('click', () => {
+      const sid = (document.getElementById('mailServerId')?.value || '').trim();
+      const to = (document.getElementById('mailFrom')?.value || document.getElementById('mailUser')?.value || '').trim();
+      if (!sid) {
+        alert('Önce sunucuyu kaydedin, sonra listeden veya düzenleme modunda Test gönderin.');
+        return;
+      }
+      if (!to) {
+        alert('Gönderen e-posta (alıcı) boş olamaz.');
+        return;
+      }
+      if (!confirm('Bu sunucu ile test maili gönderilsin mi?\nAlıcı: ' + to)) return;
+      const sidEl = document.getElementById('mailQuickTestServerId');
+      const toEl = document.getElementById('mailQuickTestTo');
+      if (sidEl) sidEl.value = sid;
+      if (toEl) toEl.value = to;
+      document.getElementById('mailQuickTestForm')?.submit();
     });
     document.querySelectorAll('form[action*="mail/sablon"]').forEach(form => {
       const wrap = form.querySelector('[data-mail-tpl-wrap]');

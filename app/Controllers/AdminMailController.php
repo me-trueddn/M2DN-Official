@@ -81,10 +81,20 @@ final class AdminMailController
     {
         $this->gate();
         $to = trim((string) ($_POST['to_email'] ?? ''));
+        $serverId = (int) ($_POST['server_id'] ?? 0);
         $user = AuthService::user();
         $login = (string) ($user['login'] ?? 'test');
+        if ($to === '' && $serverId > 0) {
+            $srv = MailService::serverById($serverId);
+            if ($srv) {
+                $to = trim((string) ($srv['from_email'] ?? ''));
+                if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+                    $to = trim((string) ($srv['username'] ?? ''));
+                }
+            }
+        }
         if ($to === '') {
-            $to = (string) ($_POST['username'] ?? '');
+            $to = trim((string) ($_POST['username'] ?? ''));
         }
         // Test mailinde de {{logo}}/{{app}}/{{email}} doldur
         $testHtml = MailService::cardShell(
@@ -106,9 +116,12 @@ final class AdminMailController
             $login,
             'M2DN test maili',
             $testHtml,
-            'test'
+            'test',
+            $serverId > 0 ? $serverId : null
         );
-        $_POST['mail_tab'] = 'loglar';
+        $_POST['mail_tab'] = trim((string) ($_POST['mail_tab'] ?? '')) !== ''
+            ? (string) $_POST['mail_tab']
+            : 'loglar';
         $this->fromResult($result, 'Test maili gönderildi.', 'mail-ayarlari');
     }
 

@@ -10,6 +10,13 @@ M2DN, Metin2 özel sunucuları için PHP tabanlı web sitesi ve yönetim panelid
 
 ## Son güncellemeler
 
+### 2026-08-07 — Sürüm 3.6.6 · Mail sunucu test + UI
+
+| Konu | Açıklama |
+|------|----------|
+| **Test** | Kayıtlı sunucu satırında ve formda **Test gönder**; seçilen sunucu ile deneme maili |
+| **UI** | Kayıtlı sunucularda taşan Düzenle/Aktif/Sil → ikon butonlar |
+
 ### 2026-08-07 — Sürüm 3.6.5 · Yönetici log hedef düzeltmesi
 
 | Konu | Açıklama |

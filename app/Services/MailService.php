@@ -150,6 +150,21 @@ final class MailService
         }
     }
 
+    public static function serverById(int $id): ?array
+    {
+        if ($id <= 0) {
+            return null;
+        }
+        try {
+            $stmt = Database::web()->prepare('SELECT * FROM mail_servers WHERE id = ? LIMIT 1');
+            $stmt->execute([$id]);
+            $row = $stmt->fetch();
+            return $row ?: null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
     /** @return array{ok:bool, errors:list<string>, id?:int} */
     public static function saveServer(
         ?int $id,
@@ -704,17 +719,25 @@ HTML;
     }
 
     /** @return array{ok:bool, errors:list<string>} */
-    public static function sendRaw(string $toEmail, string $toLogin, string $subject, string $htmlBody, string $templateCode = ''): array
-    {
+    public static function sendRaw(
+        string $toEmail,
+        string $toLogin,
+        string $subject,
+        string $htmlBody,
+        string $templateCode = '',
+        ?int $serverId = null
+    ): array {
         $toEmail = trim($toEmail);
         $htmlBody = self::normalizeHtmlBody($htmlBody);
         if ($toEmail === '' || !filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
             return ['ok' => false, 'errors' => ['Geçersiz alıcı e-posta.']];
         }
-        $server = self::activeServer();
+        $server = ($serverId !== null && $serverId > 0)
+            ? self::serverById($serverId)
+            : self::activeServer();
         if ($server === null) {
-            self::logMail($templateCode, $toEmail, $toLogin, $subject, 'fail', 'Aktif mail sunucusu yok');
-            return ['ok' => false, 'errors' => ['Aktif mail sunucusu yok.']];
+            self::logMail($templateCode, $toEmail, $toLogin, $subject, 'fail', 'Mail sunucusu bulunamadı');
+            return ['ok' => false, 'errors' => ['Mail sunucusu bulunamadı. Önce sunucu kaydedin.']];
         }
         $pass = Security::decryptSecret((string) ($server['password_enc'] ?? ''));
         $provider = strtolower((string) ($server['provider'] ?? 'custom'));
