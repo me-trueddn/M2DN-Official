@@ -18,12 +18,14 @@ final class AccountService
         string $password,
         string $email,
         string $securityCode,
-        bool $acceptRules = false
+        bool $acceptRules = false,
+        string $passwordConfirm = ''
     ): array {
         $errors = [];
 
         $login = trim($login);
         $password = trim($password);
+        $passwordConfirm = trim($passwordConfirm);
         $email = trim($email);
         $securityCode = trim($securityCode);
 
@@ -33,6 +35,8 @@ final class AccountService
 
         if ($password === '' || strlen($password) < 4 || strlen($password) > 16) {
             $errors[] = 'Parola 4–16 karakter olmalı.';
+        } elseif ($password !== $passwordConfirm) {
+            $errors[] = 'Parola ile parola tekrarı eşleşmiyor.';
         }
 
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 64) {

@@ -55,7 +55,7 @@ $brandHomeSize = (int) ($siteBrand['home_size'] ?? 48);
   h1{font-family:var(--font-display); letter-spacing:.02em;}
   ::selection{background:var(--blood); color:var(--gold-light);}
 
-  .wrap{width:100%; max-width:560px;}
+  .wrap{width:100%; max-width:440px;}
   .brand{
     display:flex; align-items:center; justify-content:center; gap:0;
     margin-bottom:22px; line-height:0;
@@ -66,7 +66,7 @@ $brandHomeSize = (int) ($siteBrand['home_size'] ?? 48);
   .card{
     background:var(--obsidian-2);
     border:1px solid var(--line);
-    padding:34px 32px 28px;
+    padding:34px 30px 28px;
     clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
   }
   .eyebrow{
@@ -77,8 +77,6 @@ $brandHomeSize = (int) ($siteBrand['home_size'] ?? 48);
   .card h1{font-size:1.55rem; margin-bottom:8px;}
   .card .sub{color:var(--ash); font-size:.9rem; line-height:1.6; margin-bottom:24px;}
 
-  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;}
-  @media (max-width:560px){.form-grid{grid-template-columns:1fr;}}
   .form-row{margin-bottom:16px;}
   .form-row label{
     display:block; font-size:.72rem; text-transform:uppercase; letter-spacing:.08em;
@@ -166,36 +164,41 @@ $brandHomeSize = (int) ($siteBrand['home_size'] ?? 48);
       <form method="post" action="<?= e(url('/kayit')) ?>" autocomplete="off">
         <?= $csrf ?>
 
-        <div class="form-grid">
-          <div class="form-row">
-            <label for="login">Kullanıcı Adı</label>
-            <input id="login" name="login" type="text" maxlength="16" required
-                   autocomplete="username"
-                   value="<?= e((string) ($old['login'] ?? '')) ?>">
-            <div class="hint">En fazla 16 karakter</div>
-          </div>
+        <div class="form-row">
+          <label for="login">Kullanıcı Adı</label>
+          <input id="login" name="login" type="text" maxlength="16" required
+                 autocomplete="username"
+                 value="<?= e((string) ($old['login'] ?? '')) ?>">
+          <div class="hint">4–16 karakter (harf, rakam, _)</div>
+        </div>
 
-          <div class="form-row">
-            <label for="password">Parola</label>
-            <input id="password" name="password" type="password" maxlength="16" required
-                   autocomplete="new-password">
-            <div class="hint">En fazla 16 karakter</div>
-          </div>
+        <div class="form-row">
+          <label for="password">Parola</label>
+          <input id="password" name="password" type="password" maxlength="16" required
+                 autocomplete="new-password">
+          <div class="hint">4–16 karakter</div>
+        </div>
 
-          <div class="form-row">
-            <label for="email">E-posta</label>
-            <input id="email" name="email" type="email" maxlength="64" required
-                   autocomplete="email"
-                   value="<?= e((string) ($old['email'] ?? '')) ?>">
-          </div>
+        <div class="form-row">
+          <label for="password_confirm">Parola Tekrar</label>
+          <input id="password_confirm" name="password_confirm" type="password" maxlength="16" required
+                 autocomplete="new-password">
+          <div class="hint">Parolanı doğrula</div>
+        </div>
 
-          <div class="form-row">
-            <label for="securitycode">Güvenlik Kodu</label>
-            <input id="securitycode" name="securitycode" type="text" inputmode="numeric"
-                   pattern="\d{1,6}" maxlength="6" required
-                   autocomplete="off" placeholder="örn. 123456">
-            <div class="hint">1–6 haneli sayı (oyun / panel güvenliği)</div>
-          </div>
+        <div class="form-row">
+          <label for="email">E-posta</label>
+          <input id="email" name="email" type="email" maxlength="64" required
+                 autocomplete="email"
+                 value="<?= e((string) ($old['email'] ?? '')) ?>">
+        </div>
+
+        <div class="form-row">
+          <label for="securitycode">Güvenlik Kodu</label>
+          <input id="securitycode" name="securitycode" type="text" inputmode="numeric"
+                 pattern="\d{1,6}" maxlength="6" required
+                 autocomplete="off" placeholder="örn. 123456">
+          <div class="hint">1–6 haneli sayı (oyun / panel güvenliği)</div>
         </div>
 
         <button type="submit" class="btn"><i class="fa-solid fa-user-plus"></i> Hesap Oluştur</button>

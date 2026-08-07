@@ -30,6 +30,7 @@ final class AuthController
 
         $login = (string) ($_POST['login'] ?? '');
         $password = (string) ($_POST['password'] ?? '');
+        $passwordConfirm = (string) ($_POST['password_confirm'] ?? '');
         $email = (string) ($_POST['email'] ?? '');
         $securityCode = (string) ($_POST['securitycode'] ?? '');
         $acceptRules = !empty($_POST['accept_rules']);
@@ -47,7 +48,7 @@ final class AuthController
             redirect('/');
         }
 
-        $result = AccountService::register($login, $password, $email, $securityCode, $acceptRules);
+        $result = AccountService::register($login, $password, $email, $securityCode, $acceptRules, $passwordConfirm);
 
         if (!$result['ok']) {
             Session::flash('register_errors', $result['errors']);

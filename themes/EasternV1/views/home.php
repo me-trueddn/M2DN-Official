@@ -248,21 +248,12 @@ $footerHref = static function (string $url): string {
     animation:modalIn .28s ease;
   }
   #registerModal .modal-card{
-    max-width:560px;
-    max-height:min(94vh, 820px);
+    max-width:480px;
+    max-height:min(94vh, 880px);
     padding:32px 32px 26px;
   }
   #registerModal .modal-card .sub{margin-bottom:20px;}
-  #registerModal .modal-form .form-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:0 16px;
-  }
   #registerModal .modal-form .form-row{margin-bottom:16px;}
-  #registerModal .modal-form .form-row-full{grid-column:1 / -1;}
-  @media (max-width:560px){
-    #registerModal .modal-form .form-grid{grid-template-columns:1fr;}
-  }
   @keyframes modalIn{
     from{opacity:0; transform:translateY(12px) scale(.98);}
     to{opacity:1; transform:none;}
@@ -1074,33 +1065,37 @@ $footerHref = static function (string $url): string {
 
     <form class="modal-form" method="post" action="<?= e(url('/kayit')) ?>" autocomplete="off">
       <?= $csrf ?>
-      <div class="form-grid">
-        <div class="form-row">
-          <label for="reg-login">Kullanıcı Adı</label>
-          <input id="reg-login" name="login" type="text" maxlength="16" required
-                 autocomplete="username"
-                 value="<?= e((string) ($registerOld['login'] ?? '')) ?>">
-          <div class="hint">En fazla 16 karakter</div>
-        </div>
-        <div class="form-row">
-          <label for="reg-password">Parola</label>
-          <input id="reg-password" name="password" type="password" maxlength="16" required
-                 autocomplete="new-password">
-          <div class="hint">En fazla 16 karakter</div>
-        </div>
-        <div class="form-row">
-          <label for="reg-email">E-posta</label>
-          <input id="reg-email" name="email" type="email" maxlength="64" required
-                 autocomplete="email"
-                 value="<?= e((string) ($registerOld['email'] ?? '')) ?>">
-        </div>
-        <div class="form-row">
-          <label for="reg-security">Güvenlik Kodu</label>
-          <input id="reg-security" name="securitycode" type="text" inputmode="numeric"
-                 pattern="\d{1,6}" maxlength="6" required
-                 autocomplete="off" placeholder="örn. 123456">
-          <div class="hint">1–6 haneli sayı (oyun / panel güvenliği)</div>
-        </div>
+      <div class="form-row">
+        <label for="reg-login">Kullanıcı Adı</label>
+        <input id="reg-login" name="login" type="text" maxlength="16" required
+               autocomplete="username"
+               value="<?= e((string) ($registerOld['login'] ?? '')) ?>">
+        <div class="hint">4–16 karakter (harf, rakam, _)</div>
+      </div>
+      <div class="form-row">
+        <label for="reg-password">Parola</label>
+        <input id="reg-password" name="password" type="password" maxlength="16" required
+               autocomplete="new-password">
+        <div class="hint">4–16 karakter</div>
+      </div>
+      <div class="form-row">
+        <label for="reg-password-confirm">Parola Tekrar</label>
+        <input id="reg-password-confirm" name="password_confirm" type="password" maxlength="16" required
+               autocomplete="new-password">
+        <div class="hint">Parolanı doğrula</div>
+      </div>
+      <div class="form-row">
+        <label for="reg-email">E-posta</label>
+        <input id="reg-email" name="email" type="email" maxlength="64" required
+               autocomplete="email"
+               value="<?= e((string) ($registerOld['email'] ?? '')) ?>">
+      </div>
+      <div class="form-row">
+        <label for="reg-security">Güvenlik Kodu</label>
+        <input id="reg-security" name="securitycode" type="text" inputmode="numeric"
+               pattern="\d{1,6}" maxlength="6" required
+               autocomplete="off" placeholder="örn. 123456">
+        <div class="hint">1–6 haneli sayı (oyun / panel güvenliği)</div>
       </div>
       <label class="rules-accept">
         <input type="checkbox" name="accept_rules" value="1" required<?= !empty($registerOld['accept_rules']) ? ' checked' : '' ?>>

@@ -253,7 +253,23 @@ $can = static function (string $flag) use ($permFlags): bool {
   .layout{display:grid; grid-template-columns:var(--sidebar-w) 1fr; min-height:100vh;}
 
   /* ===== SIDEBAR ===== */
-  .sidebar{background:var(--obsidian-2); border-right:1px solid var(--line); padding:26px 18px; display:flex; flex-direction:column; gap:6px; position:sticky; top:0; height:100vh; overflow-y:auto;}
+  .sidebar{background:var(--obsidian-2); border-right:1px solid var(--line); padding:26px 18px; display:flex; flex-direction:column; gap:6px; position:sticky; top:0; height:100vh; overflow-y:auto;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(201,151,74,.45) rgba(11,9,6,.55);
+  }
+  .sidebar::-webkit-scrollbar{width:8px;}
+  .sidebar::-webkit-scrollbar-track{
+    background:rgba(11,9,6,.55);
+    border-left:1px solid rgba(201,151,74,.12);
+  }
+  .sidebar::-webkit-scrollbar-thumb{
+    background:linear-gradient(180deg, rgba(201,151,74,.55), rgba(143,28,41,.45));
+    border:2px solid rgba(11,9,6,.4);
+    border-radius:6px;
+  }
+  .sidebar::-webkit-scrollbar-thumb:hover{
+    background:linear-gradient(180deg, rgba(236,205,142,.7), rgba(197,51,71,.55));
+  }
   .sidebar-brand{display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:800; font-size:1.15rem; letter-spacing:.06em; color:var(--gold-light); padding:0 10px 10px; margin-bottom:6px; border-bottom:1px solid var(--line); text-decoration:none;}
   .sidebar-brand img{width:<?= $brandAdminSize ?>px; height:<?= $brandAdminSize ?>px; object-fit:contain; flex-shrink:0; display:block;}
   .sidebar-brand span{color:var(--blood-light);}
