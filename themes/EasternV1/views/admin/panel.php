@@ -3040,7 +3040,7 @@ $can = static function (string $flag) use ($permFlags): bool {
         </div>
         <form class="filters" method="get" action="<?= e(url('/admin')) ?>" style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <input type="hidden" name="section" value="nesne-market-kuponlar">
-          <input name="coupon_q" value="<?= e((string) ($couponPack['q'] ?? '')) ?>" placeholder="Maske, hesap, id…" style="flex:1;min-width:160px;">
+          <input name="coupon_q" value="<?= e((string) ($couponPack['q'] ?? '')) ?>" placeholder="Tam kod, maske, hesap, id…" style="flex:1;min-width:160px;">
           <select name="coupon_status">
             <option value=""<?= ($couponPack['status'] ?? '') === '' ? ' selected' : '' ?>>Tümü</option>
             <option value="unused"<?= ($couponPack['status'] ?? '') === 'unused' ? ' selected' : '' ?>>Kullanılmadı</option>

@@ -211,11 +211,22 @@ final class MarketCouponService
             $where = [];
             $params = [];
             if ($q !== '') {
-                $where[] = '(k.code_mask LIKE ? OR k.used_account_login LIKE ? OR CAST(k.id AS CHAR) = ?)';
-                $like = '%' . $q . '%';
-                $params[] = $like;
-                $params[] = $like;
-                $params[] = $q;
+                $normalized = self::normalizeCode($q);
+                $hashMatch = self::isValidFormat($normalized) ? self::hashCode($normalized) : null;
+                if ($hashMatch !== null) {
+                    $where[] = '(k.code_hash = ? OR k.code_mask LIKE ? OR k.used_account_login LIKE ? OR CAST(k.id AS CHAR) = ?)';
+                    $like = '%' . $q . '%';
+                    $params[] = $hashMatch;
+                    $params[] = $like;
+                    $params[] = $like;
+                    $params[] = $q;
+                } else {
+                    $where[] = '(k.code_mask LIKE ? OR k.used_account_login LIKE ? OR CAST(k.id AS CHAR) = ?)';
+                    $like = '%' . $q . '%';
+                    $params[] = $like;
+                    $params[] = $like;
+                    $params[] = $q;
+                }
             }
             if ($status === 'unused') {
                 $where[] = 'k.used_at IS NULL';
