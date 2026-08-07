@@ -10,6 +10,14 @@ M2DN, Metin2 özel sunucuları için PHP tabanlı web sitesi ve yönetim panelid
 
 ## Son güncellemeler
 
+### 2026-08-07 — Sürüm 3.6.11 · Ban / ticket mail düzeltmesi
+
+| Konu | Açıklama |
+|------|----------|
+| **Ban / unban** | Mail hatası ban işlemini etkilemez; başarısızlık Gönderim loguna yazılır + admin uyarısı |
+| **Neden görünür** | Şablon kapalı / e-posta yok / SMTP hatası `mail_logs`’a düşer |
+| **Ticket** | Oyuncu yanıtında yetkililere de `ticket_replied` maili |
+
 ### 2026-08-07 — Sürüm 3.6.10 · Şifre sıfırlama logo boyutu
 
 | Konu | Açıklama |

@@ -830,12 +830,18 @@ final class AdminPanelController
         redirect('/admin?section=ceza-ayarlari');
     }
 
-    /** @param array{ok:bool, errors:list<string>} $result */
+    /** @param array{ok:bool, errors:list<string>, mail?:array{ok:bool, errors:list<string>}} $result */
     private function flashResult(array $result, string $success, string $section): void
     {
         Session::flash('panel_section', $section);
         if (!empty($result['ok'])) {
-            Session::flash('panel_success', $success);
+            $msg = $success;
+            $mail = $result['mail'] ?? null;
+            if (is_array($mail) && empty($mail['ok'])) {
+                $mailErr = (string) (($mail['errors'][0] ?? '') ?: 'Ban bildirimi gönderilemedi.');
+                $msg .= ' · Uyarı: ' . $mailErr . ' (Mail → Gönderim)';
+            }
+            Session::flash('panel_success', $msg);
             return;
         }
         Session::flash('panel_errors', $result['errors'] !== [] ? $result['errors'] : ['İşlem başarısız.']);

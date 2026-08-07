@@ -701,6 +701,14 @@ HTML;
             ];
         }
         if (!$force && !$tpl['is_enabled']) {
+            self::logMail(
+                $code,
+                $toEmail,
+                $toLogin,
+                (string) ($tpl['subject'] ?? $code),
+                'fail',
+                'Bildirim şablonu kapalı (Mail → Bildirimler’de Aktif edin)'
+            );
             return ['ok' => false, 'errors' => ['Bildirim kapalı.']];
         }
         $vars = array_merge([
@@ -786,6 +794,7 @@ HTML;
         $toEmail = trim($toEmail);
         $htmlBody = self::normalizeHtmlBody($htmlBody);
         if ($toEmail === '' || !filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
+            self::logMail($templateCode, $toEmail, $toLogin, $subject, 'fail', 'Geçersiz veya boş alıcı e-posta');
             return ['ok' => false, 'errors' => ['Geçersiz alıcı e-posta.']];
         }
         $server = ($serverId !== null && $serverId > 0)
@@ -960,6 +969,12 @@ HTML;
                 // ignore
             }
         }
+    }
+
+    /** Gönderim atlandı / şablon kapalı vb. — Mail → Gönderim listesinde görünür. */
+    public static function logSkipped(string $code, string $toEmail, string $toLogin, string $reason): void
+    {
+        self::logMail($code, $toEmail, $toLogin, $code, 'fail', $reason);
     }
 
     private static function clip(string $value, int $max): string

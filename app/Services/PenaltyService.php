@@ -193,16 +193,17 @@ final class PenaltyService
                 $evidence
             );
 
+            $loginName = (string) $row['login'];
             $email = trim((string) ($row['email'] ?? ''));
-            if ($email !== '') {
-                MailService::sendTemplate('ban', $email, (string) $row['login'], [
-                    'login' => (string) $row['login'],
-                    'reason' => (string) $tpl['reason'],
-                    'email' => $email,
-                ]);
-            }
 
-            return ['ok' => true, 'errors' => []];
+            // Ban DB işlemi tamam; mail ayrı (SMTP hatası banı geri almasın)
+            $mail = self::sendBanMail('ban', $email, $loginName, [
+                'login' => $loginName,
+                'reason' => (string) $tpl['reason'],
+                'email' => $email,
+            ]);
+
+            return ['ok' => true, 'errors' => [], 'mail' => $mail];
         } catch (\Throwable) {
             return ['ok' => false, 'errors' => ['Ban uygulanamadı.']];
         }
@@ -257,18 +258,46 @@ final class PenaltyService
                 $reason
             );
 
+            $loginName = (string) $row['login'];
             $email = trim((string) ($row['email'] ?? ''));
-            if ($email !== '') {
-                MailService::sendTemplate('unban', $email, (string) $row['login'], [
-                    'login' => (string) $row['login'],
-                    'reason' => $reason,
-                    'email' => $email,
-                ]);
-            }
+            $mail = self::sendBanMail('unban', $email, $loginName, [
+                'login' => $loginName,
+                'reason' => $reason,
+                'email' => $email,
+            ]);
 
-            return ['ok' => true, 'errors' => []];
+            return ['ok' => true, 'errors' => [], 'mail' => $mail];
         } catch (\Throwable) {
             return ['ok' => false, 'errors' => ['Ban kaldırılamadı.']];
+        }
+    }
+
+    /**
+     * Ban/unban maili — şablon kapalı / e-posta yok / SMTP hatası loglanır, exception yutulur.
+     *
+     * @param array<string, string> $vars
+     * @return array{ok:bool, errors:list<string>}
+     */
+    private static function sendBanMail(string $code, string $email, string $login, array $vars): array
+    {
+        try {
+            if ($email === '') {
+                MailService::logSkipped($code, '', $login, 'Hesapta e-posta adresi yok');
+                return ['ok' => false, 'errors' => ['Hesapta e-posta adresi yok; ban maili gönderilemedi.']];
+            }
+            $result = MailService::sendTemplate($code, $email, $login, $vars);
+            if (empty($result['ok'])) {
+                $err = $result['errors'][0] ?? 'Mail gönderilemedi.';
+                return ['ok' => false, 'errors' => [$err]];
+            }
+            return ['ok' => true, 'errors' => []];
+        } catch (\Throwable $e) {
+            try {
+                MailService::logSkipped($code, $email, $login, 'İstisna: ' . $e->getMessage());
+            } catch (\Throwable) {
+                // ignore
+            }
+            return ['ok' => false, 'errors' => ['Mail gönderilemedi.']];
         }
     }
 
@@ -364,6 +393,18 @@ final class PenaltyService
                      WHERE is_active = 1 AND (account_id = ? OR account_login = ?)'
                 )->execute([$aid, $login]);
                 ActivityLogService::log($aid, ActivityLogService::ACTION_UNBAN, 'Süre dolumu — otomatik ban kaldırma (availDt)', $login);
+                try {
+                    $contact = Database::account($serverKey)->prepare('SELECT email FROM account WHERE id = ? LIMIT 1');
+                    $contact->execute([$aid]);
+                    $email = trim((string) ($contact->fetchColumn() ?: ''));
+                    self::sendBanMail('unban', $email, $login, [
+                        'login' => $login,
+                        'reason' => 'Ban süreniz doldu; hesap otomatik açıldı.',
+                        'email' => $email,
+                    ]);
+                } catch (\Throwable) {
+                    // ignore
+                }
             }
         } catch (\Throwable) {
             // ignore

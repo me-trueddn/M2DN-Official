@@ -253,12 +253,17 @@ final class TicketService
             foreach (NotificationService::staffAccountIds() as $staffId) {
                 $contact = self::accountContact($staffId);
                 if ($contact && $contact['email'] !== '') {
-                    MailService::sendTemplate('ticket_created', $contact['email'], $contact['login'], [
-                        'login' => $login,
-                        'code' => $code,
-                        'subject' => $subject,
-                        'link' => $linkAdmin,
-                    ]);
+                    try {
+                        MailService::sendTemplate('ticket_created', $contact['email'], $contact['login'], [
+                            'login' => $login,
+                            'code' => $code,
+                            'subject' => $subject,
+                            'link' => $linkAdmin,
+                            'email' => $contact['email'],
+                        ]);
+                    } catch (\Throwable) {
+                        // ticket oluştu; mail hatası yutulur
+                    }
                 }
             }
 
@@ -342,12 +347,17 @@ final class TicketService
                 );
                 $contact = self::accountContact($ownerId);
                 if ($contact && $contact['email'] !== '') {
-                    MailService::sendTemplate('ticket_replied', $contact['email'], $ownerLogin, [
-                        'login' => $ownerLogin,
-                        'code' => $code,
-                        'subject' => $subject,
-                        'link' => $link,
-                    ]);
+                    try {
+                        MailService::sendTemplate('ticket_replied', $contact['email'], $ownerLogin, [
+                            'login' => $ownerLogin,
+                            'code' => $code,
+                            'subject' => $subject,
+                            'link' => $link,
+                            'email' => $contact['email'],
+                        ]);
+                    } catch (\Throwable) {
+                        // ignore
+                    }
                 }
             } elseif (!$isStaff) {
                 $linkAdmin = '/admin?section=destekler&ticket=' . $ticketId;
@@ -357,6 +367,22 @@ final class TicketService
                     $ownerLogin . ' · ' . $subject,
                     $linkAdmin
                 );
+                foreach (NotificationService::staffAccountIds() as $staffId) {
+                    $contact = self::accountContact($staffId);
+                    if ($contact && $contact['email'] !== '') {
+                        try {
+                            MailService::sendTemplate('ticket_replied', $contact['email'], $contact['login'], [
+                                'login' => $ownerLogin,
+                                'code' => $code,
+                                'subject' => $subject,
+                                'link' => $linkAdmin,
+                                'email' => $contact['email'],
+                            ]);
+                        } catch (\Throwable) {
+                            // ignore
+                        }
+                    }
+                }
             }
 
             return ['ok' => true, 'errors' => []];
@@ -394,12 +420,17 @@ final class TicketService
                     );
                     $contact = self::accountContact($ownerId);
                     if ($contact && $contact['email'] !== '') {
-                        MailService::sendTemplate('ticket_closed', $contact['email'], $ownerLogin, [
-                            'login' => $ownerLogin,
-                            'code' => $code,
-                            'subject' => $subject,
-                            'link' => $link,
-                        ]);
+                        try {
+                            MailService::sendTemplate('ticket_closed', $contact['email'], $ownerLogin, [
+                                'login' => $ownerLogin,
+                                'code' => $code,
+                                'subject' => $subject,
+                                'link' => $link,
+                                'email' => $contact['email'],
+                            ]);
+                        } catch (\Throwable) {
+                            // ignore
+                        }
                     }
                 }
             }
