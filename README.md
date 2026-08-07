@@ -12,11 +12,17 @@ M2DN, Metin2 özel sunucuları için PHP tabanlı web sitesi ve yönetim panelid
 
 ### 2026-08-07 — Sürüm 3.6.3 · Çoklu yetki grubu
 
+Bir hesaba birden fazla yetki grubu atanabilir; menü / bayrak erişimi grupların **birleşimi (OR)** ile hesaplanır.
+
 | Konu | Açıklama |
 |------|----------|
-| **Atama** | Bir hesaba birden fazla yetki grubu; bayraklar birleşir (OR) |
-| **Süper Admin** | WebPerm 2 → yalnızca Süper Admin tek rol |
-| **SQL** | `database/2026-08-07-coklu-yetki-grubu/` |
+| **Çoklu atama** | Admin → Oyuncular → Yetki Ata: checkbox ile birden fazla `WebPermission = 1` grubu |
+| **Birleşim** | Örn. bir grup yalnızca oyuncular menüsü, diğeri ticket → hesap ikisine de erişir |
+| **Süper Admin** | `WebPermission = 2` → yalnızca **Süper Admin** tek rol; başka grupla karışmaz |
+| **Default User** | `WebPermission = 0` → yalnızca kullanıcı rolü; admin gruplarıyla karışmaz |
+| **Ready Only** | Ready Only + yazma bayraklı grup birlikteyse hesap salt okunur sayılmaz |
+| **DB** | `account_staff_groups` PK: `(account_id, group_id)` |
+| **SQL** | `database/2026-08-07-coklu-yetki-grubu/` (`01_multi_staff_groups.sql`) |
 
 ### 2026-08-07 — Sürüm 3.6.1 · Wiki Yönetimi + oturum düzeltmesi
 
@@ -132,9 +138,9 @@ Oyun hesap şifreleri **MD5** (`account.password`). Panel oturumu ayrı token il
 
 | Değer | Rol |
 |------:|-----|
-| `0` | Oyuncu (varsayılan) |
-| `1` | Admin |
-| `2` | Süper admin |
+| `0` | Oyuncu (varsayılan) — tek rol |
+| `1` | Admin — birden fazla yetki grubu atanabilir; bayraklar birleşir |
+| `2` | Süper admin — yalnızca Süper Admin tek rol |
 
 ---
 
@@ -241,7 +247,7 @@ Menü görünürlüğü **Yetki Grupları** bayrakları ile kontrol edilir (`Web
 | **Ceza Ayarları** | Ban şablonları (gün / sebep) |
 | **Topluluk Kuralları** | Kural maddeleri; kayıt güncellenince oyuncudan yeniden onay istenir |
 | **Gizlilik / KVKK** | Gizlilik sayfası; içerik kaydı revizyon artırır → girişte yeniden onay |
-| **Yetki Grupları** | Menü ve işlem bayrakları (Ready Only, `disable_2fa` vb.) |
+| **Yetki Grupları** | Menü ve işlem bayrakları; hesaba çoklu grup atama (OR birleşim; Süper Admin tek rol) |
 | **Ticket Ayarları** | Kategori, durum, dosya tipi |
 | **Duyuru Türleri** | Duyuru kategorileri |
 
@@ -349,6 +355,8 @@ mysql -u root -p DNWeb < database/2026-08-07-disable-2fa/01_disable_2fa_flag.sql
 mysql -u root -p DNWeb < database/2026-08-07-market-kuponlar/01_market_coupons.sql
 mysql -u root -p DNWeb < database/2026-08-07-market-kuponlar/02_sales_log_coupon_hash.sql
 mysql -u root -p DNWeb < database/2026-08-07-gizlilik-onay/01_privacy_consent.sql
+mysql -u root -p DNWeb < database/2026-08-07-wiki-yonetim/01_wiki_flags.sql
+mysql -u root -p DNWeb < database/2026-08-07-coklu-yetki-grubu/01_multi_staff_groups.sql
 ```
 
 Her klasörde kısa `README.md` vardır. Alternatif: siteyi bir kez açmak (`Schema::ensure`) birçok eksik tablo/kolonu otomatik tamamlar; elle SQL tercih edilir.
@@ -364,6 +372,8 @@ Her klasörde kısa `README.md` vardır. Alternatif: siteyi bir kez açmak (`Sch
 | `2026-08-07-disable-2fa/` | `disable_2fa` bayrağı |
 | `2026-08-07-market-kuponlar/` | Market kupon tabloları + satış log `coupon_hash` |
 | `2026-08-07-gizlilik-onay/` | Gizlilik onayı kolonları (`account_consents`) |
+| `2026-08-07-wiki-yonetim/` | Wiki menü / yönetim bayrakları |
+| `2026-08-07-coklu-yetki-grubu/` | Çoklu yetki grubu (`account_staff_groups` composite PK) |
 | `player_marriage_reference.sql` | `player.marriage` referans CREATE (oyun dump’ında yoksa) |
 | `account_web_permission.sql` | `account.WebPermission` kolonu |
 | `migrate_auth.sql` | Eski migrate: WebPermission + `web_sessions` (yeni kurulumda gerekmez) |
