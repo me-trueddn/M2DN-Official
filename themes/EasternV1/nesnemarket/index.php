@@ -27,6 +27,7 @@ $accountLogin = (string) ($account['login'] ?? $authUser['login'] ?? 'Hesap');
 $bodyClass = $marketMode === 'web' ? '' : 'mode-' . $marketMode;
 $categories = is_array($marketCategories ?? null) ? $marketCategories : [];
 $assetVer = rawurlencode((string) ($appVersion ?? '1'));
+$marketBlocked = isset($marketBlocked) && is_string($marketBlocked) && $marketBlocked !== '' ? $marketBlocked : null;
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -40,6 +41,39 @@ $assetVer = rawurlencode((string) ($appVersion ?? '1'));
 <link rel="stylesheet" href="<?= e($marketAssetUrl) ?>/market.css?v=<?= e($assetVer) ?>">
 </head>
 <body class="<?= e($bodyClass) ?>">
+
+<?php if ($marketBlocked !== null): ?>
+<div class="market-window">
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="title-bar">
+    <div class="title-left">
+      <img src="<?= e($logo) ?>" alt="<?= e($appName) ?>" style="height:<?= $logoSize ?>px;width:auto;">
+      <span>Nesne Market</span>
+    </div>
+    <div class="win-controls">
+      <button type="button" title="Kapat" class="close" data-market-close><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  </div>
+  <div style="padding:48px 28px;text-align:center;max-width:420px;margin:0 auto;">
+    <i class="fa-solid fa-user-slash" style="font-size:2rem;color:var(--gold-light, #c9974a);margin-bottom:16px;"></i>
+    <p style="line-height:1.6;color:#e8dcc8;font-size:.95rem;"><?= e($marketBlocked) ?></p>
+    <button type="button" class="btn btn-ghost" data-market-close style="margin-top:22px;">Kapat</button>
+  </div>
+</div>
+<script>
+  document.querySelectorAll('[data-market-close]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'm2dn-market-close' }, '*');
+      } else {
+        window.location.href = <?= json_encode(url('/panel'), JSON_UNESCAPED_UNICODE) ?>;
+      }
+    });
+  });
+</script>
+</body>
+</html>
+<?php return; endif; ?>
 
 <div class="market-window">
   <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>

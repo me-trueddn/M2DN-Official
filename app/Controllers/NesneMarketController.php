@@ -49,6 +49,24 @@ final class NesneMarketController
 
         $accountId = (int) $user['account_id'];
         $dashboard = PlayerService::dashboard($accountId);
+        $characters = is_array($dashboard['characters'] ?? null) ? $dashboard['characters'] : [];
+        if ($characters === []) {
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+            header('Pragma: no-cache');
+            Theme::renderModule('nesnemarket', 'index', [
+                'authUser' => $user,
+                'account' => $dashboard['account'],
+                'marketItems' => [],
+                'marketCategories' => [],
+                'marketMode' => $mode,
+                'marketAssetUrl' => NesneMarketService::assetUrl(),
+                'marketBuyUrl' => url('/nesne-market/satin-al'),
+                'csrfToken' => Security::csrfToken(),
+                'csrfTokenName' => (string) Config::get('security.csrf_token_name', 'csrf_token'),
+                'marketBlocked' => 'Oyun içi karakteriniz bulunmadığından Nesne Market açılamadı.',
+            ]);
+            return;
+        }
 
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         header('Pragma: no-cache');
@@ -63,6 +81,7 @@ final class NesneMarketController
             'marketBuyUrl' => url('/nesne-market/satin-al'),
             'csrfToken' => Security::csrfToken(),
             'csrfTokenName' => (string) Config::get('security.csrf_token_name', 'csrf_token'),
+            'marketBlocked' => null,
         ]);
     }
 
@@ -94,6 +113,18 @@ final class NesneMarketController
 
         $itemId = (int) ($_POST['item_id'] ?? 0);
         $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+
+        $dashboard = PlayerService::dashboard((int) $user['account_id']);
+        $characters = is_array($dashboard['characters'] ?? null) ? $dashboard['characters'] : [];
+        if ($characters === []) {
+            http_response_code(422);
+            echo json_encode([
+                'ok' => false,
+                'errors' => ['Oyun içi karakteriniz bulunmadığından Nesne Market açılamadı.'],
+            ], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
         $result = MarketPurchaseService::purchase(
             (int) $user['account_id'],
             (string) ($user['login'] ?? ''),

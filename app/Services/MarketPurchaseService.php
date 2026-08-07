@@ -212,7 +212,8 @@ final class MarketPurchaseService
             }
             $offset = ($page - 1) * $perPage;
             $sql = 'SELECT id, account_id, account_login, market_item_id, item_code, item_name,
-                           price, cash_before, cash_after, safebox_pos, player_item_id, ip, created_at
+                           price, cash_before, cash_after, safebox_pos, player_item_id, ip,
+                           COALESCE(entry_type, \'purchase\') AS entry_type, created_at
                     FROM market_sales_logs' . $where . '
                     ORDER BY id DESC
                     LIMIT ' . (int) $perPage . ' OFFSET ' . (int) $offset;
@@ -221,6 +222,10 @@ final class MarketPurchaseService
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
             $logs = [];
             foreach ($rows as $row) {
+                $entryType = (string) ($row['entry_type'] ?? 'purchase');
+                if ($entryType === '') {
+                    $entryType = ((string) ($row['item_code'] ?? '') === 'KUPON') ? 'coupon' : 'purchase';
+                }
                 $logs[] = [
                     'id' => (int) ($row['id'] ?? 0),
                     'account_id' => (int) ($row['account_id'] ?? 0),
@@ -234,6 +239,8 @@ final class MarketPurchaseService
                     'safebox_pos' => (int) ($row['safebox_pos'] ?? -1),
                     'player_item_id' => (int) ($row['player_item_id'] ?? 0),
                     'ip' => (string) ($row['ip'] ?? ''),
+                    'entry_type' => $entryType,
+                    'entry_label' => $entryType === 'coupon' ? 'Kupon' : 'Satış',
                     'created_at' => (string) ($row['created_at'] ?? ''),
                 ];
             }

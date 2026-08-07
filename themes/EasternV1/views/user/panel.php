@@ -684,11 +684,15 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
         <div class="quick-actions" onclick="event.stopPropagation()">
           <a class="btn btn-primary btn-sm" href="#karakterler" data-jump="karakterler"><i class="fa-solid fa-users"></i> Karakterler</a>
           <a class="btn btn-ghost btn-sm" href="#destek" data-jump="destek"><i class="fa-solid fa-headset"></i> Destek Aç</a>
+          <button type="button" class="btn btn-jade btn-sm" id="openCouponModal"><i class="fa-solid fa-ticket"></i> Market Kupon Aktif Et</button>
         </div>
       </div>
       <?php else: ?>
       <div class="char-empty">
         Bu hesaba bağlı karakter bulunamadı. Oyuna girip karakter oluşturduğunda burada görünecek.
+        <div class="quick-actions" style="margin-top:14px;justify-content:center;">
+          <button type="button" class="btn btn-jade btn-sm" id="openCouponModalEmpty"><i class="fa-solid fa-ticket"></i> Market Kupon Aktif Et</button>
+        </div>
       </div>
       <?php endif; ?>
 
@@ -1594,6 +1598,23 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   </div>
 </div>
 
+<div class="modal-overlay" id="couponModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-labelledby="couponModalTitle" style="max-width:420px;">
+    <h3 id="couponModalTitle"><i class="fa-solid fa-ticket"></i> Market Kupon Aktif Et</h3>
+    <p style="font-size:.82rem;color:var(--ash);line-height:1.55;margin:0 0 14px;">Kupon kodunu gir. Kod kullanıldığında kategoriye ait Elmas bakiyene eklenir.</p>
+    <div class="form-row">
+      <label for="couponCodeInput">Kupon kodu</label>
+      <input id="couponCodeInput" type="text" maxlength="40" autocomplete="off" spellcheck="false" placeholder="XXX-YYY-ZZZ-DDD-FFF-RRR-AAA" style="font-family:ui-monospace,monospace;letter-spacing:.04em;">
+    </div>
+    <div id="couponModalError" style="display:none;color:var(--blood-light);font-size:.82rem;margin-bottom:10px;"></div>
+    <div id="couponModalOk" style="display:none;color:var(--jade-light);font-size:.82rem;margin-bottom:10px;"></div>
+    <div class="modal-actions" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button type="button" class="btn btn-primary btn-sm" id="couponRedeemBtn"><i class="fa-solid fa-check"></i> Aktif et</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="couponModalClose">Kapat</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const navItems = document.querySelectorAll('.nav-item');
   const sections = document.querySelectorAll('.section');
@@ -1608,6 +1629,8 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
   const notifReadUrl = <?= json_encode(url('/bildirimler/okundu'), JSON_UNESCAPED_UNICODE) ?>;
   const guildPublicJsonUrl = <?= json_encode(url('/panel/lonca/json'), JSON_UNESCAPED_UNICODE) ?>;
   const marketEmbedUrl = <?= json_encode(url('/nesne-market?embed=1'), JSON_UNESCAPED_UNICODE) ?>;
+  const couponRedeemUrl = <?= json_encode(url('/panel/kupon/aktif'), JSON_UNESCAPED_UNICODE) ?>;
+  const csrfTokenName = <?= json_encode((string) \App\Core\Config::get('security.csrf_token_name', 'csrf_token'), JSON_UNESCAPED_UNICODE) ?>;
 
   const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1726,6 +1749,76 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
     });
     window.addEventListener('message', (ev) => {
       if (ev && ev.data && ev.data.type === 'm2dn-market-close') closeMarket();
+    });
+  })();
+
+  (function couponModal() {
+    const overlay = document.getElementById('couponModal');
+    const input = document.getElementById('couponCodeInput');
+    const err = document.getElementById('couponModalError');
+    const ok = document.getElementById('couponModalOk');
+    const btn = document.getElementById('couponRedeemBtn');
+    if (!overlay || !input || !btn) return;
+
+    const open = () => {
+      err.style.display = 'none';
+      ok.style.display = 'none';
+      err.textContent = '';
+      ok.textContent = '';
+      input.value = '';
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden', 'false');
+      setTimeout(() => input.focus(), 50);
+    };
+    const close = () => {
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden', 'true');
+    };
+
+    ['openCouponModal', 'openCouponModalEmpty'].forEach((id) => {
+      document.getElementById(id)?.addEventListener('click', open);
+    });
+    document.getElementById('couponModalClose')?.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    btn.addEventListener('click', () => {
+      err.style.display = 'none';
+      ok.style.display = 'none';
+      const code = String(input.value || '').trim();
+      if (!code) {
+        err.textContent = 'Kupon kodu gir.';
+        err.style.display = 'block';
+        return;
+      }
+      btn.disabled = true;
+      const body = new FormData();
+      body.append(csrfTokenName, csrfToken);
+      body.append('code', code);
+      fetch(couponRedeemUrl, { method: 'POST', body, credentials: 'same-origin' })
+        .then((r) => r.json().then((j) => ({ status: r.status, j })))
+        .then(({ j }) => {
+          if (!j || !j.ok) {
+            err.textContent = (j && j.errors && j.errors[0]) ? j.errors[0] : 'Kupon aktif edilemedi.';
+            err.style.display = 'block';
+            return;
+          }
+          ok.textContent = j.message || 'Kupon aktif edildi.';
+          ok.style.display = 'block';
+          input.value = '';
+          setTimeout(() => { window.location.reload(); }, 900);
+        })
+        .catch(() => {
+          err.textContent = 'Bağlantı hatası.';
+          err.style.display = 'block';
+        })
+        .finally(() => { btn.disabled = false; });
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        btn.click();
+      }
     });
   })();
 

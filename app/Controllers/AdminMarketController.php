@@ -8,6 +8,7 @@ use App\Core\Security;
 use App\Core\Session;
 use App\Services\AuthService;
 use App\Services\MarketCategoryService;
+use App\Services\MarketCouponService;
 use App\Services\MarketItemService;
 use App\Services\PermissionService;
 
@@ -126,5 +127,67 @@ final class AdminMarketController
             $this->fail(['Durum güncellenemedi.'], $section);
         }
         $this->ok('Ürün durumu güncellendi.', $section);
+    }
+
+    public function saveCouponCategory(): void
+    {
+        $user = $this->gate();
+        $section = 'nesne-market-kuponlar';
+        $result = MarketCouponService::saveCategory([
+            'id' => (int) ($_POST['id'] ?? 0),
+            'name' => (string) ($_POST['name'] ?? ''),
+            'cash_amount' => (int) ($_POST['cash_amount'] ?? 0),
+            'is_active' => !empty($_POST['is_active']),
+            'sort_order' => (int) ($_POST['sort_order'] ?? 0),
+        ]);
+        if (empty($result['ok'])) {
+            $this->fail($result['errors'] ?? ['Kayıt başarısız.'], $section);
+        }
+        $this->ok('Kupon kategorisi kaydedildi.', $section);
+    }
+
+    public function deleteCouponCategory(): void
+    {
+        $this->gate();
+        $section = 'nesne-market-kuponlar';
+        $result = MarketCouponService::deleteCategory((int) ($_POST['id'] ?? 0));
+        if (empty($result['ok'])) {
+            $this->fail($result['errors'] ?? ['Silinemedi.'], $section);
+        }
+        $this->ok('Kupon kategorisi silindi.', $section);
+    }
+
+    public function generateCoupons(): void
+    {
+        $user = $this->gate();
+        $section = 'nesne-market-kuponlar';
+        $result = MarketCouponService::generate(
+            (int) ($_POST['category_id'] ?? 0),
+            (int) ($_POST['quantity'] ?? 0),
+            [
+                'account_id' => (int) ($user['account_id'] ?? 0),
+                'login' => (string) ($user['login'] ?? ''),
+            ]
+        );
+        if (empty($result['ok'])) {
+            $this->fail($result['errors'] ?? ['Oluşturulamadı.'], $section);
+        }
+        Session::flash('coupon_generated_codes', $result['codes'] ?? []);
+        $this->ok((int) ($result['created'] ?? 0) . ' kupon oluşturuldu. Kodları şimdi kopyala — tekrar gösterilmez.', $section);
+    }
+
+    public function deleteCoupons(): void
+    {
+        $this->gate();
+        $section = 'nesne-market-kuponlar';
+        $ids = $_POST['ids'] ?? [];
+        if (!is_array($ids)) {
+            $ids = [];
+        }
+        $result = MarketCouponService::deleteMany($ids);
+        if (empty($result['ok'])) {
+            $this->fail($result['errors'] ?? ['Silinemedi.'], $section);
+        }
+        $this->ok((int) ($result['deleted'] ?? 0) . ' kupon silindi.', $section);
     }
 }

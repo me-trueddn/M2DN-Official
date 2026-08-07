@@ -28,6 +28,7 @@ final class ActivityLogService
     public const ACTION_UNBAN = 'unban';
     public const ACTION_RULES_ACCEPT = 'rules_accept';
     public const ACTION_RULES_DECLINE = 'rules_decline';
+    public const ACTION_MARKET_COUPON = 'market_coupon';
 
     private const LABELS = [
         self::ACTION_LOGIN => 'Panele giriş yapıldı',
@@ -45,6 +46,7 @@ final class ActivityLogService
         self::ACTION_UNBAN => 'Ban kaldırıldı',
         self::ACTION_RULES_ACCEPT => 'Topluluk kuralları kabul edildi',
         self::ACTION_RULES_DECLINE => 'Topluluk kuralları reddedildi',
+        self::ACTION_MARKET_COUPON => 'Market kuponu aktif edildi',
     ];
 
     public static function log(

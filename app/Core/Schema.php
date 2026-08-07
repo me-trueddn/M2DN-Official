@@ -238,6 +238,7 @@ final class Schema
         self::ensureMarketCategories($pdo);
         self::ensureMarketItems($pdo);
         self::ensureMarketSalesLogs($pdo);
+        self::ensureMarketCoupons($pdo);
 
         $seed = $pdo->prepare(
             "INSERT INTO `settings` (`group_key`, `setting_key`, `setting_value`) VALUES
@@ -1058,11 +1059,51 @@ final class Schema
               `safebox_pos` INT NOT NULL DEFAULT -1,
               `player_item_id` INT UNSIGNED NOT NULL DEFAULT 0,
               `ip` VARCHAR(45) NOT NULL DEFAULT '',
+              `entry_type` VARCHAR(16) NOT NULL DEFAULT 'purchase',
               `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
               PRIMARY KEY (`id`),
               KEY `idx_msl_account` (`account_id`, `created_at`),
               KEY `idx_msl_item` (`market_item_id`),
-              KEY `idx_msl_created` (`created_at`)
+              KEY `idx_msl_created` (`created_at`),
+              KEY `idx_msl_entry` (`entry_type`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+        self::ensureColumn($pdo, 'market_sales_logs', 'entry_type', "VARCHAR(16) NOT NULL DEFAULT 'purchase' AFTER `ip`");
+    }
+
+    private static function ensureMarketCoupons(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `market_coupon_categories` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `name` VARCHAR(120) NOT NULL,
+              `cash_amount` INT UNSIGNED NOT NULL DEFAULT 0,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `sort_order` INT NOT NULL DEFAULT 0,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_mcc_active` (`is_active`, `sort_order`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `market_coupons` (
+              `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `category_id` INT UNSIGNED NOT NULL,
+              `code_hash` CHAR(64) NOT NULL,
+              `code_mask` VARCHAR(40) NOT NULL DEFAULT '',
+              `used_account_id` INT UNSIGNED NULL DEFAULT NULL,
+              `used_account_login` VARCHAR(30) NOT NULL DEFAULT '',
+              `created_by_account_id` INT UNSIGNED NULL DEFAULT NULL,
+              `created_by_login` VARCHAR(30) NOT NULL DEFAULT '',
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `used_at` DATETIME NULL DEFAULT NULL,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `uq_mc_hash` (`code_hash`),
+              KEY `idx_mc_cat` (`category_id`),
+              KEY `idx_mc_used` (`used_at`),
+              KEY `idx_mc_account` (`used_account_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
         );
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Config;
 use App\Core\Security;
 use App\Core\Session;
 use App\Core\Theme;
@@ -13,6 +14,7 @@ use App\Services\AdminRankingService;
 use App\Services\AnnouncementService;
 use App\Services\AuthService;
 use App\Services\GuildWarService;
+use App\Services\MarketCouponService;
 use App\Services\MarriageService;
 use App\Services\PenaltyService;
 use App\Services\PlayerService;
@@ -249,6 +251,43 @@ final class UserPanelController
         $msg = $enabled ? 'Giriş bildirimleri açıldı.' : 'Giriş bildirimleri kapatıldı.';
         $this->flashResult($result, $msg, 'guvenlik');
         redirect('/panel');
+    }
+
+    public function redeemCoupon(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+
+        $user = AuthService::user();
+        if ($user === null) {
+            http_response_code(401);
+            echo json_encode(['ok' => false, 'errors' => ['Giriş gerekli.']], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $name = (string) (Config::get('security.csrf_token_name', 'csrf_token'));
+        $token = $_POST[$name] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
+        if (!Security::validateCsrf(is_string($token) ? $token : null)) {
+            http_response_code(419);
+            echo json_encode(['ok' => false, 'errors' => ['Oturum doğrulaması başarısız. Sayfayı yenile.']], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $code = (string) ($_POST['code'] ?? '');
+        $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        $result = MarketCouponService::redeem(
+            (int) $user['account_id'],
+            (string) ($user['login'] ?? ''),
+            $code,
+            $ip
+        );
+        if (empty($result['ok'])) {
+            http_response_code(422);
+        } else {
+            $amount = (int) ($result['amount'] ?? 0);
+            $result['message'] = number_format($amount, 0, ',', '.') . ' Elmas hesabına eklendi.';
+        }
+        echo json_encode($result, JSON_UNESCAPED_UNICODE);
     }
 
     /** @return array{account_id:int, login:string, permission:int} */

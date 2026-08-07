@@ -38,6 +38,11 @@ $router->post('/admin/nesne-market/kategori/toggle', [AdminMarketController::cla
 $router->post('/admin/nesne-market/urun/kaydet', [AdminMarketController::class, 'saveItem']);
 $router->post('/admin/nesne-market/urun/sil', [AdminMarketController::class, 'deleteItem']);
 $router->post('/admin/nesne-market/urun/toggle', [AdminMarketController::class, 'toggleItem']);
+$router->post('/admin/nesne-market/kupon-kategori/kaydet', [AdminMarketController::class, 'saveCouponCategory']);
+$router->post('/admin/nesne-market/kupon-kategori/sil', [AdminMarketController::class, 'deleteCouponCategory']);
+$router->post('/admin/nesne-market/kupon/olustur', [AdminMarketController::class, 'generateCoupons']);
+$router->post('/admin/nesne-market/kupon/sil', [AdminMarketController::class, 'deleteCoupons']);
+$router->post('/panel/kupon/aktif', [UserPanelController::class, 'redeemCoupon']);
 $router->get('/panel/karakter', [UserPanelController::class, 'character']);
 $router->get('/panel/lonca/json', [UserPanelController::class, 'guildPublicJson']);
 $router->post('/panel/guvenlik/sifre', [UserPanelController::class, 'changePassword']);

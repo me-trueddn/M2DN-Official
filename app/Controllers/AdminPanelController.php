@@ -70,6 +70,10 @@ final class AdminPanelController
         $marketItemCat = (int) ($_GET['market_item_cat'] ?? 0);
         $marketSaleQ = trim((string) ($_GET['market_sale_q'] ?? ''));
         $marketSalePage = (int) ($_GET['market_sale_page'] ?? 1);
+        $couponQ = trim((string) ($_GET['coupon_q'] ?? ''));
+        $couponStatus = trim((string) ($_GET['coupon_status'] ?? ''));
+        $couponCat = (int) ($_GET['coupon_cat'] ?? 0);
+        $couponPage = (int) ($_GET['coupon_page'] ?? 1);
         $marriageQ = trim((string) ($_GET['marriage_q'] ?? ''));
         $marriagePage = (int) ($_GET['marriage_page'] ?? 1);
         $marriagePer = (int) ($_GET['marriage_per'] ?? 20);
@@ -104,6 +108,8 @@ final class AdminPanelController
             $section = 'nesne-market-urunler';
         } elseif ($marketSaleQ !== '' || isset($_GET['market_sale_page']) || isset($_GET['market_sale_q'])) {
             $section = 'nesne-market-satis-loglari';
+        } elseif ($couponQ !== '' || $couponStatus !== '' || isset($_GET['coupon_cat']) || isset($_GET['coupon_page']) || isset($_GET['coupon_q'])) {
+            $section = 'nesne-market-kuponlar';
         } elseif ($marriageQ !== '' || isset($_GET['marriage_page']) || isset($_GET['marriage_per'])) {
             $section = 'evlilikler';
         } elseif ($q !== '' || $status !== '' || isset($_GET['page']) || isset($_GET['per'])) {
@@ -116,7 +122,7 @@ final class AdminPanelController
             'ceza-ayarlari', 'patch-linkleri', 'ozellikler-ayarlari', 'siniflar-ayarlari',
             'oranlar-ayarlari', 'siradaki-bolum', 'galeri-ayarlari', 'footer-ayarlari',
             'logo-ayarlari', 'mail-ayarlari', 'yetki-gruplari', 'ticket-ayarlari', 'duyuru-turleri',
-            'kurallar-ayarlari', 'captcha-ayarlari', 'gizlilik-ayarlari', 'nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari',
+            'kurallar-ayarlari', 'captcha-ayarlari', 'gizlilik-ayarlari', 'nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari', 'nesne-market-kuponlar',
         ];
         if (!in_array($section, $allowed, true)) {
             $section = 'ozet';
@@ -161,6 +167,7 @@ final class AdminPanelController
             'nesne-market-kategoriler' => PermissionService::FLAG_MENU_NESNE_MARKET,
             'nesne-market-urunler' => PermissionService::FLAG_MENU_NESNE_MARKET,
             'nesne-market-satis-loglari' => PermissionService::FLAG_MENU_NESNE_MARKET,
+            'nesne-market-kuponlar' => PermissionService::FLAG_MENU_NESNE_MARKET,
         ];
         if ($section === 'duyurular'
             && empty($permFlags[PermissionService::FLAG_MENU_DUYURULAR])
@@ -168,14 +175,14 @@ final class AdminPanelController
         ) {
             Session::flash('panel_errors', ['Duyuru yetkin yok.']);
             $section = 'ozet';
-        } elseif (in_array($section, ['nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari'], true)
+        } elseif (in_array($section, ['nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari', 'nesne-market-kuponlar'], true)
             && empty($permFlags[PermissionService::FLAG_MENU_NESNE_MARKET])
             && empty($permFlags[PermissionService::FLAG_SITE_SETTINGS])
         ) {
             Session::flash('panel_errors', ['Nesne Market yetkin yok.']);
             $section = 'ozet';
         } elseif (isset($menuGate[$section]) && $section !== 'duyurular'
-            && !in_array($section, ['nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari'], true)
+            && !in_array($section, ['nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari', 'nesne-market-kuponlar'], true)
             && empty($permFlags[$menuGate[$section]])
         ) {
             Session::flash('panel_errors', ['Bu menüye erişim yetkin yok.']);
@@ -336,6 +343,15 @@ final class AdminPanelController
                 || !empty($permFlags[PermissionService::FLAG_SITE_SETTINGS]))
                 ? \App\Services\MarketPurchaseService::salesLogs($marketSaleQ, $marketSalePage, 20)
                 : ['logs' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 20, 'q' => ''],
+            'marketCouponCategories' => (!empty($permFlags[PermissionService::FLAG_MENU_NESNE_MARKET])
+                || !empty($permFlags[PermissionService::FLAG_SITE_SETTINGS]))
+                ? \App\Services\MarketCouponService::listCategories(false)
+                : [],
+            'marketCoupons' => (!empty($permFlags[PermissionService::FLAG_MENU_NESNE_MARKET])
+                || !empty($permFlags[PermissionService::FLAG_SITE_SETTINGS]))
+                ? \App\Services\MarketCouponService::listCoupons($couponQ, $couponStatus, $couponCat, $couponPage, 30)
+                : ['coupons' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 30, 'q' => '', 'status' => '', 'category_id' => 0],
+            'couponGeneratedCodes' => Session::flash('coupon_generated_codes') ?? [],
             'mailTab' => (static function () use ($mailQ): string {
                 $flash = Session::flash('mail_tab');
                 if (is_string($flash) && $flash !== '') {

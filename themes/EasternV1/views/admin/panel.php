@@ -778,6 +778,7 @@ $can = static function (string $flag) use ($permFlags): bool {
     <a class="nav-item<?= $panelSection === 'nesne-market-kategoriler' ? ' active' : '' ?>" data-target="nesne-market-kategoriler"><i class="fa-solid fa-layer-group"></i> Kategoriler</a>
     <a class="nav-item<?= $panelSection === 'nesne-market-urunler' ? ' active' : '' ?>" data-target="nesne-market-urunler"><i class="fa-solid fa-box-open"></i> Ürünler</a>
     <a class="nav-item<?= $panelSection === 'nesne-market-satis-loglari' ? ' active' : '' ?>" data-target="nesne-market-satis-loglari"><i class="fa-solid fa-receipt"></i> Satış Logları</a>
+    <a class="nav-item<?= $panelSection === 'nesne-market-kuponlar' ? ' active' : '' ?>" data-target="nesne-market-kuponlar"><i class="fa-solid fa-ticket"></i> Market Kuponları</a>
     <?php endif; ?>
 
     <?php if ($can('site_settings')): ?>
@@ -2882,10 +2883,10 @@ $can = static function (string $flag) use ($permFlags): bool {
           <h3>Satış Logları</h3>
           <span style="font-size:.8rem;color:var(--ash);"><?= $saleTotal ?> kayıt</span>
         </div>
-        <p style="font-size:.8rem;color:var(--ash);margin-bottom:12px;">Her alışverişte hesap, ürün (ad + kod), alış öncesi / sonrası Elmas bakiyesi kaydedilir.</p>
+        <p style="font-size:.8rem;color:var(--ash);margin-bottom:12px;">Satış ve kupon kullanımları. Kupon satırlarında tür <b>Kupon</b> yazar; fiyat = eklenen Elmas.</p>
         <form class="filters" method="get" action="<?= e(url('/admin')) ?>" style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <input type="hidden" name="section" value="nesne-market-satis-loglari">
-          <input name="market_sale_q" value="<?= e($saleQ) ?>" placeholder="Hesap, item adı veya kod…" style="flex:1;min-width:200px;">
+          <input name="market_sale_q" value="<?= e($saleQ) ?>" placeholder="Hesap, item adı, kod veya KUPON…" style="flex:1;min-width:200px;">
           <button type="submit" class="btn btn-ghost btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Ara</button>
           <?php if ($saleQ !== ''): ?>
             <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?section=nesne-market-satis-loglari')) ?>">Temizle</a>
@@ -2895,11 +2896,12 @@ $can = static function (string $flag) use ($permFlags): bool {
           <thead>
             <tr>
               <th>#</th>
+              <th>Tür</th>
               <th>Tarih</th>
               <th>Hesap</th>
-              <th>Ürün</th>
+              <th>Ürün / Kupon</th>
               <th>Kod</th>
-              <th>Fiyat</th>
+              <th>Fiyat / Elmas</th>
               <th>Cash önce</th>
               <th>Cash sonra</th>
               <th>Depo pos</th>
@@ -2908,19 +2910,24 @@ $can = static function (string $flag) use ($permFlags): bool {
           </thead>
           <tbody>
             <?php if ($saleLogs === []): ?>
-              <tr><td colspan="10" style="color:var(--ash);">Henüz satış yok.</td></tr>
+              <tr><td colspan="11" style="color:var(--ash);">Henüz kayıt yok.</td></tr>
             <?php else: ?>
               <?php foreach ($saleLogs as $sl): ?>
+              <?php $isCoupon = (($sl['entry_type'] ?? '') === 'coupon'); ?>
               <tr>
                 <td><?= (int) $sl['id'] ?></td>
+                <td><?php if ($isCoupon): ?><span class="badge active">Kupon</span><?php else: ?><span class="badge">Satış</span><?php endif; ?></td>
                 <td style="white-space:nowrap;font-size:.78rem;"><?= e((string) $sl['created_at']) ?></td>
-                <td><?= e((string) $sl['account_login']) ?> <span style="color:var(--ash);font-size:.72rem;">#<?= (int) $sl['account_id'] ?></span></td>
+                <td>
+                  <button type="button" class="linkish" data-detail="<?= (int) $sl['account_id'] ?>" style="background:none;border:none;color:var(--gold-light);padding:0;font:inherit;cursor:pointer;text-decoration:underline;"><?= e((string) $sl['account_login']) ?></button>
+                  <span style="color:var(--ash);font-size:.72rem;">#<?= (int) $sl['account_id'] ?></span>
+                </td>
                 <td><?= e((string) $sl['item_name']) ?></td>
                 <td><code><?= e((string) $sl['item_code']) ?></code></td>
-                <td><?= number_format((int) $sl['price'], 0, ',', '.') ?></td>
+                <td><?= $isCoupon ? '+' : '' ?><?= number_format((int) $sl['price'], 0, ',', '.') ?></td>
                 <td><?= number_format((int) $sl['cash_before'], 0, ',', '.') ?></td>
                 <td><?= number_format((int) $sl['cash_after'], 0, ',', '.') ?></td>
-                <td><?= (int) $sl['safebox_pos'] ?></td>
+                <td><?= $isCoupon ? '—' : (int) $sl['safebox_pos'] ?></td>
                 <td style="font-size:.75rem;"><?= e((string) $sl['ip']) ?></td>
               </tr>
               <?php endforeach; ?>
@@ -2936,6 +2943,179 @@ $can = static function (string $flag) use ($permFlags): bool {
               <?php endif; ?>
               <?php if ($salePage < $salePages): ?>
                 <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?section=nesne-market-satis-loglari&market_sale_q=' . rawurlencode($saleQ) . '&market_sale_page=' . ($salePage + 1))) ?>">Sonraki</a>
+              <?php endif; ?>
+            </div>
+          </div>
+        <?php endif; ?>
+      </div>
+    </section>
+
+    <!-- ===================== NESNE MARKET KUPONLAR ===================== -->
+    <section class="section<?= $panelSection === 'nesne-market-kuponlar' ? ' active' : '' ?>" id="nesne-market-kuponlar">
+      <?php
+        $couponCats = isset($marketCouponCategories) && is_array($marketCouponCategories) ? $marketCouponCategories : [];
+        $couponPack = isset($marketCoupons) && is_array($marketCoupons) ? $marketCoupons : ['coupons' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'q' => '', 'status' => '', 'category_id' => 0];
+        $couponRows = is_array($couponPack['coupons'] ?? null) ? $couponPack['coupons'] : [];
+        $genCodes = isset($couponGeneratedCodes) && is_array($couponGeneratedCodes) ? $couponGeneratedCodes : [];
+      ?>
+      <div class="grid grid-2" style="margin-bottom:18px;align-items:start;">
+        <div class="card">
+          <div class="card-head"><h3>Kupon kategorisi</h3></div>
+          <p style="font-size:.8rem;color:var(--ash);margin-bottom:12px;">Count = aktif edilince hesaba eklenecek Elmas (`account.cash`).</p>
+          <form method="post" action="<?= e(url('/admin/nesne-market/kupon-kategori/kaydet')) ?>">
+            <?= $csrf ?>
+            <input type="hidden" name="id" id="couponCatId" value="0">
+            <div class="form-row"><label>Ad</label><input name="name" id="couponCatName" required maxlength="120" placeholder="örn. 100 Elmas"></div>
+            <div class="form-row"><label>Count (Elmas)</label><input name="cash_amount" id="couponCatCash" type="number" min="1" max="100000000" required value="100"></div>
+            <div class="form-row"><label>Sıra</label><input name="sort_order" id="couponCatSort" type="number" value="0"></div>
+            <div class="form-row"><label><input type="checkbox" name="is_active" id="couponCatActive" value="1" checked> Aktif</label></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="couponCatReset">Temizle</button>
+            </div>
+          </form>
+          <table style="margin-top:16px;">
+            <thead><tr><th>Ad</th><th>Count</th><th>Kupon</th><th>Durum</th><th></th></tr></thead>
+            <tbody>
+              <?php if ($couponCats === []): ?>
+                <tr><td colspan="5" style="color:var(--ash);">Kategori yok.</td></tr>
+              <?php else: foreach ($couponCats as $cc): ?>
+                <tr>
+                  <td><?= e((string) $cc['name']) ?></td>
+                  <td><?= number_format((int) $cc['cash_amount'], 0, ',', '.') ?></td>
+                  <td><?= (int) ($cc['unused_count'] ?? 0) ?> / <?= (int) ($cc['coupon_count'] ?? 0) ?></td>
+                  <td><?= !empty($cc['is_active']) ? 'Aktif' : 'Pasif' ?></td>
+                  <td style="white-space:nowrap;">
+                    <button type="button" class="btn btn-ghost btn-sm coupon-cat-edit"
+                      data-id="<?= (int) $cc['id'] ?>"
+                      data-name="<?= e((string) $cc['name']) ?>"
+                      data-cash="<?= (int) $cc['cash_amount'] ?>"
+                      data-sort="<?= (int) $cc['sort_order'] ?>"
+                      data-active="<?= !empty($cc['is_active']) ? '1' : '0' ?>">Düzenle</button>
+                    <form method="post" action="<?= e(url('/admin/nesne-market/kupon-kategori/sil')) ?>" style="display:inline;" onsubmit="return confirm('Kategori silinsin mi?');">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $cc['id'] ?>">
+                      <button type="submit" class="btn btn-ghost btn-sm">Sil</button>
+                    </form>
+                  </td>
+                </tr>
+              <?php endforeach; endif; ?>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Kod oluştur</h3></div>
+          <p style="font-size:.8rem;color:var(--ash);margin-bottom:12px;">Format: <code>XXX-YYY-ZZZ-DDD-FFF-RRR-AAA</code>. DB’de yalnızca SHA-256 hash saklanır.</p>
+          <form method="post" action="<?= e(url('/admin/nesne-market/kupon/olustur')) ?>" onsubmit="return confirm('Seçilen adette kupon oluşturulsun mu?');">
+            <?= $csrf ?>
+            <div class="form-row">
+              <label>Kategori</label>
+              <select name="category_id" required>
+                <option value="">Seç…</option>
+                <?php foreach ($couponCats as $cc): if (empty($cc['is_active'])) continue; ?>
+                  <option value="<?= (int) $cc['id'] ?>"><?= e((string) $cc['name']) ?> (+<?= number_format((int) $cc['cash_amount'], 0, ',', '.') ?>)</option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="form-row"><label>Kaç adet?</label><input name="quantity" type="number" min="1" max="500" required value="10"></div>
+            <button type="submit" class="btn btn-jade btn-sm"><i class="fa-solid fa-plus"></i> Kupon oluştur</button>
+          </form>
+          <?php if ($genCodes !== []): ?>
+            <div style="margin-top:16px;padding:12px;border:1px solid rgba(201,151,74,.25);border-radius:8px;background:rgba(0,0,0,.2);">
+              <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;">
+                <strong style="font-size:.85rem;">Yeni kodlar (bir kez gösterilir)</strong>
+                <button type="button" class="btn btn-ghost btn-sm" id="copyCouponCodes">Kopyala</button>
+              </div>
+              <textarea id="couponCodesOut" readonly rows="<?= min(12, max(4, count($genCodes))) ?>" style="width:100%;font-family:ui-monospace,monospace;font-size:.78rem;"><?= e(implode("\n", $genCodes)) ?></textarea>
+            </div>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Kupon listesi</h3>
+          <span style="font-size:.8rem;color:var(--ash);"><?= (int) ($couponPack['total'] ?? 0) ?> kayıt</span>
+        </div>
+        <form class="filters" method="get" action="<?= e(url('/admin')) ?>" style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <input type="hidden" name="section" value="nesne-market-kuponlar">
+          <input name="coupon_q" value="<?= e((string) ($couponPack['q'] ?? '')) ?>" placeholder="Maske, hesap, id…" style="flex:1;min-width:160px;">
+          <select name="coupon_status">
+            <option value=""<?= ($couponPack['status'] ?? '') === '' ? ' selected' : '' ?>>Tümü</option>
+            <option value="unused"<?= ($couponPack['status'] ?? '') === 'unused' ? ' selected' : '' ?>>Kullanılmadı</option>
+            <option value="used"<?= ($couponPack['status'] ?? '') === 'used' ? ' selected' : '' ?>>Kullanıldı</option>
+          </select>
+          <select name="coupon_cat">
+            <option value="0">Tüm kategoriler</option>
+            <?php foreach ($couponCats as $cc): ?>
+              <option value="<?= (int) $cc['id'] ?>"<?= (int) ($couponPack['category_id'] ?? 0) === (int) $cc['id'] ? ' selected' : '' ?>><?= e((string) $cc['name']) ?></option>
+            <?php endforeach; ?>
+          </select>
+          <button type="submit" class="btn btn-ghost btn-sm">Filtrele</button>
+        </form>
+
+        <form method="post" action="<?= e(url('/admin/nesne-market/kupon/sil')) ?>" id="couponBulkForm" onsubmit="return confirm('Seçili kuponlar silinsin mi?');">
+          <?= $csrf ?>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
+            <label style="font-size:.82rem;"><input type="checkbox" id="couponSelectAll"> Hepsini seç</label>
+            <button type="submit" class="btn btn-ghost btn-sm">Seçilenleri sil</button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th></th>
+                <th>#</th>
+                <th>Maske</th>
+                <th>Kategori</th>
+                <th>Elmas</th>
+                <th>Durum</th>
+                <th>Hesap</th>
+                <th>Oluşturma</th>
+                <th>Kullanım</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php if ($couponRows === []): ?>
+                <tr><td colspan="9" style="color:var(--ash);">Kupon yok.</td></tr>
+              <?php else: foreach ($couponRows as $cr): ?>
+                <tr>
+                  <td><input type="checkbox" name="ids[]" value="<?= (int) $cr['id'] ?>" class="coupon-row-check"></td>
+                  <td><?= (int) $cr['id'] ?></td>
+                  <td><code><?= e((string) $cr['code_mask']) ?></code></td>
+                  <td><?= e((string) $cr['category_name']) ?></td>
+                  <td><?= number_format((int) $cr['cash_amount'], 0, ',', '.') ?></td>
+                  <td><?= !empty($cr['is_used']) ? '<span class="badge banned">Kullanıldı</span>' : '<span class="badge active">Kullanılmadı</span>' ?></td>
+                  <td>
+                    <?php if (!empty($cr['is_used']) && (int) $cr['used_account_id'] > 0): ?>
+                      <button type="button" class="linkish" data-detail="<?= (int) $cr['used_account_id'] ?>" style="background:none;border:none;color:var(--gold-light);padding:0;font:inherit;cursor:pointer;text-decoration:underline;"><?= e((string) $cr['used_account_login']) ?></button>
+                    <?php else: ?>
+                      —
+                    <?php endif; ?>
+                  </td>
+                  <td style="font-size:.78rem;white-space:nowrap;"><?= e((string) $cr['created_at']) ?></td>
+                  <td style="font-size:.78rem;white-space:nowrap;"><?= e((string) ($cr['used_at'] ?: '—')) ?></td>
+                </tr>
+              <?php endforeach; endif; ?>
+            </tbody>
+          </table>
+        </form>
+        <?php
+          $cPage = (int) ($couponPack['page'] ?? 1);
+          $cPages = (int) ($couponPack['pages'] ?? 1);
+          $cQ = rawurlencode((string) ($couponPack['q'] ?? ''));
+          $cSt = rawurlencode((string) ($couponPack['status'] ?? ''));
+          $cCat = (int) ($couponPack['category_id'] ?? 0);
+        ?>
+        <?php if ($cPages > 1): ?>
+          <div class="modal-pager" style="margin-top:14px;">
+            <span>Sayfa <?= $cPage ?> / <?= $cPages ?></span>
+            <div class="links">
+              <?php if ($cPage > 1): ?>
+                <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?section=nesne-market-kuponlar&coupon_q=' . $cQ . '&coupon_status=' . $cSt . '&coupon_cat=' . $cCat . '&coupon_page=' . ($cPage - 1))) ?>">Önceki</a>
+              <?php endif; ?>
+              <?php if ($cPage < $cPages): ?>
+                <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?section=nesne-market-kuponlar&coupon_q=' . $cQ . '&coupon_status=' . $cSt . '&coupon_cat=' . $cCat . '&coupon_page=' . ($cPage + 1))) ?>">Sonraki</a>
               <?php endif; ?>
             </div>
           </div>
@@ -4460,6 +4640,38 @@ $can = static function (string $flag) use ($permFlags): bool {
       if (file) file.value = '';
       syncDiscountRow();
       syncImagePreview();
+    });
+  })();
+
+  (function marketCouponsUi() {
+    document.querySelectorAll('.coupon-cat-edit').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.getElementById('couponCatId').value = btn.dataset.id || '0';
+        document.getElementById('couponCatName').value = btn.dataset.name || '';
+        document.getElementById('couponCatCash').value = btn.dataset.cash || '100';
+        document.getElementById('couponCatSort').value = btn.dataset.sort || '0';
+        document.getElementById('couponCatActive').checked = btn.dataset.active === '1';
+        showSection('nesne-market-kuponlar');
+      });
+    });
+    document.getElementById('couponCatReset')?.addEventListener('click', () => {
+      document.getElementById('couponCatId').value = '0';
+      document.getElementById('couponCatName').value = '';
+      document.getElementById('couponCatCash').value = '100';
+      document.getElementById('couponCatSort').value = '0';
+      document.getElementById('couponCatActive').checked = true;
+    });
+    const selectAll = document.getElementById('couponSelectAll');
+    selectAll?.addEventListener('change', () => {
+      document.querySelectorAll('.coupon-row-check').forEach((cb) => {
+        cb.checked = !!selectAll.checked;
+      });
+    });
+    document.getElementById('copyCouponCodes')?.addEventListener('click', () => {
+      const ta = document.getElementById('couponCodesOut');
+      if (!ta) return;
+      ta.select();
+      navigator.clipboard?.writeText(ta.value).catch(() => {});
     });
   })();
 
