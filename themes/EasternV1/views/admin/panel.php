@@ -3533,12 +3533,6 @@ $can = static function (string $flag) use ($permFlags): bool {
               <p style="font-size:.75rem;color:var(--ash);margin-top:12px;">Parola veritabanında şifreli saklanır. Önce kaydedin, sonra Test ile doğrulayın.</p>
               <div id="mailProviderHint" style="display:none;font-size:.78rem;color:var(--gold-light);margin-top:10px;padding:12px;border:1px solid rgba(201,151,74,.25);background:rgba(201,151,74,.06);line-height:1.45;"></div>
             </form>
-            <form method="post" action="<?= e(url('/admin/ayarlar/mail/test')) ?>" id="mailQuickTestForm" style="display:none;">
-              <?= $csrf ?>
-              <input type="hidden" name="mail_tab" value="sunucu">
-              <input type="hidden" name="server_id" id="mailQuickTestServerId" value="">
-              <input type="hidden" name="to_email" id="mailQuickTestTo" value="">
-            </form>
           </div>
           <div class="card">
             <div class="card-head"><h3>Kayıtlı sunucular</h3></div>
@@ -3570,13 +3564,10 @@ $can = static function (string $flag) use ($permFlags): bool {
                         data-username="<?= e((string) $ms['username']) ?>"
                         data-from="<?= e((string) $ms['from_email']) ?>"
                         data-from-name="<?= e((string) $ms['from_name']) ?>"><i class="fa-solid fa-pen"></i></button>
-                      <form method="post" action="<?= e(url('/admin/ayarlar/mail/test')) ?>" onsubmit="return confirm('Bu sunucu ile test maili gönderilsin mi?');">
-                        <?= $csrf ?>
-                        <input type="hidden" name="mail_tab" value="sunucu">
-                        <input type="hidden" name="server_id" value="<?= (int) $ms['id'] ?>">
-                        <input type="hidden" name="to_email" value="<?= e($msTestTo) ?>">
-                        <button type="submit" title="Test gönder (<?= e($msTestTo) ?>)"><i class="fa-solid fa-paper-plane"></i></button>
-                      </form>
+                      <button type="button" title="Test gönder" data-mail-test
+                        data-server-id="<?= (int) $ms['id'] ?>"
+                        data-server-name="<?= e((string) $ms['name']) ?>"
+                        data-default-to="<?= e($msTestTo) ?>"><i class="fa-solid fa-paper-plane"></i></button>
                       <?php if (empty($ms['is_active'])): ?>
                       <form method="post" action="<?= e(url('/admin/ayarlar/mail/aktif')) ?>">
                         <?= $csrf ?><input type="hidden" name="mail_tab" value="sunucu"><input type="hidden" name="id" value="<?= (int) $ms['id'] ?>">
@@ -4392,6 +4383,27 @@ $can = static function (string $flag) use ($permFlags): bool {
     </section>
 
   </main>
+</div>
+
+<!-- ============ MAIL TEST MODAL ============ -->
+<div class="modal-overlay" id="mailTestModal">
+  <div class="modal">
+    <h3><i class="fa-solid fa-paper-plane"></i> Test maili gönder</h3>
+    <p id="mailTestModalHint">Test mailinin gideceği adresi girin. Tamam deyince gönderim başlar.</p>
+    <form method="post" action="<?= e(url('/admin/ayarlar/mail/test')) ?>" id="mailTestForm">
+      <?= $csrf ?>
+      <input type="hidden" name="mail_tab" value="sunucu">
+      <input type="hidden" name="server_id" id="mailTestServerId" value="">
+      <div class="form-row">
+        <label for="mailTestToEmail">Alıcı e-posta</label>
+        <input type="email" name="to_email" id="mailTestToEmail" required placeholder="ornek@mail.com" autocomplete="email">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="mailTestCancel">Vazgeç</button>
+        <button type="submit" class="btn btn-primary btn-sm" id="mailTestConfirm">Tamam</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- ============ DUYURU MODAL ============ -->
@@ -6142,23 +6154,59 @@ $can = static function (string $flag) use ($permFlags): bool {
       document.getElementById('mailServerId').value = '';
       syncProvider();
     });
-    document.getElementById('mailQuickTest')?.addEventListener('click', () => {
-      const sid = (document.getElementById('mailServerId')?.value || '').trim();
-      const to = (document.getElementById('mailFrom')?.value || document.getElementById('mailUser')?.value || '').trim();
+    const mailTestModal = document.getElementById('mailTestModal');
+    const openMailTestModal = (serverId, defaultTo, serverName) => {
+      if (!mailTestModal) return;
+      const sid = String(serverId || '').trim();
       if (!sid) {
         alert('Önce sunucuyu kaydedin, sonra listeden veya düzenleme modunda Test gönderin.');
         return;
       }
+      const sidEl = document.getElementById('mailTestServerId');
+      const toEl = document.getElementById('mailTestToEmail');
+      const hint = document.getElementById('mailTestModalHint');
+      if (sidEl) sidEl.value = sid;
+      if (toEl) {
+        toEl.value = String(defaultTo || '').trim();
+      }
+      if (hint) {
+        const name = String(serverName || '').trim();
+        hint.textContent = name
+          ? ('«' + name + '» sunucusu ile test maili gönderilecek. Alıcı adresini girip Tamam’a basın.')
+          : 'Test mailinin gideceği adresi girin. Tamam deyince gönderim başlar.';
+      }
+      mailTestModal.classList.add('open');
+      setTimeout(() => toEl?.focus(), 50);
+    };
+    document.getElementById('mailTestCancel')?.addEventListener('click', () => {
+      mailTestModal?.classList.remove('open');
+    });
+    mailTestModal?.addEventListener('click', (e) => {
+      if (e.target === mailTestModal) mailTestModal.classList.remove('open');
+    });
+    document.getElementById('mailTestForm')?.addEventListener('submit', (e) => {
+      const to = (document.getElementById('mailTestToEmail')?.value || '').trim();
       if (!to) {
-        alert('Gönderen e-posta (alıcı) boş olamaz.');
+        e.preventDefault();
+        alert('Alıcı e-posta gerekli.');
         return;
       }
-      if (!confirm('Bu sunucu ile test maili gönderilsin mi?\nAlıcı: ' + to)) return;
-      const sidEl = document.getElementById('mailQuickTestServerId');
-      const toEl = document.getElementById('mailQuickTestTo');
-      if (sidEl) sidEl.value = sid;
-      if (toEl) toEl.value = to;
-      document.getElementById('mailQuickTestForm')?.submit();
+      const btn = document.getElementById('mailTestConfirm');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Gönderiliyor…';
+      }
+    });
+    document.getElementById('mailQuickTest')?.addEventListener('click', () => {
+      const sid = (document.getElementById('mailServerId')?.value || '').trim();
+      const to = (document.getElementById('mailFrom')?.value || document.getElementById('mailUser')?.value || '').trim();
+      const name = (document.getElementById('mailServerName')?.value || '').trim();
+      openMailTestModal(sid, to, name);
+    });
+    document.querySelectorAll('[data-mail-test]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        openMailTestModal(btn.dataset.serverId, btn.dataset.defaultTo, btn.dataset.serverName);
+      });
     });
     document.querySelectorAll('form[action*="mail/sablon"]').forEach(form => {
       const wrap = form.querySelector('[data-mail-tpl-wrap]');

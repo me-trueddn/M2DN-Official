@@ -10,6 +10,12 @@ M2DN, Metin2 özel sunucuları için PHP tabanlı web sitesi ve yönetim panelid
 
 ## Son güncellemeler
 
+### 2026-08-07 — Sürüm 3.6.7 · Mail test modal
+
+| Konu | Açıklama |
+|------|----------|
+| **Test** | Test gönder → modal; alıcı e-posta girilir, Tamam ile gönderim başlar |
+
 ### 2026-08-07 — Sürüm 3.6.6 · Mail sunucu test + UI
 
 | Konu | Açıklama |
