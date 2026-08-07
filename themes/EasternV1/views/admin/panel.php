@@ -92,6 +92,7 @@ $playerPage = (int) ($players['page'] ?? 1);
 $playerPages = (int) ($players['pages'] ?? 1);
 $playerQ = (string) ($players['q'] ?? '');
 $playerStatus = (string) ($players['status'] ?? '');
+$playerAdminsOnly = !empty($players['admins_only']);
 $playerPerPage = (int) ($players['per_page'] ?? 10);
 $playerPerOptions = is_array($players['per_page_options'] ?? null) ? $players['per_page_options'] : [10, 20, 30, 50, 100];
 $guilds = is_array($guilds ?? null) ? $guilds : [];
@@ -458,6 +459,13 @@ $can = static function (string $flag) use ($permFlags): bool {
   .filters input, .filters select{background:var(--obsidian); border:1px solid var(--line); padding:9px 12px; color:var(--parchment); font-size:.8rem; outline:none;}
   .filters input:focus, .filters select:focus{border-color:var(--gold);}
   .filters button.btn{cursor:pointer;}
+  .filters .filter-check{
+    display:inline-flex; align-items:center; gap:8px;
+    font-size:.8rem; color:var(--ash); cursor:pointer; user-select:none;
+    padding:8px 10px; border:1px solid var(--line); background:var(--obsidian);
+  }
+  .filters .filter-check input{width:auto; margin:0; accent-color:var(--gold); cursor:pointer;}
+  .filters .filter-check:has(input:checked){border-color:rgba(201,151,74,.45); color:var(--gold-light);}
   .panel-select{
     appearance:none; -webkit-appearance:none; -moz-appearance:none;
     background-color:var(--obsidian);
@@ -1014,6 +1022,7 @@ $can = static function (string $flag) use ($permFlags): bool {
                   'section' => 'oyuncular',
                   'q' => $playerQ !== '' ? $playerQ : null,
                   'status' => $playerStatus !== '' ? $playerStatus : null,
+                  'admins' => $playerAdminsOnly ? '1' : null,
                   'per' => $playerPerPage !== 10 ? $playerPerPage : null,
                   'page' => $playerPage > 1 ? $playerPage : null,
               ], static fn($v) => $v !== null && $v !== ''));
@@ -1029,6 +1038,10 @@ $can = static function (string $flag) use ($permFlags): bool {
             <option value="OK"<?= $playerStatus === 'OK' ? ' selected' : '' ?>>Aktif</option>
             <option value="BLOCK"<?= $playerStatus === 'BLOCK' ? ' selected' : '' ?>>Banlı</option>
           </select>
+          <label class="filter-check" title="WebPermission ≥ 1 (Admin / Süper Admin)">
+            <input type="checkbox" name="admins" value="1"<?= $playerAdminsOnly ? ' checked' : '' ?>>
+            Yöneticileri göster
+          </label>
           <select name="per" title="Sayfa başına">
             <?php foreach ($playerPerOptions as $opt): ?>
               <option value="<?= (int) $opt ?>"<?= $playerPerPage === (int) $opt ? ' selected' : '' ?>><?= (int) $opt ?> / sayfa</option>
@@ -1098,12 +1111,13 @@ $can = static function (string $flag) use ($permFlags): bool {
         </table>
 
         <?php
-          $mk = static function (int $p, ?int $per = null) use ($playerQ, $playerStatus, $playerPerPage): string {
+          $mk = static function (int $p, ?int $per = null) use ($playerQ, $playerStatus, $playerPerPage, $playerAdminsOnly): string {
               $per = $per ?? $playerPerPage;
               $qs = http_build_query(array_filter([
                   'section' => 'oyuncular',
                   'q' => $playerQ !== '' ? $playerQ : null,
                   'status' => $playerStatus !== '' ? $playerStatus : null,
+                  'admins' => $playerAdminsOnly ? '1' : null,
                   'per' => $per !== 10 ? $per : null,
                   'page' => $p > 1 ? $p : null,
               ], static fn($v) => $v !== null && $v !== ''));

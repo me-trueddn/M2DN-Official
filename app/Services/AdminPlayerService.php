@@ -20,6 +20,7 @@ final class AdminPlayerService
      *   pages: int,
      *   q: string,
      *   status: string,
+     *   admins_only: bool,
      *   per_page_options: list<int>
      * }
      */
@@ -28,7 +29,8 @@ final class AdminPlayerService
         string $status = '',
         int $page = 1,
         int $perPage = 10,
-        ?string $serverKey = null
+        ?string $serverKey = null,
+        bool $adminsOnly = false
     ): array {
         $serverKey = $serverKey ?: (ServerManager::current()['key'] ?? null);
         $q = trim($q);
@@ -62,6 +64,11 @@ final class AdminPlayerService
             $params[] = $status;
         }
 
+        if ($adminsOnly) {
+            // WebPermission 1 (Admin) ve 2 (Süper Admin)
+            $where[] = 'COALESCE(WebPermission, 0) >= 1';
+        }
+
         $whereSql = implode(' AND ', $where);
         $pdo = Database::account($serverKey);
 
@@ -74,11 +81,15 @@ final class AdminPlayerService
         }
         $offset = ($page - 1) * $perPage;
 
+        $orderSql = $adminsOnly
+            ? 'ORDER BY COALESCE(WebPermission, 0) DESC, id DESC'
+            : 'ORDER BY id DESC';
+
         $stmt = $pdo->prepare(
             "SELECT id, login, email, status, ip, create_time, WebPermission, cash
              FROM account
              WHERE {$whereSql}
-             ORDER BY id DESC
+             {$orderSql}
              LIMIT {$perPage} OFFSET {$offset}"
         );
         $stmt->execute($params);
@@ -147,6 +158,7 @@ final class AdminPlayerService
             'pages' => $pages,
             'q' => $q,
             'status' => $status === 'OK' || $status === 'BLOCK' ? $status : '',
+            'admins_only' => $adminsOnly,
             'per_page_options' => self::PER_PAGE_OPTIONS,
         ];
     }

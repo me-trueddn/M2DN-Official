@@ -48,6 +48,7 @@ final class AdminPanelController
         $status = (string) ($_GET['status'] ?? '');
         $page = (int) ($_GET['page'] ?? 1);
         $per = (int) ($_GET['per'] ?? 10);
+        $adminsOnly = isset($_GET['admins']) && (string) $_GET['admins'] === '1';
         $guildQ = trim((string) ($_GET['guild_q'] ?? ''));
         $guildPage = (int) ($_GET['guild_page'] ?? 1);
         $guildPer = (int) ($_GET['guild_per'] ?? 10);
@@ -77,7 +78,7 @@ final class AdminPanelController
         $marriageQ = trim((string) ($_GET['marriage_q'] ?? ''));
         $marriagePage = (int) ($_GET['marriage_page'] ?? 1);
         $marriagePer = (int) ($_GET['marriage_per'] ?? 20);
-        $players = AdminPlayerService::listAccounts($q, $status, $page, $per);
+        $players = AdminPlayerService::listAccounts($q, $status, $page, $per, null, $adminsOnly);
         $ticketQ = trim((string) ($_GET['ticket_q'] ?? ''));
         $logQ = trim((string) ($_GET['log_q'] ?? ''));
         $logPage = (int) ($_GET['log_page'] ?? 1);
@@ -112,7 +113,7 @@ final class AdminPanelController
             $section = 'nesne-market-kuponlar';
         } elseif ($marriageQ !== '' || isset($_GET['marriage_page']) || isset($_GET['marriage_per'])) {
             $section = 'evlilikler';
-        } elseif ($q !== '' || $status !== '' || isset($_GET['page']) || isset($_GET['per'])) {
+        } elseif ($q !== '' || $status !== '' || $adminsOnly || isset($_GET['page']) || isset($_GET['per']) || isset($_GET['admins'])) {
             $section = 'oyuncular';
         } elseif ($mailQ !== '' || isset($_GET['mail_tab'])) {
             $section = 'mail-ayarlari';
