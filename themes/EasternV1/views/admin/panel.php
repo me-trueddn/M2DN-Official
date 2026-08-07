@@ -4688,7 +4688,7 @@ $can = static function (string $flag) use ($permFlags): bool {
         if (!logs.length) html += '<div>Henüz kayıt yok.</div>';
         else {
           html += '<table><thead><tr><th>Zaman</th><th>İşlem</th><th>Detay</th><th>Yetkili</th></tr></thead><tbody>';
-          logs.slice(0, 25).forEach(log => {
+          logs.slice(0, 5).forEach(log => {
             html += '<tr><td>' + esc(log.created_label) + '</td><td>' + esc(log.action_label) + '</td>';
             let det = log.detail || '—';
             if (log.evidence) det += (det !== '—' ? ' · ' : '') + 'Kanıt: ' + log.evidence;

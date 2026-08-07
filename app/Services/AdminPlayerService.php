@@ -238,7 +238,7 @@ final class AdminPlayerService
         return [
             'account' => $account,
             'characters' => $dashboard['characters'],
-            'activity' => ActivityLogService::forAccount($accountId, 80),
+            'activity' => ActivityLogService::forAccount($accountId, 5),
             'game_logins' => ActivityLogService::gameLoginLogs($accountId, 40, $serverKey),
             'empire_changes' => self::empireChanges($accountId, $serverKey),
             'security' => $security,
