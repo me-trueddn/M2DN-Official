@@ -7,6 +7,7 @@ namespace App\Core;
 final class Config
 {
     private static ?array $data = null;
+    private static ?string $appVersion = null;
 
     public static function load(string $path): void
     {
@@ -21,6 +22,7 @@ final class Config
         }
 
         self::$data = $config;
+        self::$appVersion = null;
     }
 
     public static function get(string $key, mixed $default = null): mixed
@@ -40,6 +42,42 @@ final class Config
         }
 
         return $value;
+    }
+
+    /**
+     * Uygulama sürümü — config/version.json (git’te tutulur; config.php değil).
+     */
+    public static function version(): string
+    {
+        if (self::$appVersion !== null) {
+            return self::$appVersion;
+        }
+
+        $file = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'version.json';
+        if (is_file($file)) {
+            try {
+                $raw = file_get_contents($file);
+                $json = is_string($raw) ? json_decode($raw, true) : null;
+                $ver = is_array($json) ? trim((string) ($json['version'] ?? '')) : '';
+                if ($ver !== '') {
+                    return self::$appVersion = $ver;
+                }
+            } catch (\Throwable) {
+                // fallback below
+            }
+        }
+
+        // Eski kurulumlar / geçiş: config app.version
+        try {
+            $legacy = trim((string) self::get('app.version', ''));
+            if ($legacy !== '') {
+                return self::$appVersion = $legacy;
+            }
+        } catch (\Throwable) {
+            // ignore
+        }
+
+        return self::$appVersion = '0.0.0';
     }
 
     public static function all(): array

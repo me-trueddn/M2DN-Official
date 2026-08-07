@@ -21,8 +21,8 @@ If interactive choice UI is not available, still list exactly those three option
 
 - **Do not** start the next user request, follow-up task, or unrelated work until they select an option.
 - **Do not** bump the version yourself without their answer.
-- After they choose: update `config/config.php` → `app.version`, confirm the new version in the reply, then continue.
+- After they choose: update `config/version.json` → `version`, confirm the new version in the reply, then continue.
 
-Version is shown in footer, user panel, and admin panel via Theme `$appVersion`.
+Version is shown in footer, user panel, and admin panel via Theme `$appVersion` (`Config::version()`).
 
-Current baseline: check `config/config.php` `app.version` (was **1.10.2** at rule creation).
+Current baseline: check `config/version.json` `version` (was **1.10.2** at rule creation; moved out of `config.php` because that file is gitignored).

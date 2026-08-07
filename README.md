@@ -3,7 +3,7 @@
 M2DN, Metin2 özel sunucuları için PHP tabanlı web sitesi ve yönetim panelidir. Oyuncular kayıt / giriş yapar, karakterlerini ve hesabını yönetir; yetkililer ise admin panelinden sunucu, oyuncu, lonca, içerik ve site ayarlarını kontrol eder.
 
 - **Tema:** EasternV1 (çoklu tema altyapısı hazır)
-- **Sürüm:** `config/config.php` → `app.version`
+- **Sürüm:** `config/version.json` → `version`
 - **Dil:** Türkçe arayüz
 
 ---

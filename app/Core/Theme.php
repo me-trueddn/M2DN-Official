@@ -64,7 +64,7 @@ final class Theme
     {
         $data['appName'] = Config::get('app.name', 'M2DN');
         $data['appTagline'] = Config::get('app.tagline', 'Metin2 Sunucusu');
-        $data['appVersion'] = (string) Config::get('app.version', '1.0.0');
+        $data['appVersion'] = Config::version();
         $data['theme'] = self::active();
         $data['themeUrl'] = self::assetUrl();
         // Oranlar + marka: DB settings öncelikli
