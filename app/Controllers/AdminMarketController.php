@@ -10,6 +10,7 @@ use App\Services\AuthService;
 use App\Services\MarketCategoryService;
 use App\Services\MarketCouponService;
 use App\Services\MarketItemService;
+use App\Services\AdminLogService;
 use App\Services\PermissionService;
 
 final class AdminMarketController
@@ -133,27 +134,43 @@ final class AdminMarketController
     {
         $user = $this->gate();
         $section = 'nesne-market-kuponlar';
+        $id = (int) ($_POST['id'] ?? 0);
+        $name = trim((string) ($_POST['name'] ?? ''));
+        $cash = (int) ($_POST['cash_amount'] ?? 0);
         $result = MarketCouponService::saveCategory([
-            'id' => (int) ($_POST['id'] ?? 0),
-            'name' => (string) ($_POST['name'] ?? ''),
-            'cash_amount' => (int) ($_POST['cash_amount'] ?? 0),
+            'id' => $id,
+            'name' => $name,
+            'cash_amount' => $cash,
             'is_active' => !empty($_POST['is_active']),
             'sort_order' => (int) ($_POST['sort_order'] ?? 0),
         ]);
         if (empty($result['ok'])) {
             $this->fail($result['errors'] ?? ['Kayıt başarısız.'], $section);
         }
+        AdminLogService::write(
+            $user,
+            $id > 0 ? 'Market kupon kategorisi güncellendi' : 'Market kupon kategorisi eklendi',
+            $name . ' · Count: ' . number_format($cash, 0, ',', '.') . ' Elmas'
+            . ($id > 0 ? ' · #' . $id : ' · #' . (int) ($result['id'] ?? 0))
+        );
         $this->ok('Kupon kategorisi kaydedildi.', $section);
     }
 
     public function deleteCouponCategory(): void
     {
-        $this->gate();
+        $user = $this->gate();
         $section = 'nesne-market-kuponlar';
-        $result = MarketCouponService::deleteCategory((int) ($_POST['id'] ?? 0));
+        $id = (int) ($_POST['id'] ?? 0);
+        $cat = MarketCouponService::findCategory($id);
+        $result = MarketCouponService::deleteCategory($id);
         if (empty($result['ok'])) {
             $this->fail($result['errors'] ?? ['Silinemedi.'], $section);
         }
+        AdminLogService::write(
+            $user,
+            'Market kupon kategorisi silindi',
+            ($cat['name'] ?? 'Kategori') . ' · #' . $id
+        );
         $this->ok('Kupon kategorisi silindi.', $section);
     }
 
@@ -161,9 +178,12 @@ final class AdminMarketController
     {
         $user = $this->gate();
         $section = 'nesne-market-kuponlar';
+        $categoryId = (int) ($_POST['category_id'] ?? 0);
+        $quantity = (int) ($_POST['quantity'] ?? 0);
+        $cat = MarketCouponService::findCategory($categoryId);
         $result = MarketCouponService::generate(
-            (int) ($_POST['category_id'] ?? 0),
-            (int) ($_POST['quantity'] ?? 0),
+            $categoryId,
+            $quantity,
             [
                 'account_id' => (int) ($user['account_id'] ?? 0),
                 'login' => (string) ($user['login'] ?? ''),
@@ -172,13 +192,21 @@ final class AdminMarketController
         if (empty($result['ok'])) {
             $this->fail($result['errors'] ?? ['Oluşturulamadı.'], $section);
         }
+        $created = (int) ($result['created'] ?? 0);
+        AdminLogService::write(
+            $user,
+            'Market kuponu oluşturuldu',
+            $created . ' adet · '
+            . (string) ($cat['name'] ?? ('Kategori #' . $categoryId))
+            . ' · Count: ' . number_format((int) ($cat['cash_amount'] ?? 0), 0, ',', '.') . ' Elmas'
+        );
         Session::flash('coupon_generated_codes', $result['codes'] ?? []);
-        $this->ok((int) ($result['created'] ?? 0) . ' kupon oluşturuldu. Kodları şimdi kopyala — tekrar gösterilmez.', $section);
+        $this->ok($created . ' kupon oluşturuldu. Kodları şimdi kopyala — tekrar gösterilmez.', $section);
     }
 
     public function deleteCoupons(): void
     {
-        $this->gate();
+        $user = $this->gate();
         $section = 'nesne-market-kuponlar';
         $ids = $_POST['ids'] ?? [];
         if (!is_array($ids)) {
@@ -188,6 +216,13 @@ final class AdminMarketController
         if (empty($result['ok'])) {
             $this->fail($result['errors'] ?? ['Silinemedi.'], $section);
         }
-        $this->ok((int) ($result['deleted'] ?? 0) . ' kupon silindi.', $section);
+        $deleted = (int) ($result['deleted'] ?? 0);
+        AdminLogService::write(
+            $user,
+            'Market kuponu silindi',
+            $deleted . ' adet · id: ' . implode(', ', array_map('intval', array_slice($ids, 0, 40)))
+            . (count($ids) > 40 ? '…' : '')
+        );
+        $this->ok($deleted . ' kupon silindi.', $section);
     }
 }
