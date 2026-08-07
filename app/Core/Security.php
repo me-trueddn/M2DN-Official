@@ -153,6 +153,9 @@ final class Security
         header('X-Frame-Options: SAMEORIGIN');
         header('Referrer-Policy: strict-origin-when-cross-origin');
         header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+        // Oturum durumu sayfalar arasında/önbellekte sapmasın (çoklu sekme yenileme)
+        header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
         // Captcha (Google reCAPTCHA + Cloudflare Turnstile) script/iframe/img izinleri
         header(
             "Content-Security-Policy: "

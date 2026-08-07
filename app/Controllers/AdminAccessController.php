@@ -65,16 +65,26 @@ final class AdminAccessController
         $user = PermissionService::requireFlag(PermissionService::FLAG_SITE_SETTINGS);
         Security::requireCsrf('login');
         $accountId = (int) ($_POST['account_id'] ?? 0);
-        $groupId = (int) ($_POST['group_id'] ?? 0);
-        $result = PermissionService::assignAccountGroup($accountId, $groupId, $user);
+        $rawIds = $_POST['group_ids'] ?? ($_POST['group_id'] ?? []);
+        if (!is_array($rawIds)) {
+            $rawIds = [(int) $rawIds];
+        }
+        $groupIds = array_values(array_unique(array_filter(array_map('intval', $rawIds))));
+        $result = PermissionService::assignAccountGroups($accountId, $groupIds, $user);
         Session::flash('panel_section', 'oyuncular');
         if (!empty($result['ok'])) {
-            Session::flash('panel_success', 'Yetki grubu atandı.');
-            $groupName = PermissionService::groupNameById($groupId);
+            Session::flash('panel_success', 'Yetki grubu/grupları atandı.');
+            $names = [];
+            foreach ($groupIds as $gid) {
+                $n = PermissionService::groupNameById($gid);
+                if ($n !== '') {
+                    $names[] = '#' . $gid . ' · ' . $n;
+                }
+            }
             AdminLogService::write(
                 $user,
                 'Yetki grubu atandı',
-                self::groupDetail($groupId, $groupName),
+                $names !== [] ? implode(' + ', $names) : '—',
                 $accountId,
                 null
             );

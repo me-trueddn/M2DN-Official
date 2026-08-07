@@ -31,6 +31,7 @@ use App\Services\PermissionService;
 use App\Services\PasswordResetService;
 use App\Services\SiteContentService;
 use App\Services\TicketService;
+use App\Services\WikiService;
 
 final class AdminPanelController
 {
@@ -123,7 +124,7 @@ final class AdminPanelController
             'ceza-ayarlari', 'patch-linkleri', 'ozellikler-ayarlari', 'siniflar-ayarlari',
             'oranlar-ayarlari', 'siradaki-bolum', 'galeri-ayarlari', 'footer-ayarlari',
             'logo-ayarlari', 'mail-ayarlari', 'yetki-gruplari', 'ticket-ayarlari', 'duyuru-turleri',
-            'kurallar-ayarlari', 'captcha-ayarlari', 'gizlilik-ayarlari', 'nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari', 'nesne-market-kuponlar',
+            'kurallar-ayarlari', 'captcha-ayarlari', 'gizlilik-ayarlari', 'nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari', 'nesne-market-kuponlar', 'wiki-yonetim',
         ];
         if (!in_array($section, $allowed, true)) {
             $section = 'ozet';
@@ -169,6 +170,7 @@ final class AdminPanelController
             'nesne-market-urunler' => PermissionService::FLAG_MENU_NESNE_MARKET,
             'nesne-market-satis-loglari' => PermissionService::FLAG_MENU_NESNE_MARKET,
             'nesne-market-kuponlar' => PermissionService::FLAG_MENU_NESNE_MARKET,
+            'wiki-yonetim' => PermissionService::FLAG_MENU_WIKI,
         ];
         if ($section === 'duyurular'
             && empty($permFlags[PermissionService::FLAG_MENU_DUYURULAR])
@@ -182,8 +184,14 @@ final class AdminPanelController
         ) {
             Session::flash('panel_errors', ['Nesne Market yetkin yok.']);
             $section = 'ozet';
+        } elseif ($section === 'wiki-yonetim'
+            && empty($permFlags[PermissionService::FLAG_MENU_WIKI])
+            && empty($permFlags[PermissionService::FLAG_WIKI_MANAGE])
+        ) {
+            Session::flash('panel_errors', ['Wiki Yönetimi yetkin yok.']);
+            $section = 'ozet';
         } elseif (isset($menuGate[$section]) && $section !== 'duyurular'
-            && !in_array($section, ['nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari', 'nesne-market-kuponlar'], true)
+            && !in_array($section, ['nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari', 'nesne-market-kuponlar', 'wiki-yonetim'], true)
             && empty($permFlags[$menuGate[$section]])
         ) {
             Session::flash('panel_errors', ['Bu menüye erişim yetkin yok.']);
@@ -326,6 +334,7 @@ final class AdminPanelController
             'captchaConfig' => CaptchaService::config(),
             'privacyTitle' => LegalContentService::privacyTitle(),
             'privacyHtml' => LegalContentService::privacyHtml(),
+            'wikiContent' => WikiService::content(),
             'marketCategories' => (!empty($permFlags[PermissionService::FLAG_MENU_NESNE_MARKET])
                 || !empty($permFlags[PermissionService::FLAG_SITE_SETTINGS]))
                 ? \App\Services\MarketCategoryService::list(false)

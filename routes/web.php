@@ -12,6 +12,8 @@ use App\Controllers\AuthController;
 use App\Controllers\CommunityRulesController;
 use App\Controllers\PrivacyController;
 use App\Controllers\HomeController;
+use App\Controllers\WikiController;
+use App\Controllers\AdminWikiController;
 use App\Controllers\NesneMarketController;
 use App\Controllers\NotificationController;
 use App\Controllers\PasswordResetController;
@@ -25,6 +27,9 @@ use App\Services\AuthService;
 /** @var Router $router */
 
 $router->get('/', [HomeController::class, 'index']);
+$router->get('/wiki', [WikiController::class, 'index']);
+$router->post('/admin/wiki/kaydet', [AdminWikiController::class, 'save']);
+$router->post('/admin/wiki/sifirla', [AdminWikiController::class, 'reset']);
 $router->get('/kurallar', [CommunityRulesController::class, 'index']);
 $router->post('/kurallar/kabul', [CommunityRulesController::class, 'accept']);
 $router->post('/kurallar/reddet', [CommunityRulesController::class, 'decline']);

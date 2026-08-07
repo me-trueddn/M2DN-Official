@@ -285,7 +285,7 @@ CREATE TABLE IF NOT EXISTS `account_staff_groups` (
   `account_id` INT UNSIGNED NOT NULL,
   `group_id` INT UNSIGNED NOT NULL,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`account_id`),
+  PRIMARY KEY (`account_id`, `group_id`),
   KEY `idx_asg_group` (`group_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
 

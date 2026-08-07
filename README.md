@@ -10,6 +10,35 @@ M2DN, Metin2 özel sunucuları için PHP tabanlı web sitesi ve yönetim panelid
 
 ## Son güncellemeler
 
+### 2026-08-07 — Sürüm 3.6.3 · Çoklu yetki grubu
+
+| Konu | Açıklama |
+|------|----------|
+| **Atama** | Bir hesaba birden fazla yetki grubu; bayraklar birleşir (OR) |
+| **Süper Admin** | WebPerm 2 → yalnızca Süper Admin tek rol |
+| **SQL** | `database/2026-08-07-coklu-yetki-grubu/` |
+
+### 2026-08-07 — Sürüm 3.6.1 · Wiki Yönetimi + oturum düzeltmesi
+
+| Konu | Açıklama |
+|------|----------|
+| **Admin** | Ana menü **Wiki → Wiki Yönetimi** — public `/wiki` içeriğini düzenleme |
+| **Yetki** | `menu_wiki` (menü) · `wiki_manage` (düzenleme); Ready Only yalnızca menü |
+| **SQL** | `database/2026-08-07-wiki-yonetim/` |
+| **Oturum** | Çoklu sekmede login kaybı: regenerate grace + no-store cache |
+
+### 2026-08-07 — Sürüm 3.6.0 · Wiki
+
+Herkese açık **Wiki / Bilgi Bankası** sayfası eklendi (`/wiki`).
+
+| Alan | Açıklama |
+|------|----------|
+| **Menü** | Anasayfa header → Galeri öncesi **Wiki** |
+| **Erişim** | Login zorunlu değil; misafir de açabilir |
+| **Oturum** | Giriş yapılmışsa oturum geri sayımı, kullanıcı menüsü, kurallar/gizlilik yeniden onay modalları geçerli |
+| **İçerik** | Giriş, sınıflar, haritalar, canavarlar, metinler, yükseltme, lonca, SSS; oranlar site ayarlarından |
+| **Giriş/Kayıt** | Misafirde `/giris` · `/kayit` (anasayfa modalına yönlendirir) |
+
 ### 2026-08-07 — Sürüm 3.5.9
 
 Bugün eklenen / güncellenen özellikler (canlı migrate klasörleri `database/2026-08-07-*`):
@@ -90,7 +119,7 @@ Satın alma öncesi deponun kapalı olması önerilir (uyarı gösterilir; MySQL
 
 | Katman | Açıklama |
 |--------|----------|
-| **Anasayfa** | Tanıtım, oranlar, sınıflar, patch indirme, galeri, kayıt / giriş |
+| **Anasayfa** | Tanıtım, oranlar, sınıflar, patch indirme, galeri, **Wiki**, kayıt / giriş |
 | **Oyuncu paneli** (`/panel`) | Karakter, güvenlik, destek, sıralama, lonca savaşları, **Evlilikler**, **Nesne Market** |
 | **Yönetim paneli** (`/admin`) | Oyuncu / lonca / GM / ban / içerik / log / site ayarları / **Nesne Market** |
 | **Nesne Market** (`/nesne-market`) | Elmas ile ürün satın alma (panel + oyun içi CEF) |
@@ -115,6 +144,7 @@ Oyun hesap şifreleri **MD5** (`account.password`). Panel oturumu ayrı token il
 
 - Sunucu tanıtımı, EXP / DROP / YANG oranları, sınıf kartları
 - Patch / istemci indirme linkleri, galeri
+- **Wiki** (`/wiki`) — herkese açık bilgi bankası
 - **Kayıt** ve **Giriş** (opsiyonel Captcha: Google reCAPTCHA v2 veya Cloudflare Turnstile); kayıtta şifre tekrarı ve gizlilik onayı zorunlu
 - Topluluk kuralları (`/kurallar`) ve gizlilik (`/gizlilik`)
 - Kurallar veya gizlilik içeriği güncellenince giriş yapan oyuncudan yeniden onay istenir; reddederse oturum kapanır

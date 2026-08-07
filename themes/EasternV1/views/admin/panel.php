@@ -570,6 +570,8 @@ $can = static function (string $flag) use ($permFlags): bool {
   .icon-pick-grid button.active{color:var(--gold-light);border-color:var(--gold);background:rgba(201,151,74,.12);}
   .icon-pick-search{margin-top:8px;display:none;}
   .icon-pick-search.open{display:block;}
+  .wiki-icon-pick{margin-bottom:4px;}
+  .wiki-icon-pick .icon-pick-grid{grid-template-columns:repeat(10,minmax(0,1fr));}
   .form-row select:focus{border-color:var(--gold);}
   .flags-table{width:100%; border-collapse:collapse; margin-top:8px;}
   .flags-table th, .flags-table td{padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle;}
@@ -803,6 +805,11 @@ $can = static function (string $flag) use ($permFlags): bool {
     <a class="nav-item<?= $panelSection === 'nesne-market-urunler' ? ' active' : '' ?>" data-target="nesne-market-urunler"><i class="fa-solid fa-box-open"></i> Ürünler</a>
     <a class="nav-item<?= $panelSection === 'nesne-market-satis-loglari' ? ' active' : '' ?>" data-target="nesne-market-satis-loglari"><i class="fa-solid fa-receipt"></i> Satış Logları</a>
     <a class="nav-item<?= $panelSection === 'nesne-market-kuponlar' ? ' active' : '' ?>" data-target="nesne-market-kuponlar"><i class="fa-solid fa-ticket"></i> Market Kuponları</a>
+    <?php endif; ?>
+
+    <?php if ($can('menu_wiki') || $can('wiki_manage')): ?>
+    <div class="nav-group-label">Wiki</div>
+    <a class="nav-item<?= $panelSection === 'wiki-yonetim' ? ' active' : '' ?>" data-target="wiki-yonetim"><i class="fa-solid fa-book-open"></i> Wiki Yönetimi</a>
     <?php endif; ?>
 
     <?php if ($can('site_settings')): ?>
@@ -1090,6 +1097,7 @@ $can = static function (string $flag) use ($permFlags): bool {
                     data-perm-id="<?= (int) $acc['id'] ?>"
                     data-perm-login="<?= e((string) $acc['login']) ?>"
                     data-perm-group="<?= (int) ($acc['staff_group_id'] ?? 0) ?>"
+                    data-perm-groups="<?= e(json_encode(array_values(array_map('intval', is_array($acc['staff_group_ids'] ?? null) ? $acc['staff_group_ids'] : ((($acc['staff_group_id'] ?? null) ? [(int) $acc['staff_group_id']] : [])))), JSON_UNESCAPED_UNICODE) ?: '[]') ?>"
                   ><i class="fa-solid fa-shield-halved"></i></button>
                   <?php endif; ?>
                   <?php endif; ?>
@@ -3153,6 +3161,279 @@ $can = static function (string $flag) use ($permFlags): bool {
       </div>
     </section>
 
+    <!-- ===================== WIKI YÖNETİMİ ===================== -->
+    <section class="section<?= $panelSection === 'wiki-yonetim' ? ' active' : '' ?>" id="wiki-yonetim">
+      <?php
+        $wikiContent = isset($wikiContent) && is_array($wikiContent) ? $wikiContent : \App\Services\WikiService::content();
+        $wHead = is_array($wikiContent['head'] ?? null) ? $wikiContent['head'] : [];
+        $wIntro = is_array($wikiContent['intro'] ?? null) ? $wikiContent['intro'] : [];
+        $wIntroCards = is_array($wIntro['cards'] ?? null) ? $wIntro['cards'] : [];
+        $wClassSec = is_array($wikiContent['classes_section'] ?? null) ? $wikiContent['classes_section'] : [];
+        $wClasses = is_array($wikiContent['classes'] ?? null) ? $wikiContent['classes'] : [];
+        $wMapSec = is_array($wikiContent['maps_section'] ?? null) ? $wikiContent['maps_section'] : [];
+        $wMaps = is_array($wikiContent['maps'] ?? null) ? $wikiContent['maps'] : [];
+        $wMonSec = is_array($wikiContent['monsters_section'] ?? null) ? $wikiContent['monsters_section'] : [];
+        $wMonsters = is_array($wikiContent['monsters'] ?? null) ? $wikiContent['monsters'] : [];
+        $wMetSec = is_array($wikiContent['metins_section'] ?? null) ? $wikiContent['metins_section'] : [];
+        $wMetins = is_array($wikiContent['metins'] ?? null) ? $wikiContent['metins'] : [];
+        $wUpSec = is_array($wikiContent['upgrade_section'] ?? null) ? $wikiContent['upgrade_section'] : [];
+        $wUpgrade = is_array($wikiContent['upgrade'] ?? null) ? $wikiContent['upgrade'] : [];
+        $wClan = is_array($wikiContent['clan'] ?? null) ? $wikiContent['clan'] : [];
+        $wFaqSec = is_array($wikiContent['faq_section'] ?? null) ? $wikiContent['faq_section'] : [];
+        $wFaq = is_array($wikiContent['faq'] ?? null) ? $wikiContent['faq'] : [];
+        $canWikiEdit = $can('wiki_manage') && !\App\Services\PermissionService::isReadOnly(is_array($authUser ?? null) ? $authUser : null);
+        $wikiIconSeq = 0;
+        $wikiIconField = static function (string $name, string $value, bool $editable, string $label = 'İkon') use (&$wikiIconSeq): void {
+            $wikiIconSeq++;
+            $uid = 'wikiIcon' . $wikiIconSeq;
+            $value = trim($value);
+            if ($value === '') {
+                $value = 'fa-solid fa-star';
+            }
+            ?>
+            <div class="form-row wiki-icon-pick" data-wiki-icon-pick>
+              <label><?= e($label) ?></label>
+              <div class="icon-pick-row">
+                <span class="icon-pick-preview" id="<?= e($uid) ?>Preview" title="Önizleme"><i class="<?= e($value) ?>"></i></span>
+                <input
+                  name="<?= e($name) ?>"
+                  id="<?= e($uid) ?>Input"
+                  class="wiki-icon-input"
+                  value="<?= e($value) ?>"
+                  maxlength="80"
+                  placeholder="fa-solid fa-..."
+                  autocomplete="off"
+                  <?= $editable ? '' : ' readonly' ?>
+                >
+              </div>
+              <?php if ($editable): ?>
+                <label class="icon-pick-toggle" style="margin-top:10px;">
+                  <input type="checkbox" class="wiki-icon-toggle" id="<?= e($uid) ?>Toggle" style="width:auto;"> İkonları göster ve seç
+                </label>
+                <input type="search" id="<?= e($uid) ?>Search" class="icon-pick-search wiki-icon-search" placeholder="İkon ara (örn. dragon, khanda)…" autocomplete="off">
+                <div class="icon-pick-grid wiki-icon-grid" id="<?= e($uid) ?>Grid" aria-label="İkon seçici"></div>
+              <?php endif; ?>
+            </div>
+            <?php
+        };
+      ?>
+      <div class="card" style="max-width:1100px;">
+        <div class="card-head">
+          <h3>Wiki Yönetimi</h3>
+          <a href="<?= e(url('/wiki')) ?>" target="_blank" style="font-size:.8rem;color:var(--gold-light);">Public sayfayı aç</a>
+        </div>
+        <p style="font-size:.82rem;color:var(--ash);margin-bottom:14px;line-height:1.55;">
+          Public: <code>/wiki</code> · Yetki: <strong>Menü: Wiki Yönetimi</strong> + düzenleme için <strong>Wiki içeriği düzenleme</strong>.
+          <?php if (!$canWikiEdit): ?>
+            <br><span style="color:var(--blood-light);">Bu hesapta wiki kaydetme yetkisi yok (salt görüntüleme).</span>
+          <?php endif; ?>
+        </p>
+
+        <form method="post" action="<?= e(url('/admin/wiki/kaydet')) ?>" id="wikiManageForm"<?= $canWikiEdit ? '' : ' onsubmit="return false;"' ?>>
+          <?= $csrf ?>
+
+          <h4 style="margin:8px 0 12px;color:var(--gold-light);font-size:.9rem;">Sayfa başlığı</h4>
+          <div class="grid grid-2">
+            <div class="form-row"><label>Eyebrow</label><input name="head_eyebrow" value="<?= e((string) ($wHead['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+            <div class="form-row"><label>Arama placeholder</label><input name="head_search" value="<?= e((string) ($wHead['search_placeholder'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+          </div>
+          <div class="form-row"><label>Başlık</label><input name="head_title" value="<?= e((string) ($wHead['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+          <div class="form-row"><label>Açıklama</label><textarea name="head_lead" rows="2"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($wHead['lead'] ?? '')) ?></textarea></div>
+
+          <h4 style="margin:22px 0 12px;color:var(--gold-light);font-size:.9rem;">Giriş &amp; temel bilgiler</h4>
+          <div class="grid grid-2">
+            <div class="form-row"><label>Eyebrow</label><input name="intro_eyebrow" value="<?= e((string) ($wIntro['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+            <div class="form-row"><label>Başlık</label><input name="intro_title" value="<?= e((string) ($wIntro['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+          </div>
+          <div class="form-row"><label>Metin</label><textarea name="intro_text" rows="3"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($wIntro['text'] ?? '')) ?></textarea></div>
+          <div class="form-row"><label><input type="checkbox" name="intro_use_live_rates" value="1"<?= !empty($wIntro['use_live_rates']) ? ' checked' : '' ?><?= $canWikiEdit ? '' : ' disabled' ?>> İlk kartta canlı EXP/Drop/Yang oranlarını kullan</label></div>
+          <?php foreach ($wIntroCards as $ci => $card): ?>
+            <div style="margin-bottom:10px;padding:12px;border:1px solid var(--line);">
+              <?php $wikiIconField('intro_card_icon[]', (string) ($card['icon'] ?? 'fa-solid fa-circle-info'), $canWikiEdit, 'Kart ikonu'); ?>
+              <div class="grid grid-2">
+                <div class="form-row"><label>Kart başlık</label><input name="intro_card_title[]" value="<?= e((string) ($card['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+                <div class="form-row"><label>Kart metin</label><input name="intro_card_text[]" value="<?= e((string) ($card['text'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+              </div>
+            </div>
+          <?php endforeach; ?>
+          <?php if ($canWikiEdit): ?>
+            <div style="margin-bottom:10px;padding:12px;border:1px dashed var(--line);opacity:.9;">
+              <?php $wikiIconField('intro_card_icon[]', 'fa-solid fa-plus', true, 'Yeni kart ikonu'); ?>
+              <div class="grid grid-2">
+                <div class="form-row"><label>Yeni kart başlık</label><input name="intro_card_title[]" placeholder="Boş bırakılırsa eklenmez"></div>
+                <div class="form-row"><label>Yeni kart metin</label><input name="intro_card_text[]"></div>
+              </div>
+            </div>
+          <?php endif; ?>
+
+          <h4 style="margin:22px 0 12px;color:var(--gold-light);font-size:.9rem;">Sınıflar</h4>
+          <div class="grid grid-2">
+            <div class="form-row"><label>Eyebrow</label><input name="classes_eyebrow" value="<?= e((string) ($wClassSec['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+            <div class="form-row"><label>Başlık</label><input name="classes_title" value="<?= e((string) ($wClassSec['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+          </div>
+          <div class="form-row"><label>Açıklama</label><textarea name="classes_text" rows="2"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($wClassSec['text'] ?? '')) ?></textarea></div>
+          <?php foreach ($wClasses as $ci => $cl): $stats = is_array($cl['stats'] ?? null) ? $cl['stats'] : []; ?>
+            <div style="margin-bottom:12px;padding:12px;border:1px solid var(--line);">
+              <?php $wikiIconField('class_icon[' . (int) $ci . ']', (string) ($cl['icon'] ?? 'fa-solid fa-khanda'), $canWikiEdit, 'Sınıf ikonu'); ?>
+              <div class="grid grid-2">
+                <div class="form-row"><label>Ad</label><input name="class_name[<?= (int) $ci ?>]" value="<?= e((string) ($cl['name'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+                <div class="form-row"><label>Alt</label><input name="class_sub[<?= (int) $ci ?>]" value="<?= e((string) ($cl['sub'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+              </div>
+              <div class="form-row"><label>Metin</label><input name="class_text[<?= (int) $ci ?>]" value="<?= e((string) ($cl['text'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+              <div class="grid grid-3">
+                <?php for ($s = 0; $s < 3; $s++): $st = $stats[$s] ?? ['label' => '', 'pct' => 0]; ?>
+                  <div class="form-row">
+                    <label>Stat <?= $s + 1 ?></label>
+                    <input name="class_stat_label[<?= (int) $ci ?>][<?= $s ?>]" value="<?= e((string) ($st['label'] ?? '')) ?>" placeholder="Etiket" style="margin-bottom:4px;"<?= $canWikiEdit ? '' : ' readonly' ?>>
+                    <input type="number" min="0" max="100" name="class_stat_pct[<?= (int) $ci ?>][<?= $s ?>]" value="<?= (int) ($st['pct'] ?? 0) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>>
+                  </div>
+                <?php endfor; ?>
+              </div>
+            </div>
+          <?php endforeach; ?>
+
+          <h4 style="margin:22px 0 12px;color:var(--gold-light);font-size:.9rem;">Haritalar</h4>
+          <div class="grid grid-2">
+            <div class="form-row"><label>Eyebrow</label><input name="maps_eyebrow" value="<?= e((string) ($wMapSec['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+            <div class="form-row"><label>Başlık</label><input name="maps_title" value="<?= e((string) ($wMapSec['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+          </div>
+          <div class="form-row"><label>Açıklama</label><textarea name="maps_text" rows="2"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($wMapSec['text'] ?? '')) ?></textarea></div>
+          <?php foreach ($wMaps as $mi => $mp): ?>
+            <div class="grid grid-2" style="margin-bottom:8px;padding:10px;border:1px solid var(--line);">
+              <div class="form-row"><label>Tag</label><input name="map_tag[]" value="<?= e((string) ($mp['tag'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+              <div class="form-row"><label>Tag sınıfı</label>
+                <select name="map_tag_class[]"<?= $canWikiEdit ? '' : ' disabled' ?>>
+                  <?php foreach (['pve' => 'PvE', 'pvp' => 'PvP', 'metin' => 'Metin'] as $tc => $tl): ?>
+                    <option value="<?= e($tc) ?>"<?= (($mp['tag_class'] ?? '') === $tc) ? ' selected' : '' ?>><?= e($tl) ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <?php if (!$canWikiEdit): ?><input type="hidden" name="map_tag_class[]" value="<?= e((string) ($mp['tag_class'] ?? 'pve')) ?>"><?php endif; ?>
+              </div>
+              <div class="form-row"><label>Ad</label><input name="map_title[]" value="<?= e((string) ($mp['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+              <div class="form-row"><label>Seviye</label><input name="map_level[]" value="<?= e((string) ($mp['level'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+              <div class="form-row" style="grid-column:1/-1;"><label>Metin</label><input name="map_text[]" value="<?= e((string) ($mp['text'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+            </div>
+          <?php endforeach; ?>
+
+          <h4 style="margin:22px 0 12px;color:var(--gold-light);font-size:.9rem;">Canavarlar</h4>
+          <div class="grid grid-2">
+            <div class="form-row"><label>Eyebrow</label><input name="monsters_eyebrow" value="<?= e((string) ($wMonSec['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+            <div class="form-row"><label>Başlık</label><input name="monsters_title" value="<?= e((string) ($wMonSec['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+          </div>
+          <div class="form-row"><label>Açıklama</label><textarea name="monsters_text" rows="2"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($wMonSec['text'] ?? '')) ?></textarea></div>
+          <?php foreach ($wMonsters as $mo): ?>
+            <div style="margin-bottom:8px;padding:10px;border:1px solid var(--line);">
+              <?php $wikiIconField('monster_icon[]', (string) ($mo['icon'] ?? 'fa-solid fa-paw'), $canWikiEdit, 'Canavar ikonu'); ?>
+              <div class="grid grid-3">
+                <div class="form-row"><label>Ad</label><input name="monster_name[]" value="<?= e((string) ($mo['name'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+                <div class="form-row"><label>Rozet</label><input name="monster_badge[]" value="<?= e((string) ($mo['boss_badge'] ?? '')) ?>" placeholder="Boss / boş"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+                <div class="form-row"><label>Seviye</label><input name="monster_level[]" value="<?= e((string) ($mo['level'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+                <div class="form-row"><label>Harita</label><input name="monster_map[]" value="<?= e((string) ($mo['map'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+                <div class="form-row"><label>Can %</label><input type="number" min="0" max="100" name="monster_hp[]" value="<?= (int) ($mo['hp_pct'] ?? 50) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+              </div>
+              <div class="form-row"><label>Düşenler (virgülle)</label><input name="monster_drops[]" value="<?= e(implode(', ', is_array($mo['drops'] ?? null) ? $mo['drops'] : [])) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+            </div>
+          <?php endforeach; ?>
+
+          <h4 style="margin:22px 0 12px;color:var(--gold-light);font-size:.9rem;">Metin taşları</h4>
+          <div class="grid grid-2">
+            <div class="form-row"><label>Eyebrow</label><input name="metins_eyebrow" value="<?= e((string) ($wMetSec['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+            <div class="form-row"><label>Başlık</label><input name="metins_title" value="<?= e((string) ($wMetSec['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+          </div>
+          <div class="form-row"><label>Açıklama</label><textarea name="metins_text" rows="2"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($wMetSec['text'] ?? '')) ?></textarea></div>
+          <?php foreach ($wMetins as $me): ?>
+            <div class="grid grid-2" style="margin-bottom:8px;padding:10px;border:1px solid var(--line);">
+              <div class="form-row"><label>Stil</label>
+                <select name="metin_style[]"<?= $canWikiEdit ? '' : ' disabled' ?>>
+                  <?php foreach (['red' => 'Kızıl', 'black' => 'Kara', 'gold' => 'Altın'] as $ms => $ml): ?>
+                    <option value="<?= e($ms) ?>"<?= (($me['style'] ?? '') === $ms) ? ' selected' : '' ?>><?= e($ml) ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <?php if (!$canWikiEdit): ?><input type="hidden" name="metin_style[]" value="<?= e((string) ($me['style'] ?? 'red')) ?>"><?php endif; ?>
+              </div>
+              <div class="form-row"><label>Glyph</label><input name="metin_glyph[]" value="<?= e((string) ($me['glyph'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+              <div class="form-row"><label>Başlık</label><input name="metin_title[]" value="<?= e((string) ($me['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+              <div class="form-row"><label>Metin</label><input name="metin_text[]" value="<?= e((string) ($me['text'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+            </div>
+          <?php endforeach; ?>
+
+          <h4 style="margin:22px 0 12px;color:var(--gold-light);font-size:.9rem;">Eşya yükseltme</h4>
+          <div class="grid grid-2">
+            <div class="form-row"><label>Eyebrow</label><input name="upgrade_eyebrow" value="<?= e((string) ($wUpSec['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+            <div class="form-row"><label>Başlık</label><input name="upgrade_title" value="<?= e((string) ($wUpSec['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+          </div>
+          <div class="form-row"><label>Açıklama</label><textarea name="upgrade_text" rows="2"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($wUpSec['text'] ?? '')) ?></textarea></div>
+          <?php foreach ($wUpgrade as $up): ?>
+            <div class="grid grid-2" style="margin-bottom:8px;padding:10px;border:1px solid var(--line);">
+              <div class="form-row"><label>Seviye</label><input name="upgrade_level[]" value="<?= e((string) ($up['level'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+              <div class="form-row"><label>Oran</label><input name="upgrade_rate[]" value="<?= e((string) ($up['rate'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+              <div class="form-row"><label>Oran rengi</label>
+                <select name="upgrade_rate_class[]"<?= $canWikiEdit ? '' : ' disabled' ?>>
+                  <?php foreach (['rate-high' => 'Yüksek', 'rate-mid' => 'Orta', 'rate-low' => 'Düşük'] as $rc => $rl): ?>
+                    <option value="<?= e($rc) ?>"<?= (($up['rate_class'] ?? '') === $rc) ? ' selected' : '' ?>><?= e($rl) ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <?php if (!$canWikiEdit): ?><input type="hidden" name="upgrade_rate_class[]" value="<?= e((string) ($up['rate_class'] ?? 'rate-mid')) ?>"><?php endif; ?>
+              </div>
+              <div class="form-row"><label>Materyal</label><input name="upgrade_material[]" value="<?= e((string) ($up['material'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+              <div class="form-row" style="grid-column:1/-1;"><label>Kırılma riski</label><input name="upgrade_risk[]" value="<?= e((string) ($up['risk'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+            </div>
+          <?php endforeach; ?>
+
+          <h4 style="margin:22px 0 12px;color:var(--gold-light);font-size:.9rem;">Lonca</h4>
+          <div class="grid grid-2">
+            <div class="form-row"><label>Eyebrow</label><input name="clan_eyebrow" value="<?= e((string) ($wClan['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+            <div class="form-row"><label>Başlık</label><input name="clan_title" value="<?= e((string) ($wClan['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+          </div>
+          <div class="form-row"><label>Metin</label><textarea name="clan_text" rows="2"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($wClan['text'] ?? '')) ?></textarea></div>
+          <?php foreach ((is_array($wClan['stats'] ?? null) ? $wClan['stats'] : []) as $st): ?>
+            <div class="grid grid-2" style="margin-bottom:6px;">
+              <div class="form-row"><label>Değer</label><input name="clan_stat_value[]" value="<?= e((string) ($st['value'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+              <div class="form-row"><label>Etiket</label><input name="clan_stat_label[]" value="<?= e((string) ($st['label'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+            </div>
+          <?php endforeach; ?>
+          <?php foreach ((is_array($wClan['benefits'] ?? null) ? $wClan['benefits'] : []) as $ben): ?>
+            <div class="form-row"><label>Avantaj</label><input name="clan_benefit[]" value="<?= e((string) $ben) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+          <?php endforeach; ?>
+          <?php if ($canWikiEdit): ?>
+            <div class="form-row"><label>Yeni avantaj</label><input name="clan_benefit[]" placeholder="Boş bırakılırsa eklenmez"></div>
+          <?php endif; ?>
+
+          <h4 style="margin:22px 0 12px;color:var(--gold-light);font-size:.9rem;">SSS</h4>
+          <div class="grid grid-2">
+            <div class="form-row"><label>Eyebrow</label><input name="faq_eyebrow" value="<?= e((string) ($wFaqSec['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+            <div class="form-row"><label>Başlık</label><input name="faq_title" value="<?= e((string) ($wFaqSec['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+          </div>
+          <?php foreach ($wFaq as $fi => $fq): ?>
+            <div style="margin-bottom:10px;padding:10px;border:1px solid var(--line);">
+              <div class="form-row"><label>Soru</label><input name="faq_q[]" value="<?= e((string) ($fq['q'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
+              <div class="form-row"><label>Cevap</label><textarea name="faq_a[]" rows="2"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($fq['a'] ?? '')) ?></textarea></div>
+            </div>
+          <?php endforeach; ?>
+          <?php if ($canWikiEdit): ?>
+            <div style="margin-bottom:10px;padding:10px;border:1px dashed var(--line);">
+              <div class="form-row"><label>Yeni soru</label><input name="faq_q[]" placeholder="Boş bırakılırsa eklenmez"></div>
+              <div class="form-row"><label>Yeni cevap</label><textarea name="faq_a[]" rows="2"></textarea></div>
+            </div>
+          <?php endif; ?>
+
+          <?php if ($canWikiEdit): ?>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;">
+              <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-floppy-disk"></i> Kaydet</button>
+              <a class="btn btn-ghost btn-sm" href="<?= e(url('/wiki')) ?>" target="_blank">Önizle</a>
+            </div>
+          <?php endif; ?>
+        </form>
+
+        <?php if ($canWikiEdit): ?>
+          <form method="post" action="<?= e(url('/admin/wiki/sifirla')) ?>" style="margin-top:14px;" onsubmit="return confirm('Wiki içeriği varsayılanlara döndürülsün mü? Mevcut kayıtlar silinir.');">
+            <?= $csrf ?>
+            <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--blood-light);"><i class="fa-solid fa-rotate-left"></i> Varsayılana sıfırla</button>
+          </form>
+        <?php endif; ?>
+      </div>
+    </section>
+
     <!-- ===================== CAPTCHA ===================== -->
     <section class="section<?= $panelSection === 'captcha-ayarlari' ? ' active' : '' ?>" id="captcha-ayarlari">
       <?php
@@ -4128,14 +4409,13 @@ $can = static function (string $flag) use ($permFlags): bool {
 <div class="modal-overlay" id="permModal">
   <div class="modal">
     <h3><i class="fa-solid fa-shield-halved"></i> Yetki Grubu Ata</h3>
-    <p><b id="permTarget">—</b> hesabına yetki grubu seç.</p>
+    <p><b id="permTarget">—</b> hesabına bir veya daha fazla yetki grubu seç. WebPerm 1 gruplarının bayrakları birleşir. Süper Admin tek başına atanır.</p>
     <form method="post" action="<?= e(url('/admin/yetki/ata')) ?>" id="permForm">
       <?= $csrf ?>
       <input type="hidden" name="account_id" id="permAccountId" value="">
       <div class="form-row">
-        <label>Yetki grubu</label>
-        <select name="group_id" id="permGroupId" required>
-          <option value="">Seç...</option>
+        <label>Yetki grupları</label>
+        <div id="permGroupList" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow:auto;padding:10px;border:1px solid var(--line);background:var(--obsidian);">
           <?php
             $actorIsSuper = ((int) ($authUser['permission'] ?? 0) === 2);
             foreach ($permissionGroups as $g):
@@ -4144,11 +4424,23 @@ $can = static function (string $flag) use ($permFlags): bool {
                   continue;
               }
           ?>
-            <option value="<?= (int) $g['id'] ?>" data-web="<?= $gWeb ?>">
-              #<?= (int) $g['id'] ?> · <?= e((string) $g['name']) ?> (web=<?= $gWeb ?>)
-            </option>
+            <label class="perm-group-opt" style="display:flex;align-items:flex-start;gap:10px;font-size:.84rem;color:var(--parchment);cursor:pointer;">
+              <input
+                type="checkbox"
+                name="group_ids[]"
+                class="perm-group-cb"
+                value="<?= (int) $g['id'] ?>"
+                data-web="<?= $gWeb ?>"
+                style="width:auto;margin-top:3px;"
+              >
+              <span>
+                <strong><?= e((string) $g['name']) ?></strong>
+                <span style="color:var(--ash);font-size:.75rem;"> · #<?= (int) $g['id'] ?> · web=<?= $gWeb ?><?= $gWeb === 2 ? ' (tek rol)' : ($gWeb === 0 ? ' (oyuncu)' : '') ?></span>
+              </span>
+            </label>
           <?php endforeach; ?>
-        </select>
+        </div>
+        <p style="margin:8px 0 0;font-size:.75rem;color:var(--ash);line-height:1.45;">Örn. bir grup yalnızca Oyuncu Yönetimi, diğeri Destek Talepleri açıyorsa ikisini de seç — menü/bayraklar birleşir.</p>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost btn-sm" id="permCancel">Vazgeç</button>
@@ -4705,14 +4997,7 @@ $can = static function (string $flag) use ($permFlags): bool {
     });
   })();
 
-  (function marketCatIconPicker() {
-    const input = document.getElementById('marketCatIcon');
-    const preview = document.getElementById('marketCatIconPreview');
-    const toggle = document.getElementById('marketCatIconPickToggle');
-    const grid = document.getElementById('marketCatIconGrid');
-    const search = document.getElementById('marketCatIconSearch');
-    if (!input || !preview || !toggle || !grid) return;
-
+  (function faIconPickers() {
     const icons = [
       'fa-solid fa-box', 'fa-solid fa-box-open', 'fa-solid fa-gift', 'fa-solid fa-cubes',
       'fa-solid fa-khanda', 'fa-solid fa-gun', 'fa-solid fa-hand-fist', 'fa-solid fa-shield',
@@ -4720,71 +5005,109 @@ $can = static function (string $flag) use ($permFlags): bool {
       'fa-solid fa-helmet-un', 'fa-solid fa-gem', 'fa-solid fa-ring', 'fa-solid fa-wand-sparkles',
       'fa-solid fa-flask', 'fa-solid fa-heart', 'fa-solid fa-heart-pulse', 'fa-solid fa-pills',
       'fa-solid fa-horse', 'fa-solid fa-paw', 'fa-solid fa-dragon', 'fa-solid fa-dove',
+      'fa-solid fa-spider', 'fa-solid fa-bug', 'fa-solid fa-worm', 'fa-solid fa-otter',
       'fa-solid fa-star', 'fa-solid fa-bolt', 'fa-solid fa-fire', 'fa-solid fa-snowflake',
       'fa-solid fa-leaf', 'fa-solid fa-moon', 'fa-solid fa-sun', 'fa-solid fa-cloud',
+      'fa-solid fa-wind', 'fa-solid fa-water', 'fa-solid fa-earth-asia', 'fa-solid fa-mountain-sun',
       'fa-solid fa-key', 'fa-solid fa-lock', 'fa-solid fa-coins', 'fa-solid fa-sack-dollar',
-      'fa-solid fa-scroll', 'fa-solid fa-book', 'fa-solid fa-map', 'fa-solid fa-compass',
+      'fa-solid fa-scroll', 'fa-solid fa-book', 'fa-solid fa-book-open', 'fa-solid fa-map',
+      'fa-solid fa-map-location-dot', 'fa-solid fa-compass', 'fa-solid fa-location-dot',
       'fa-solid fa-ticket', 'fa-solid fa-tags', 'fa-solid fa-basket-shopping', 'fa-solid fa-cart-shopping',
       'fa-solid fa-user', 'fa-solid fa-users', 'fa-solid fa-skull', 'fa-solid fa-ghost',
       'fa-solid fa-mask', 'fa-solid fa-eye', 'fa-solid fa-hand', 'fa-solid fa-fingerprint',
       'fa-solid fa-hammer', 'fa-solid fa-wrench', 'fa-solid fa-gear', 'fa-solid fa-toolbox',
       'fa-solid fa-fish', 'fa-solid fa-tree', 'fa-solid fa-mountain', 'fa-solid fa-campground',
       'fa-solid fa-chess-knight', 'fa-solid fa-chess-rook', 'fa-solid fa-trophy', 'fa-solid fa-medal',
+      'fa-solid fa-gauge-high', 'fa-solid fa-clock', 'fa-solid fa-hourglass-half', 'fa-solid fa-calendar',
+      'fa-solid fa-circle-info', 'fa-solid fa-circle-question', 'fa-solid fa-circle-check', 'fa-solid fa-plus',
+      'fa-solid fa-flag', 'fa-solid fa-crosshairs', 'fa-solid fa-bomb', 'fa-solid fa-explosion',
     ];
 
-    const setPreview = (cls) => {
-      const i = preview.querySelector('i') || document.createElement('i');
-      i.className = cls || 'fa-solid fa-box';
-      if (!preview.contains(i)) {
-        preview.innerHTML = '';
-        preview.appendChild(i);
-      }
-    };
+    const bindPicker = (input, preview, toggle, grid, search, fallback) => {
+      if (!input || !preview) return;
+      const fb = fallback || 'fa-solid fa-star';
 
-    const highlight = () => {
-      const cur = (input.value || '').trim();
-      grid.querySelectorAll('button').forEach((b) => {
-        b.classList.toggle('active', b.dataset.icon === cur);
-      });
-    };
+      const setPreview = (cls) => {
+        const safe = (cls || '').trim() || fb;
+        let i = preview.querySelector('i');
+        if (!i) {
+          preview.innerHTML = '';
+          i = document.createElement('i');
+          preview.appendChild(i);
+        }
+        i.className = safe;
+      };
 
-    const render = (filter) => {
-      const q = String(filter || '').trim().toLowerCase();
-      grid.innerHTML = '';
-      icons.filter((cls) => !q || cls.toLowerCase().includes(q)).forEach((cls) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.dataset.icon = cls;
-        btn.title = cls;
-        btn.innerHTML = '<i class="' + cls + '"></i>';
-        btn.addEventListener('click', () => {
-          input.value = cls;
-          setPreview(cls);
-          highlight();
+      const highlight = () => {
+        if (!grid) return;
+        const cur = (input.value || '').trim();
+        grid.querySelectorAll('button').forEach((b) => {
+          b.classList.toggle('active', b.dataset.icon === cur);
         });
-        grid.appendChild(btn);
+      };
+
+      const render = (filter) => {
+        if (!grid) return;
+        const q = String(filter || '').trim().toLowerCase();
+        grid.innerHTML = '';
+        icons.filter((cls) => !q || cls.toLowerCase().includes(q)).forEach((cls) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.dataset.icon = cls;
+          btn.title = cls;
+          btn.innerHTML = '<i class="' + cls + '"></i>';
+          btn.addEventListener('click', () => {
+            if (input.readOnly || input.disabled) return;
+            input.value = cls;
+            setPreview(cls);
+            highlight();
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          });
+          grid.appendChild(btn);
+        });
+        highlight();
+      };
+
+      toggle?.addEventListener('change', () => {
+        const on = !!toggle.checked;
+        grid?.classList.toggle('open', on);
+        search?.classList.toggle('open', on);
+        if (on) render(search?.value || '');
       });
-      highlight();
+      search?.addEventListener('input', () => render(search.value));
+      input.addEventListener('input', () => {
+        setPreview((input.value || '').trim() || fb);
+        highlight();
+      });
+      setPreview(input.value);
+      if (grid) render('');
+      return { setPreview, highlight, render };
     };
 
-    window.syncMarketCatIconPicker = () => {
-      setPreview((input.value || '').trim() || 'fa-solid fa-box');
-      highlight();
-    };
+    // Market kategori
+    (function marketCatIconPicker() {
+      const input = document.getElementById('marketCatIcon');
+      const preview = document.getElementById('marketCatIconPreview');
+      const toggle = document.getElementById('marketCatIconPickToggle');
+      const grid = document.getElementById('marketCatIconGrid');
+      const search = document.getElementById('marketCatIconSearch');
+      const api = bindPicker(input, preview, toggle, grid, search, 'fa-solid fa-box');
+      window.syncMarketCatIconPicker = () => {
+        if (!api || !input) return;
+        api.setPreview((input.value || '').trim() || 'fa-solid fa-box');
+        api.highlight();
+      };
+    })();
 
-    toggle.addEventListener('change', () => {
-      const on = toggle.checked;
-      grid.classList.toggle('open', on);
-      search?.classList.toggle('open', on);
-      if (on) render(search?.value || '');
+    // Wiki Yönetimi — tüm ikon alanları
+    document.querySelectorAll('[data-wiki-icon-pick]').forEach((wrap) => {
+      const input = wrap.querySelector('.wiki-icon-input');
+      const preview = wrap.querySelector('.icon-pick-preview');
+      const toggle = wrap.querySelector('.wiki-icon-toggle');
+      const grid = wrap.querySelector('.wiki-icon-grid');
+      const search = wrap.querySelector('.wiki-icon-search');
+      bindPicker(input, preview, toggle, grid, search, 'fa-solid fa-star');
     });
-    search?.addEventListener('input', () => render(search.value));
-    input.addEventListener('input', () => {
-      setPreview((input.value || '').trim() || 'fa-solid fa-question');
-      highlight();
-    });
-    setPreview(input.value);
-    render('');
   })();
 
   document.querySelectorAll('[data-toggle]').forEach(t => {
@@ -4813,22 +5136,64 @@ $can = static function (string $flag) use ($permFlags): bool {
   document.getElementById('banCancel').addEventListener('click', () => banModal.classList.remove('open'));
   banModal.addEventListener('click', (e) => { if (e.target === banModal) banModal.classList.remove('open'); });
 
-  // Yetki ata modal
+  // Yetki ata modal (çoklu grup)
   const permModal = document.getElementById('permModal');
   const permTarget = document.getElementById('permTarget');
   const permAccountId = document.getElementById('permAccountId');
-  const permGroupId = document.getElementById('permGroupId');
+  const permForm = document.getElementById('permForm');
+  const permCbs = () => [...document.querySelectorAll('.perm-group-cb')];
+
+  const syncPermExclusive = (changed) => {
+    const web = parseInt(changed?.dataset.web || '0', 10);
+    if (!changed?.checked) return;
+    if (web === 2 || web === 0) {
+      permCbs().forEach((cb) => {
+        if (cb !== changed) cb.checked = false;
+      });
+      return;
+    }
+    // WebPerm 1 seçildiğinde Super / Default User kapansın
+    permCbs().forEach((cb) => {
+      const w = parseInt(cb.dataset.web || '0', 10);
+      if (w === 2 || w === 0) cb.checked = false;
+    });
+  };
+
+  permCbs().forEach((cb) => {
+    cb.addEventListener('change', () => syncPermExclusive(cb));
+  });
+
   document.querySelectorAll('[data-perm-id]').forEach(btn => {
     btn.addEventListener('click', () => {
       permTarget.textContent = btn.dataset.permLogin || '—';
       permAccountId.value = btn.dataset.permId || '';
-      const gid = btn.dataset.permGroup || '';
-      permGroupId.value = gid && [...permGroupId.options].some(o => o.value === gid) ? gid : '';
+      let selected = [];
+      try {
+        selected = JSON.parse(btn.dataset.permGroups || '[]');
+      } catch (e) {
+        selected = [];
+      }
+      if (!Array.isArray(selected) || selected.length === 0) {
+        const single = parseInt(btn.dataset.permGroup || '0', 10);
+        if (single > 0) selected = [single];
+      }
+      const set = new Set(selected.map((n) => parseInt(n, 10)).filter((n) => n > 0));
+      permCbs().forEach((cb) => {
+        cb.checked = set.has(parseInt(cb.value, 10));
+      });
+      const checked = permCbs().find((cb) => cb.checked);
+      if (checked) syncPermExclusive(checked);
       permModal.classList.add('open');
     });
   });
   document.getElementById('permCancel')?.addEventListener('click', () => permModal?.classList.remove('open'));
   permModal?.addEventListener('click', (e) => { if (e.target === permModal) permModal.classList.remove('open'); });
+  permForm?.addEventListener('submit', (e) => {
+    if (!permCbs().some((cb) => cb.checked)) {
+      e.preventDefault();
+      alert('En az bir yetki grubu seçin.');
+    }
+  });
 
   // Unban modal
   const unbanModal = document.getElementById('unbanModal');

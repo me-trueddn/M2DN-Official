@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Core\Database;
+use PDO;
 
 /**
  * Admin yetki grupları ve bayrakları.
@@ -30,6 +31,8 @@ final class PermissionService
     public const FLAG_MENU_YASAKLI_KELIMELER = 'menu_yasakli_kelimeler';
     public const FLAG_MENU_LOGLAR = 'menu_loglar';
     public const FLAG_MENU_NESNE_MARKET = 'menu_nesne_market';
+    public const FLAG_MENU_WIKI = 'menu_wiki';
+    public const FLAG_WIKI_MANAGE = 'wiki_manage';
     public const FLAG_RESET_SECURITY_CODE = 'reset_security_code';
     public const FLAG_RESET_SAFEBOX = 'reset_safebox_password';
     public const FLAG_DISABLE_2FA = 'disable_2fa';
@@ -50,6 +53,7 @@ final class PermissionService
             self::FLAG_ANNOUNCEMENTS => 'Duyuru işlemleri',
             self::FLAG_TICKETS => 'Destek talebi işlemleri',
             self::FLAG_SITE_SETTINGS => 'Ayarlara erişim',
+            self::FLAG_WIKI_MANAGE => 'Wiki içeriği düzenleme',
             self::FLAG_MENU_OYUNCULAR => 'Menü: Oyuncu Yönetimi',
             self::FLAG_MENU_SIRALAMALAR => 'Menü: Oyuncu Sıralaması',
             self::FLAG_MENU_BINEK => 'Menü: Binek Yönetimi',
@@ -64,6 +68,7 @@ final class PermissionService
             self::FLAG_MENU_YASAKLI_KELIMELER => 'Menü: Yasaklı Kelimeler',
             self::FLAG_MENU_LOGLAR => 'Menü: Loglar',
             self::FLAG_MENU_NESNE_MARKET => 'Menü: Nesne Market',
+            self::FLAG_MENU_WIKI => 'Menü: Wiki Yönetimi',
         ];
     }
 
@@ -184,36 +189,66 @@ final class PermissionService
     }
 
     /**
-     * Hesaba yetki grubu ata + account.WebPermission senkronu.
-     * Super Admin (web=2) ataması / mevcut süper hesabı değiştirme: yalnızca süper admin.
+     * Hesaba bir veya daha fazla yetki grubu ata + account.WebPermission senkronu.
+     * - WebPerm 1 grupları birleştirilebilir (bayraklar OR).
+     * - Süper Admin (web=2): yalnızca tek grup; diğerleri temizlenir.
+     * - Default User (web=0): tek grup, WebPermission=0.
      *
+     * @param list<int> $groupIds
      * @param array{account_id?:int,login?:string,permission?:int}|null $actor
      * @return array{ok:bool, errors:list<string>}
      */
-    public static function assignAccountGroup(int $accountId, int $groupId, ?array $actor = null): array
+    public static function assignAccountGroups(int $accountId, array $groupIds, ?array $actor = null): array
     {
-        if ($accountId <= 0 || $groupId <= 0) {
-            return ['ok' => false, 'errors' => ['Geçersiz hesap veya grup.']];
+        if ($accountId <= 0) {
+            return ['ok' => false, 'errors' => ['Geçersiz hesap.']];
         }
+        $groupIds = array_values(array_unique(array_filter(array_map('intval', $groupIds), static fn(int $id): bool => $id > 0)));
+        if ($groupIds === []) {
+            return ['ok' => false, 'errors' => ['En az bir yetki grubu seçin.']];
+        }
+
         try {
             $web = Database::web();
+            $placeholders = implode(',', array_fill(0, count($groupIds), '?'));
             $stmt = $web->prepare(
-                'SELECT id, name, web_permission FROM permission_groups WHERE id = ? LIMIT 1'
+                "SELECT id, name, web_permission FROM permission_groups WHERE id IN ({$placeholders})"
             );
-            $stmt->execute([$groupId]);
-            $group = $stmt->fetch();
-            if (!$group) {
-                return ['ok' => false, 'errors' => ['Grup bulunamadı.']];
+            $stmt->execute($groupIds);
+            $groups = $stmt->fetchAll() ?: [];
+            if (count($groups) !== count($groupIds)) {
+                return ['ok' => false, 'errors' => ['Geçersiz yetki grubu seçildi.']];
             }
-            $webPerm = (int) $group['web_permission'];
-            if (!in_array($webPerm, [AuthService::PERM_USER, AuthService::PERM_ADMIN, AuthService::PERM_SUPER], true)) {
-                return ['ok' => false, 'errors' => ['Geçersiz web izni.']];
+
+            $hasSuper = false;
+            $hasUser = false;
+            $hasAdmin = false;
+            foreach ($groups as $g) {
+                $wp = AuthService::normalizePermission($g['web_permission'] ?? 0);
+                if ($wp === AuthService::PERM_SUPER) {
+                    $hasSuper = true;
+                } elseif ($wp === AuthService::PERM_USER) {
+                    $hasUser = true;
+                } else {
+                    $hasAdmin = true;
+                }
+            }
+
+            // Süper Admin: tek rol
+            if ($hasSuper) {
+                if (count($groupIds) > 1) {
+                    return ['ok' => false, 'errors' => ['Süper Admin tek başına atanır; başka grup seçilemez.']];
+                }
+            }
+            // Default User (0) başka gruplarla karışmaz
+            if ($hasUser && ($hasAdmin || $hasSuper)) {
+                return ['ok' => false, 'errors' => ['Oyuncu (Default User) grubu diğer yetki gruplarıyla birlikte seçilemez.']];
             }
 
             $actorPerm = AuthService::normalizePermission($actor['permission'] ?? AuthService::PERM_USER);
             $isActorSuper = $actorPerm === AuthService::PERM_SUPER;
 
-            if ($webPerm === AuthService::PERM_SUPER && !$isActorSuper) {
+            if ($hasSuper && !$isActorSuper) {
                 return ['ok' => false, 'errors' => ['Süper Admin atamasını yalnızca Süper Admin yapabilir.']];
             }
 
@@ -228,14 +263,28 @@ final class PermissionService
                 return ['ok' => false, 'errors' => ['Süper Admin hesabını yalnızca Süper Admin değiştirebilir.']];
             }
 
-            $web->prepare(
-                'INSERT INTO account_staff_groups (account_id, group_id, updated_at)
-                 VALUES (?, ?, NOW())
-                 ON DUPLICATE KEY UPDATE group_id = VALUES(group_id), updated_at = NOW()'
-            )->execute([$accountId, $groupId]);
+            $webPerm = $hasSuper
+                ? AuthService::PERM_SUPER
+                : ($hasUser ? AuthService::PERM_USER : AuthService::PERM_ADMIN);
 
-            Database::account()->prepare('UPDATE account SET WebPermission = ? WHERE id = ?')
-                ->execute([$webPerm, $accountId]);
+            $web->beginTransaction();
+            try {
+                $web->prepare('DELETE FROM account_staff_groups WHERE account_id = ?')->execute([$accountId]);
+                $ins = $web->prepare(
+                    'INSERT INTO account_staff_groups (account_id, group_id, updated_at) VALUES (?, ?, NOW())'
+                );
+                foreach ($groupIds as $gid) {
+                    $ins->execute([$accountId, $gid]);
+                }
+                Database::account()->prepare('UPDATE account SET WebPermission = ? WHERE id = ?')
+                    ->execute([$webPerm, $accountId]);
+                $web->commit();
+            } catch (\Throwable $e) {
+                if ($web->inTransaction()) {
+                    $web->rollBack();
+                }
+                throw $e;
+            }
 
             return ['ok' => true, 'errors' => []];
         } catch (\Throwable) {
@@ -243,7 +292,19 @@ final class PermissionService
         }
     }
 
-    /** @param list<int> $accountIds @return array<int, array{group_id:int, group_name:string}> */
+    /**
+     * @param array{account_id?:int,login?:string,permission?:int}|null $actor
+     * @return array{ok:bool, errors:list<string>}
+     */
+    public static function assignAccountGroup(int $accountId, int $groupId, ?array $actor = null): array
+    {
+        return self::assignAccountGroups($accountId, [$groupId], $actor);
+    }
+
+    /**
+     * @param list<int> $accountIds
+     * @return array<int, array{group_id:int, group_ids:list<int>, group_name:string, group_names:list<string>}>
+     */
     public static function staffMetaForAccounts(array $accountIds): array
     {
         $accountIds = array_values(array_unique(array_filter(array_map('intval', $accountIds))));
@@ -256,15 +317,26 @@ final class PermissionService
                 "SELECT a.account_id, a.group_id, g.name AS group_name
                  FROM account_staff_groups a
                  INNER JOIN permission_groups g ON g.id = a.group_id
-                 WHERE a.account_id IN ({$placeholders})"
+                 WHERE a.account_id IN ({$placeholders})
+                 ORDER BY g.web_permission DESC, g.name ASC, a.group_id ASC"
             );
             $stmt->execute($accountIds);
             $out = [];
             foreach ($stmt->fetchAll() ?: [] as $row) {
-                $out[(int) $row['account_id']] = [
-                    'group_id' => (int) $row['group_id'],
-                    'group_name' => (string) $row['group_name'],
-                ];
+                $aid = (int) $row['account_id'];
+                $gid = (int) $row['group_id'];
+                $gname = (string) $row['group_name'];
+                if (!isset($out[$aid])) {
+                    $out[$aid] = [
+                        'group_id' => $gid,
+                        'group_ids' => [],
+                        'group_name' => $gname,
+                        'group_names' => [],
+                    ];
+                }
+                $out[$aid]['group_ids'][] = $gid;
+                $out[$aid]['group_names'][] = $gname;
+                $out[$aid]['group_name'] = implode(' · ', $out[$aid]['group_names']);
             }
             return $out;
         } catch (\Throwable) {
@@ -272,26 +344,36 @@ final class PermissionService
         }
     }
 
-    public static function groupIdForAccount(int $accountId): ?int
+    /** @return list<int> */
+    public static function groupIdsForAccount(int $accountId): array
     {
         if ($accountId <= 0) {
-            return null;
+            return [];
         }
         try {
             $stmt = Database::web()->prepare(
-                'SELECT group_id FROM account_staff_groups WHERE account_id = ? LIMIT 1'
+                'SELECT group_id FROM account_staff_groups WHERE account_id = ? ORDER BY group_id ASC'
             );
             $stmt->execute([$accountId]);
-            $id = $stmt->fetchColumn();
-            return $id !== false ? (int) $id : null;
+            $ids = [];
+            foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) ?: [] as $id) {
+                $ids[] = (int) $id;
+            }
+            return $ids;
         } catch (\Throwable) {
-            return null;
+            return [];
         }
     }
 
+    public static function groupIdForAccount(int $accountId): ?int
+    {
+        $ids = self::groupIdsForAccount($accountId);
+        return $ids[0] ?? null;
+    }
+
     /**
-     * Sidebar / profil için yetki grubu adı.
-     * Atanmış grup → sistem grubu (web_permission) → sabit yedek.
+     * Sidebar / profil için yetki grubu adı(ları).
+     * Atanmış gruplar → sistem grubu (web_permission) → sabit yedek.
      */
     public static function groupNameForUser(?array $user): string
     {
@@ -301,14 +383,23 @@ final class PermissionService
         $accountId = (int) ($user['account_id'] ?? 0);
         $perm = AuthService::normalizePermission($user['permission'] ?? AuthService::PERM_USER);
 
-        $groupId = self::groupIdForAccount($accountId);
-        if ($groupId === null) {
-            $groupId = self::systemGroupId($perm);
+        $groupIds = self::groupIdsForAccount($accountId);
+        if ($groupIds === []) {
+            $sys = self::systemGroupId($perm);
+            if ($sys !== null) {
+                $groupIds = [$sys];
+            }
         }
-        if ($groupId !== null) {
-            $name = self::groupNameById($groupId);
-            if ($name !== '') {
-                return $name;
+        if ($groupIds !== []) {
+            $names = [];
+            foreach ($groupIds as $gid) {
+                $name = self::groupNameById($gid);
+                if ($name !== '') {
+                    $names[] = $name;
+                }
+            }
+            if ($names !== []) {
+                return implode(' · ', $names);
             }
         }
 
@@ -335,8 +426,51 @@ final class PermissionService
     }
 
     /**
+     * Atanmış tüm grupların bayrak birleşimi (OR).
+     *
+     * @return array<string, bool>
+     */
+    public static function mergedFlagsForUser(?array $user): array
+    {
+        $defs = self::flagDefinitions();
+        $flags = array_fill_keys(array_keys($defs), false);
+        if ($user === null) {
+            return $flags;
+        }
+        $perm = (int) ($user['permission'] ?? 0);
+        if ($perm === AuthService::PERM_SUPER) {
+            return array_fill_keys(array_keys($defs), true);
+        }
+        if ($perm !== AuthService::PERM_ADMIN) {
+            return $flags;
+        }
+
+        $accountId = (int) ($user['account_id'] ?? 0);
+        $groupIds = self::groupIdsForAccount($accountId);
+        if ($groupIds === []) {
+            $fallback = self::systemGroupId(AuthService::PERM_ADMIN);
+            if ($fallback !== null) {
+                $groupIds = [$fallback];
+            }
+        }
+        if ($groupIds === []) {
+            // fallback: eski davranış — tüm bayraklar açık
+            return array_fill_keys(array_keys($defs), true);
+        }
+
+        foreach ($groupIds as $gid) {
+            foreach (self::flagsForGroup($gid) as $key => $on) {
+                if ($on) {
+                    $flags[$key] = true;
+                }
+            }
+        }
+        return $flags;
+    }
+
+    /**
      * Kullanıcının bayrağı var mı?
-     * Super admin: hepsi. User: hiçbiri. Admin/özel: gruba göre.
+     * Super admin: hepsi. User: hiçbiri. Admin: atanmış grupların birleşimi.
      */
     public static function userHasFlag(?array $user, string $flag): bool
     {
@@ -350,21 +484,11 @@ final class PermissionService
         if ($perm !== AuthService::PERM_ADMIN) {
             return false;
         }
-
-        $accountId = (int) ($user['account_id'] ?? 0);
-        $groupId = self::groupIdForAccount($accountId);
-        if ($groupId === null) {
-            // Varsayılan Admin sistemi grubu
-            $groupId = self::systemGroupId(AuthService::PERM_ADMIN);
-        }
-        if ($groupId === null) {
-            return true; // fallback: eski davranış
-        }
-        $flags = self::flagsForGroup($groupId);
+        $flags = self::mergedFlagsForUser($user);
         return !empty($flags[$flag]);
     }
 
-    /** Ready Only / salt okuma: paneli görür, değişiklik yapamaz. */
+    /** Ready Only: read_only bayrağı var ve yazma bayrağı yoksa. */
     public static function isReadOnly(?array $user): bool
     {
         if ($user === null) {
@@ -373,7 +497,26 @@ final class PermissionService
         if ((int) ($user['permission'] ?? 0) === AuthService::PERM_SUPER) {
             return false;
         }
-        return self::userHasFlag($user, self::FLAG_READ_ONLY);
+        $flags = self::mergedFlagsForUser($user);
+        if (empty($flags[self::FLAG_READ_ONLY])) {
+            return false;
+        }
+        $writeFlags = [
+            self::FLAG_BAN,
+            self::FLAG_ANNOUNCEMENTS,
+            self::FLAG_TICKETS,
+            self::FLAG_SITE_SETTINGS,
+            self::FLAG_WIKI_MANAGE,
+            self::FLAG_RESET_SECURITY_CODE,
+            self::FLAG_RESET_SAFEBOX,
+            self::FLAG_DISABLE_2FA,
+        ];
+        foreach ($writeFlags as $wf) {
+            if (!empty($flags[$wf])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

@@ -696,6 +696,7 @@ $footerHref = static function (string $url): string {
         <li><a href="#ozellikler">Özellikler</a></li>
         <li><a href="#siniflar">Sınıflar</a></li>
         <li><a href="#oranlar">Oranlar</a></li>
+        <li><a href="<?= e(url('/wiki')) ?>">Wiki</a></li>
         <li><a href="#galeri">Galeri</a></li>
       </ul>
       <div class="nav-actions">

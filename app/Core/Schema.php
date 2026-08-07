@@ -574,10 +574,11 @@ final class Schema
               `account_id` INT UNSIGNED NOT NULL,
               `group_id` INT UNSIGNED NOT NULL,
               `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-              PRIMARY KEY (`account_id`),
+              PRIMARY KEY (`account_id`, `group_id`),
               KEY `idx_asg_group` (`group_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
         );
+        self::migrateAccountStaffGroupsMulti($pdo);
 
         $pdo->exec(
             "CREATE TABLE IF NOT EXISTS `ticket_categories` (
@@ -681,12 +682,12 @@ final class Schema
             $superId = (int) $pdo->query("SELECT id FROM permission_groups WHERE name = 'Super Admin' AND is_system = 1 LIMIT 1")->fetchColumn();
             $flags = [
                 'ban', 'player_detail', 'reset_security_code', 'reset_safebox_password', 'disable_2fa',
-                'announcements', 'tickets', 'site_settings',
-                'menu_oyuncular', 'menu_siralamalar', 'menu_binek', 'menu_gm', 'menu_ip_ban', 'menu_loncalar', 'menu_lonca_savaslari', 'menu_banlar', 'menu_duyurular', 'menu_destekler', 'menu_sunucu', 'menu_yasakli_kelimeler', 'menu_loglar', 'menu_nesne_market',
+                'announcements', 'tickets', 'site_settings', 'wiki_manage',
+                'menu_oyuncular', 'menu_siralamalar', 'menu_binek', 'menu_gm', 'menu_ip_ban', 'menu_loncalar', 'menu_lonca_savaslari', 'menu_banlar', 'menu_duyurular', 'menu_destekler', 'menu_sunucu', 'menu_yasakli_kelimeler', 'menu_loglar', 'menu_nesne_market', 'menu_wiki',
             ];
             $readyFlags = [
                 'read_only', 'player_detail',
-                'menu_oyuncular', 'menu_siralamalar', 'menu_binek', 'menu_gm', 'menu_ip_ban', 'menu_loncalar', 'menu_lonca_savaslari', 'menu_banlar', 'menu_duyurular', 'menu_destekler', 'menu_sunucu', 'menu_yasakli_kelimeler', 'menu_loglar', 'menu_nesne_market',
+                'menu_oyuncular', 'menu_siralamalar', 'menu_binek', 'menu_gm', 'menu_ip_ban', 'menu_loncalar', 'menu_lonca_savaslari', 'menu_banlar', 'menu_duyurular', 'menu_destekler', 'menu_sunucu', 'menu_yasakli_kelimeler', 'menu_loglar', 'menu_nesne_market', 'menu_wiki',
             ];
             $stmt = $pdo->prepare(
                 'INSERT INTO permission_group_flags (group_id, flag_key, is_enabled) VALUES (?,?,1)'
@@ -728,6 +729,8 @@ final class Schema
                 $insFlag->execute([(int) $gid, 'menu_siralamalar']);
                 $insFlag->execute([(int) $gid, 'menu_ip_ban']);
                 $insFlag->execute([(int) $gid, 'menu_nesne_market']);
+                $insFlag->execute([(int) $gid, 'menu_wiki']);
+                $insFlag->execute([(int) $gid, 'wiki_manage']);
                 $insFlag->execute([(int) $gid, 'reset_security_code']);
                 $insFlag->execute([(int) $gid, 'reset_safebox_password']);
                 $insFlag->execute([(int) $gid, 'disable_2fa']);
@@ -770,6 +773,50 @@ final class Schema
         }
     }
 
+    /**
+     * Eski kurulum: account_staff_groups PRIMARY(account_id) → PRIMARY(account_id, group_id)
+     * Bir hesaba birden fazla yetki grubu için.
+     */
+    private static function migrateAccountStaffGroupsMulti(PDO $pdo): void
+    {
+        try {
+            $idx = $pdo->query(
+                "SHOW INDEX FROM `account_staff_groups` WHERE Key_name = 'PRIMARY'"
+            )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            if ($idx === []) {
+                return;
+            }
+            $pkCols = [];
+            foreach ($idx as $row) {
+                $pkCols[] = (string) ($row['Column_name'] ?? '');
+            }
+            $pkCols = array_values(array_filter($pkCols));
+            // Zaten composite ise çık
+            if (count($pkCols) >= 2) {
+                return;
+            }
+            if (count($pkCols) === 1 && $pkCols[0] === 'account_id') {
+                $pdo->exec(
+                    "CREATE TABLE IF NOT EXISTS `account_staff_groups__multi` (
+                      `account_id` INT UNSIGNED NOT NULL,
+                      `group_id` INT UNSIGNED NOT NULL,
+                      `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                      PRIMARY KEY (`account_id`, `group_id`),
+                      KEY `idx_asg_group` (`group_id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+                );
+                $pdo->exec(
+                    'INSERT IGNORE INTO `account_staff_groups__multi` (`account_id`, `group_id`, `updated_at`)
+                     SELECT `account_id`, `group_id`, `updated_at` FROM `account_staff_groups`'
+                );
+                $pdo->exec('DROP TABLE `account_staff_groups`');
+                $pdo->exec('RENAME TABLE `account_staff_groups__multi` TO `account_staff_groups`');
+            }
+        } catch (\Throwable) {
+            // ignore
+        }
+    }
+
     /** Canlı / mevcut DNWeb: Ready Only sistem grubu (WebPerm 1, salt görüntüleme). */
     private static function ensureReadyOnlyGroup(PDO $pdo): void
     {
@@ -795,7 +842,7 @@ final class Schema
                 'read_only', 'player_detail',
                 'menu_oyuncular', 'menu_siralamalar', 'menu_binek', 'menu_gm', 'menu_ip_ban',
                 'menu_loncalar', 'menu_lonca_savaslari', 'menu_banlar', 'menu_duyurular',
-                'menu_destekler', 'menu_sunucu', 'menu_yasakli_kelimeler', 'menu_loglar', 'menu_nesne_market',
+                'menu_destekler', 'menu_sunucu', 'menu_yasakli_kelimeler', 'menu_loglar', 'menu_nesne_market', 'menu_wiki',
             ];
             $ins = $pdo->prepare(
                 'INSERT IGNORE INTO permission_group_flags (group_id, flag_key, is_enabled) VALUES (?, ?, 1)'
@@ -807,7 +854,7 @@ final class Schema
             $pdo->prepare(
                 "DELETE FROM permission_group_flags
                  WHERE group_id = ? AND flag_key IN (
-                   'ban','announcements','tickets','site_settings',
+                   'ban','announcements','tickets','site_settings','wiki_manage',
                    'reset_security_code','reset_safebox_password','disable_2fa'
                  )"
             )->execute([$readyId]);

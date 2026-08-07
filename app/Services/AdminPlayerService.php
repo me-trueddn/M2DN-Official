@@ -146,7 +146,9 @@ final class AdminPlayerService
                 'role_label' => $roleLabel,
                 'role_badge' => $isStaff ? 'pending' : 'closed',
                 'staff_group_id' => $staff['group_id'] ?? null,
+                'staff_group_ids' => $staff['group_ids'] ?? (($staff['group_id'] ?? null) ? [(int) $staff['group_id']] : []),
                 'staff_group_name' => $staff['group_name'] ?? ($roleLabel !== 'Oyuncu' ? $roleLabel : null),
+                'staff_group_names' => $staff['group_names'] ?? [],
             ];
         }
 
