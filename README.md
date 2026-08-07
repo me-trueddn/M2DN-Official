@@ -10,6 +10,13 @@ M2DN, Metin2 özel sunucuları için PHP tabanlı web sitesi ve yönetim panelid
 
 ## Son güncellemeler
 
+### 2026-08-07 — Sürüm 3.6.4 · Yönetici log hedef hesabı
+
+| Konu | Açıklama |
+|------|----------|
+| **Hedef** | Yönetici Logları’nda hedef hesap adı boşsa `account_id` ile login çözülür (yeni kayıt + liste) |
+| **Yetki atama** | Yetki grubu atama loguna hedef login yazılır |
+
 ### 2026-08-07 — Sürüm 3.6.3 · Çoklu yetki grubu
 
 Bir hesaba birden fazla yetki grubu atanabilir; menü / bayrak erişimi grupların **birleşimi (OR)** ile hesaplanır.

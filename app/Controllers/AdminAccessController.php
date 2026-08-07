@@ -85,8 +85,7 @@ final class AdminAccessController
                 $user,
                 'Yetki grubu atandı',
                 $names !== [] ? implode(' + ', $names) : '—',
-                $accountId,
-                null
+                $accountId
             );
         } else {
             Session::flash('panel_errors', $result['errors'] !== [] ? $result['errors'] : ['Atama başarısız.']);

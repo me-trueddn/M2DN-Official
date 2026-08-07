@@ -89,7 +89,9 @@ final class PasswordResetService
             AdminLogService::write(
                 ['account_id' => 0, 'login' => 'sistem'],
                 'Şifre sıfırlama talebi',
-                '#' . $accountId . ' · ' . (string) $row['login']
+                '#' . $accountId . ' · ' . (string) $row['login'],
+                $accountId,
+                (string) $row['login']
             );
             return ['ok' => true, 'errors' => []];
         } catch (\Throwable) {

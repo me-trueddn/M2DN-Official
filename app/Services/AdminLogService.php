@@ -31,6 +31,12 @@ final class AdminLogService
             return;
         }
 
+        $tid = $targetAccountId !== null && $targetAccountId > 0 ? $targetAccountId : null;
+        $tLogin = trim((string) ($targetLogin ?? ''));
+        if ($tid !== null && $tLogin === '') {
+            $tLogin = self::loginForAccountId($tid);
+        }
+
         try {
             Database::web()->prepare(
                 'INSERT INTO admin_action_logs
@@ -39,8 +45,8 @@ final class AdminLogService
             )->execute([
                 $actorId,
                 self::clip($actorLogin, 30),
-                $targetAccountId !== null && $targetAccountId > 0 ? $targetAccountId : null,
-                self::clip((string) ($targetLogin ?? ''), 30),
+                $tid,
+                self::clip($tLogin, 30),
                 self::clip($action, 80),
                 self::clip($detail, 1000),
                 Security::clientIp(),
@@ -114,20 +120,47 @@ final class AdminLogService
             );
             $stmt->execute($params);
             $rows = [];
+            $needLogin = [];
             foreach ($stmt->fetchAll() ?: [] as $row) {
                 $ts = strtotime((string) ($row['created_at'] ?? ''));
+                $tid = !empty($row['target_account_id']) ? (int) $row['target_account_id'] : null;
+                $tLogin = trim((string) ($row['target_login'] ?? ''));
+                $detail = (string) ($row['detail'] ?? '');
+                // Eski kayıtlar: hedef alanları boş, detayda "#id · login" olabilir
+                if (($tid === null || $tLogin === '') && preg_match('/#(\d+)\s*[·•\-]\s*([^\s·•\-]+)/u', $detail, $m)) {
+                    if ($tid === null) {
+                        $tid = (int) $m[1];
+                    }
+                    if ($tLogin === '') {
+                        $tLogin = (string) $m[2];
+                    }
+                }
+                if ($tid !== null && $tLogin === '') {
+                    $needLogin[$tid] = true;
+                }
                 $rows[] = [
                     'id' => (int) $row['id'],
                     'actor_account_id' => (int) ($row['actor_account_id'] ?? 0),
                     'actor_login' => (string) ($row['actor_login'] ?? ''),
-                    'target_account_id' => !empty($row['target_account_id']) ? (int) $row['target_account_id'] : null,
-                    'target_login' => (string) ($row['target_login'] ?? ''),
+                    'target_account_id' => $tid,
+                    'target_login' => $tLogin,
                     'action' => (string) ($row['action'] ?? ''),
-                    'detail' => (string) ($row['detail'] ?? ''),
+                    'detail' => $detail,
                     'ip' => (string) ($row['ip'] ?? ''),
                     'created_at' => (string) ($row['created_at'] ?? ''),
                     'created_label' => $ts ? date('d.m.Y H:i:s', $ts) : '—',
                 ];
+            }
+
+            if ($needLogin !== []) {
+                $map = self::loginsForAccountIds(array_keys($needLogin));
+                foreach ($rows as &$r) {
+                    $tid = $r['target_account_id'];
+                    if ($tid !== null && $r['target_login'] === '' && isset($map[$tid])) {
+                        $r['target_login'] = $map[$tid];
+                    }
+                }
+                unset($r);
             }
 
             return [
@@ -140,6 +173,47 @@ final class AdminLogService
             ];
         } catch (\Throwable) {
             return $empty;
+        }
+    }
+
+    private static function loginForAccountId(int $accountId): string
+    {
+        if ($accountId <= 0) {
+            return '';
+        }
+        $map = self::loginsForAccountIds([$accountId]);
+
+        return $map[$accountId] ?? '';
+    }
+
+    /**
+     * @param list<int> $ids
+     * @return array<int, string>
+     */
+    private static function loginsForAccountIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        if ($ids === []) {
+            return [];
+        }
+        try {
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $stmt = Database::account()->prepare(
+                "SELECT id, login FROM account WHERE id IN ({$placeholders})"
+            );
+            $stmt->execute($ids);
+            $out = [];
+            foreach ($stmt->fetchAll() ?: [] as $row) {
+                $id = (int) ($row['id'] ?? 0);
+                $login = trim((string) ($row['login'] ?? ''));
+                if ($id > 0 && $login !== '') {
+                    $out[$id] = $login;
+                }
+            }
+
+            return $out;
+        } catch (\Throwable) {
+            return [];
         }
     }
 

@@ -4258,10 +4258,18 @@ $can = static function (string $flag) use ($permFlags): bool {
                 </td>
                 <td><?= e((string) $log['action']) ?></td>
                 <td>
-                  <?php if (!empty($log['target_login']) || !empty($log['target_account_id'])): ?>
-                    <?= e((string) ($log['target_login'] !== '' ? $log['target_login'] : '—')) ?>
-                    <?php if (!empty($log['target_account_id'])): ?>
-                      <div style="font-size:.7rem;color:var(--ash);">#<?= (int) $log['target_account_id'] ?></div>
+                  <?php
+                    $tLogin = trim((string) ($log['target_login'] ?? ''));
+                    $tId = (int) ($log['target_account_id'] ?? 0);
+                  ?>
+                  <?php if ($tLogin !== '' || $tId > 0): ?>
+                    <?php if ($tLogin !== ''): ?>
+                      <?= e($tLogin) ?>
+                    <?php elseif ($tId > 0): ?>
+                      <span style="color:var(--ash);">Hesap #<?= $tId ?></span>
+                    <?php endif; ?>
+                    <?php if ($tId > 0 && $tLogin !== ''): ?>
+                      <div style="font-size:.7rem;color:var(--ash);">#<?= $tId ?></div>
                     <?php endif; ?>
                   <?php else: ?>
                     <span style="color:var(--ash);">—</span>
