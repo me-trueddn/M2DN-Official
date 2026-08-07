@@ -246,11 +246,25 @@ $footerHref = static function (string $url): string {
     position:relative;
     max-height:min(92vh, 640px); overflow-x:hidden; overflow-y:auto;
     animation:modalIn .28s ease;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(201,151,74,.45) rgba(11,9,6,.55);
+  }
+  .modal-card::-webkit-scrollbar{width:8px;}
+  .modal-card::-webkit-scrollbar-track{
+    background:rgba(11,9,6,.55);
+    border-left:1px solid rgba(201,151,74,.12);
+  }
+  .modal-card::-webkit-scrollbar-thumb{
+    background:linear-gradient(180deg, rgba(201,151,74,.55), rgba(143,28,41,.45));
+    border:2px solid rgba(11,9,6,.4);
+    border-radius:6px;
+  }
+  .modal-card::-webkit-scrollbar-thumb:hover{
+    background:linear-gradient(180deg, rgba(236,205,142,.7), rgba(197,51,71,.55));
   }
   #loginModal .modal-card,
   #registerModal .modal-card,
   #forgotModal .modal-card{
-    /* Captcha iframe / challenge taşmasın diye alt boşluk */
     padding-bottom:28px;
   }
   #registerModal .modal-card{
@@ -259,7 +273,15 @@ $footerHref = static function (string $url): string {
     padding:32px 32px 28px;
   }
   #registerModal .modal-card .sub{margin-bottom:20px;}
-  #registerModal .modal-form .form-row{margin-bottom:16px;}
+  #registerModal .modal-form .form-row{margin-bottom:14px;}
+  #registerModal .modal-form .hint{font-size:.65rem; margin-top:4px;}
+  #registerModal .modal-form .rules-accept{
+    font-size:.72rem; line-height:1.35; gap:8px; margin:2px 0 10px;
+    text-transform:none; letter-spacing:0.01em; font-weight:500;
+  }
+  #registerModal .modal-form .rules-accept input[type="checkbox"]{
+    width:1rem; height:1rem; min-width:1rem; margin-top:1px;
+  }
   @keyframes modalIn{
     from{opacity:0; transform:translateY(12px) scale(.98);}
     to{opacity:1; transform:none;}
@@ -308,8 +330,9 @@ $footerHref = static function (string $url): string {
   .modal-form .captcha-wrap iframe{max-width:100%;}
   .modal-form .rules-accept{
     display:flex;align-items:flex-start;gap:10px;margin:4px 0 14px;
-    font-size:.85rem;color:var(--ash);line-height:1.45;
+    font-size:.78rem;color:var(--ash);line-height:1.4;
     text-transform:none; letter-spacing:normal; cursor:pointer;
+    font-weight:500;
   }
   .modal-form .rules-accept input[type="checkbox"]{
     -webkit-appearance:auto; appearance:auto;
