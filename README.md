@@ -10,6 +10,13 @@ M2DN, Metin2 özel sunucuları için PHP tabanlı web sitesi ve yönetim panelid
 
 ## Son güncellemeler
 
+### 2026-08-07 — Sürüm 3.6.5 · Yönetici log hedef düzeltmesi
+
+| Konu | Açıklama |
+|------|----------|
+| **Hedef** | Yetki grubu atamada Hedef sütunu grup adı (`Game` vb.) değil, işlem yapılan hesap login’i |
+| **Detay** | Atanan grup adları ayrı alanda (`Atanan gruplar: …`) |
+
 ### 2026-08-07 — Sürüm 3.6.4 · Yönetici log hedef hesabı
 
 | Konu | Açıklama |

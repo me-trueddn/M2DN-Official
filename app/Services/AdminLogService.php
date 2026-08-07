@@ -125,16 +125,7 @@ final class AdminLogService
                 $ts = strtotime((string) ($row['created_at'] ?? ''));
                 $tid = !empty($row['target_account_id']) ? (int) $row['target_account_id'] : null;
                 $tLogin = trim((string) ($row['target_login'] ?? ''));
-                $detail = (string) ($row['detail'] ?? '');
-                // Eski kayıtlar: hedef alanları boş, detayda "#id · login" olabilir
-                if (($tid === null || $tLogin === '') && preg_match('/#(\d+)\s*[·•\-]\s*([^\s·•\-]+)/u', $detail, $m)) {
-                    if ($tid === null) {
-                        $tid = (int) $m[1];
-                    }
-                    if ($tLogin === '') {
-                        $tLogin = (string) $m[2];
-                    }
-                }
+                // Hedef login boşsa yalnızca account tablosundan çöz (detayda grup adı "#id · Game" olabilir)
                 if ($tid !== null && $tLogin === '') {
                     $needLogin[$tid] = true;
                 }
@@ -145,7 +136,7 @@ final class AdminLogService
                     'target_account_id' => $tid,
                     'target_login' => $tLogin,
                     'action' => (string) ($row['action'] ?? ''),
-                    'detail' => $detail,
+                    'detail' => (string) ($row['detail'] ?? ''),
                     'ip' => (string) ($row['ip'] ?? ''),
                     'created_at' => (string) ($row['created_at'] ?? ''),
                     'created_label' => $ts ? date('d.m.Y H:i:s', $ts) : '—',

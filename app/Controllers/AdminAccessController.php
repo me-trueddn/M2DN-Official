@@ -78,13 +78,15 @@ final class AdminAccessController
             foreach ($groupIds as $gid) {
                 $n = PermissionService::groupNameById($gid);
                 if ($n !== '') {
-                    $names[] = '#' . $gid . ' · ' . $n;
+                    $names[] = $n;
+                } elseif ($gid > 0) {
+                    $names[] = 'Grup #' . $gid;
                 }
             }
             AdminLogService::write(
                 $user,
                 'Yetki grubu atandı',
-                $names !== [] ? implode(' + ', $names) : '—',
+                $names !== [] ? ('Atanan gruplar: ' . implode(', ', $names)) : 'Grup kaldırıldı / yok',
                 $accountId
             );
         } else {
