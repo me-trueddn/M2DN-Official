@@ -10,18 +10,66 @@ M2DN, Metin2 özel sunucuları için PHP tabanlı web sitesi ve yönetim panelid
 
 ## Son güncellemeler
 
-### Nesne Market — yayında
+### 2026-08-07 — Sürüm 3.5.9
 
-Nesne Market **canlı kullanıma hazır**. Oyuncular Elmas (`account.cash`) ile ürün satın alır; item **depo (SAFEBOX)**’a düşer.
+Bugün eklenen / güncellenen özellikler (canlı migrate klasörleri `database/2026-08-07-*`):
+
+#### Yetki & güvenlik
+
+| Konu | Açıklama |
+|------|----------|
+| **Ready Only** | `WebPermission = 1` için salt görüntüleme yetki grubu; yazma işlemleri kapalı |
+| **Admin 2FA kapatma** | Oyuncu detayı → İşlemler → **2FA**; `disable_2fa` bayrağı (Ready Only hariç) |
+| **Oyuncu 2FA** | Panel güvenlik akışı iyileştirildi |
+| **SQL** | `database/2026-08-07-ready-only-yetki/` · `database/2026-08-07-disable-2fa/` |
+
+#### Oyuncu yönetimi
+
+| Konu | Açıklama |
+|------|----------|
+| **Yöneticileri göster** | Oyuncu Yönetimi filtresi: checkbox → yalnızca `WebPermission ≥ 1`; sıralama yetkiye göre |
+| **Hesap kayıtları** | Oyuncu detay modalında en fazla **5** panel aktivite satırı |
+
+#### Nesne Market — kuponlar
 
 | Alan | Açıklama |
 |------|----------|
-| **Oyuncu** | Panel → Nesne Market (`/nesne-market`) — hesap bazlı alışveriş, onay diyaloğu |
-| **Admin** | Kategoriler · Ürünler (kod, fiyat, indirim %, görsel, süre) · Satış Logları |
+| **Admin** | Nesne Market → **Market Kuponları** — kategori, toplu üret, çoklu sil, kullanılmış/kullanılmamış, hesap detay linki |
+| **Oyuncu** | Panel → **Market Kupon Aktif Et** — kategori `cash_amount` kadar Elmas ekler |
+| **Güvenlik** | Kod düz metin saklanmaz; `code_hash` (SHA-256) + `code_mask` |
+| **Satış logları** | `entry_type` (`purchase` / `coupon`); tam kod ile arama (`coupon_hash`) |
+| **Karakter şartı** | Hesapta oyun karakteri yoksa market açılmaz: *Oyun içi karakteriniz bulunmadığından Nesne Market açılamadı.* |
+| **SQL** | `database/2026-08-07-market-kuponlar/` (`01_market_coupons.sql` + `02_sales_log_coupon_hash.sql`) |
+
+#### Kayıt, gizlilik & UI
+
+| Konu | Açıklama |
+|------|----------|
+| **Kayıt** | Şifre tekrarı zorunlu; modal dikey alan düzeni |
+| **Gizlilik onayı** | Kayıtta zorunlu kabul; admin gizlilik içeriği değişince girişte yeniden onay (kurallar gibi) |
+| **Reddetme** | Gizlilik reddedilirse oturum kapanır (`/gizlilik/kabul`, `/gizlilik/reddet`) |
+| **Captcha / checkbox** | `appearance:none` yalnızca metin alanlarında; checkbox görünürlüğü düzeltildi |
+| **Modal / sidebar** | Kayıt modalı temalı scrollbar; kurallar/gizlilik metni küçültüldü; admin sidebar scrollbar |
+| **SQL** | `database/2026-08-07-gizlilik-onay/` |
+
+#### Altyapı
+
+| Konu | Açıklama |
+|------|----------|
+| **Sürüm dosyası** | Uygulama sürümü artık `config/version.json` (`Config::version()`). `config.php` repoda tutulmaz (gitignore); örnek: `config.example.php` |
+
+### Nesne Market — yayında
+
+Nesne Market **canlı kullanıma hazır**. Oyuncular Elmas (`account.cash`) ile ürün satın alır; item **depo (SAFEBOX)**’a düşer. Kupon ile Elmas yükleme yukarıdaki **Market Kuponları** bölümündedir.
+
+| Alan | Açıklama |
+|------|----------|
+| **Oyuncu** | Panel → Nesne Market (`/nesne-market`) — en az bir karakter gerekir; onay diyaloğu |
+| **Admin** | Kategoriler · Ürünler · Satış Logları · **Market Kuponları** |
 | **Teslimat** | `player.item` · `window='SAFEBOX'` · `owner_id = account.id` |
 | **Para birimi** | Arayüzde **Elmas** (`account.cash`) |
-| **DB** | `DNWeb.market_categories` · `market_items` · `market_sales_logs` |
-| **SQL** | `database/migrate_nesne_market.sql` (mevcut kurulum) · `dnweb_full_schema.sql` (sıfırdan) |
+| **DB** | `market_categories` · `market_items` · `market_sales_logs` · `market_coupon_categories` · `market_coupons` |
+| **SQL** | `migrate_nesne_market.sql` · `2026-08-07-market-kuponlar/` · `dnweb_full_schema.sql` |
 | **Config** | `nesne_market.enabled`, `ingame_secret`, `safebox_page_size`, `safebox_default_pages` |
 | **Oyun içi** | CEF imzalı URL (`mode=ingame`) ile aynı market |
 
@@ -67,9 +115,9 @@ Oyun hesap şifreleri **MD5** (`account.password`). Panel oturumu ayrı token il
 
 - Sunucu tanıtımı, EXP / DROP / YANG oranları, sınıf kartları
 - Patch / istemci indirme linkleri, galeri
-- **Kayıt** ve **Giriş** (opsiyonel Captcha: Google reCAPTCHA v2 veya Cloudflare Turnstile)
+- **Kayıt** ve **Giriş** (opsiyonel Captcha: Google reCAPTCHA v2 veya Cloudflare Turnstile); kayıtta şifre tekrarı ve gizlilik onayı zorunlu
 - Topluluk kuralları (`/kurallar`) ve gizlilik (`/gizlilik`)
-- Kurallar güncellenince giriş yapan oyuncudan yeniden onay istenir; reddederse oturum kapanır
+- Kurallar veya gizlilik içeriği güncellenince giriş yapan oyuncudan yeniden onay istenir; reddederse oturum kapanır
 
 ### Oyuncu paneli — `/panel`
 
@@ -81,12 +129,13 @@ Giriş yapan tüm web grupları (`0` / `1` / `2`) görür.
 |------|----------------|
 | **Genel Bakış** | Hesap özeti, karakter özeti, hızlı erişim |
 | **Oyuncu Sıralaması** | Level sıralaması: karakter, job, level, stamina, lonca, bayrak; detay modal |
-| **Nesne Market** | **Yayında** — Elmas ile alışveriş; ürün depoya düşer (`/nesne-market`) |
+| **Nesne Market** | **Yayında** — Elmas ile alışveriş (en az bir karakter gerekir); ürün depoya düşer (`/nesne-market`) |
 | **Duyurular** | Yayınlanmış sunucu duyuruları |
 | **Karakterlerim** | Hesaba ait karakter listesi ve detay (evliyse eş adı) |
 | **Evlilikler** | Sunucudaki evlilikler (salt okunur) |
 | **Hesap Kayıtları** | Panel işlem logları (giriş, şifre, 2FA vb.) |
 | **Lonca Savaşları** | Aktif savaşlar, geçmiş, lonca ladder (salt okunur) |
+| **Market Kupon** | Genel Bakış → **Market Kupon Aktif Et** — kupon kodu ile Elmas yükleme |
 
 #### Hesap
 
@@ -95,7 +144,7 @@ Giriş yapan tüm web grupları (`0` / `1` / `2`) görür.
 | **Destek Talepleri** | Ticket açma / yanıtlama |
 | **Hesap Güvenliği** | Şifre, depo şifresi, 2FA, IP kilidi, giriş bildirimi |
 
-Admin yetkisi olanlar menüde **Admin Panel** linkini de görür.
+Admin yetkisi olanlar menüde **Admin Panel** linkini de görür. **Ready Only** grubu menüleri görür; yazma işlemleri kapalıdır.
 
 ### Yönetim paneli — `/admin`
 
@@ -111,7 +160,7 @@ Menü görünürlüğü **Yetki Grupları** bayrakları ile kontrol edilir (`Web
 
 | Menü | Ne işe yarar? |
 |------|----------------|
-| **Oyuncu Yönetimi** | Hesap arama, ban / unban, detay, e-posta / şifre / depo işlemleri |
+| **Oyuncu Yönetimi** | Hesap arama; durum filtresi; **Yöneticileri göster** (`WebPermission ≥ 1`); ban / unban; detay; e-posta / şifre / depo; **2FA kapat** |
 | **Evlilikler** | `player.marriage` listesi; evliliği bitirme |
 | **Oyuncu Sıralaması** | Level sıralaması (admin görünümü) |
 | **Binek Yönetimi** | `player.horse_name` at adı düzenleme |
@@ -142,7 +191,8 @@ Menü görünürlüğü **Yetki Grupları** bayrakları ile kontrol edilir (`Web
 |------|----------------|
 | **Kategoriler** | Market kategori CRUD (slug, ikon, sıra, aktif) |
 | **Ürünler** | Ürün CRUD: ad, açıklama, Elmas fiyatı, indirim %, görsel URL/yükleme, `item_code`, süre, kategori |
-| **Satış Logları** | Kim ne aldı, Elmas önce/sonra, depo slot, IP |
+| **Satış Logları** | Satın alma / kupon; Elmas önce/sonra; depo slot; IP; tam kupon kodu ile arama |
+| **Market Kuponları** | Kategori + kupon üretimi (hash), kullanılmış/kullanılmamış, çoklu sil, hesap detay |
 
 #### Ayarlar
 
@@ -160,8 +210,8 @@ Menü görünürlüğü **Yetki Grupları** bayrakları ile kontrol edilir (`Web
 | **Footer / Border** | Alt menü, sosyal linkler, metinler |
 | **Ceza Ayarları** | Ban şablonları (gün / sebep) |
 | **Topluluk Kuralları** | Kural maddeleri; kayıt güncellenince oyuncudan yeniden onay istenir |
-| **Gizlilik / KVKK** | Gizlilik sayfası içeriği |
-| **Yetki Grupları** | Menü ve işlem bayrakları |
+| **Gizlilik / KVKK** | Gizlilik sayfası; içerik kaydı revizyon artırır → girişte yeniden onay |
+| **Yetki Grupları** | Menü ve işlem bayrakları (Ready Only, `disable_2fa` vb.) |
 | **Ticket Ayarları** | Kategori, durum, dosya tipi |
 | **Duyuru Türleri** | Duyuru kategorileri |
 
@@ -252,13 +302,38 @@ DNWeb zaten kuruluysa, yalnızca market tablolarını eklemek için:
 mysql -u root -p < database/migrate_nesne_market.sql
 ```
 
-#### E) `database/` SQL dosyaları
+Kupon tabloları için ayrıca:
 
-| Dosya | Ne işe yarar? |
-|-------|----------------|
+```bash
+mysql -u root -p DNWeb < database/2026-08-07-market-kuponlar/01_market_coupons.sql
+mysql -u root -p DNWeb < database/2026-08-07-market-kuponlar/02_sales_log_coupon_hash.sql
+```
+
+#### E) 2026-08-07 canlı migrate klasörleri
+
+Mevcut DNWeb kurulumunda bugünkü özellikler için (sıra önerisi):
+
+```bash
+mysql -u root -p DNWeb < database/2026-08-07-ready-only-yetki/01_ready_only_group.sql
+mysql -u root -p DNWeb < database/2026-08-07-disable-2fa/01_disable_2fa_flag.sql
+mysql -u root -p DNWeb < database/2026-08-07-market-kuponlar/01_market_coupons.sql
+mysql -u root -p DNWeb < database/2026-08-07-market-kuponlar/02_sales_log_coupon_hash.sql
+mysql -u root -p DNWeb < database/2026-08-07-gizlilik-onay/01_privacy_consent.sql
+```
+
+Her klasörde kısa `README.md` vardır. Alternatif: siteyi bir kez açmak (`Schema::ensure`) birçok eksik tablo/kolonu otomatik tamamlar; elle SQL tercih edilir.
+
+#### F) `database/` SQL dosyaları
+
+| Dosya / klasör | Ne işe yarar? |
+|----------------|---------------|
 | `setup_databases.sql` | Boş 5 DB (+ eski DNWeb iskeleti) |
-| `dnweb_full_schema.sql` | **DNWeb tam CREATE** (market dahil — önerilen) |
+| `dnweb_full_schema.sql` | **DNWeb tam CREATE** (market + kupon + consent dahil — önerilen) |
 | `migrate_nesne_market.sql` | **Nesne Market** tabloları + varsayılan kategoriler (mevcut DNWeb’e) |
+| `2026-08-07-ready-only-yetki/` | Ready Only yetki grubu |
+| `2026-08-07-disable-2fa/` | `disable_2fa` bayrağı |
+| `2026-08-07-market-kuponlar/` | Market kupon tabloları + satış log `coupon_hash` |
+| `2026-08-07-gizlilik-onay/` | Gizlilik onayı kolonları (`account_consents`) |
 | `player_marriage_reference.sql` | `player.marriage` referans CREATE (oyun dump’ında yoksa) |
 | `account_web_permission.sql` | `account.WebPermission` kolonu |
 | `migrate_auth.sql` | Eski migrate: WebPermission + `web_sessions` (yeni kurulumda gerekmez) |
@@ -268,7 +343,7 @@ mysql -u root -p < database/migrate_nesne_market.sql
 
 ### 3) Yapılandırma
 
-`config/config.php` içinde doldurun:
+`config/config.example.php` dosyasını `config/config.php` olarak kopyalayıp doldurun (`config.php` gitignore’dadır):
 
 1. **`app.url`** — site adresi (ör. `http://127.0.0.1:8080`)
 2. **`web_database`** — DNWeb bağlantısı (host, user, password, `DNWeb`)
@@ -276,6 +351,8 @@ mysql -u root -p < database/migrate_nesne_market.sql
 4. **`security.app_key`** — canlıda uzun rastgele anahtar
 5. **`nesne_market.ingame_secret`** — canlıda değiştirin
 6. Canlıda: `app.debug = false`, HTTPS / cookie secure ayarları
+
+Uygulama sürümü `config/version.json` içinde tutulur (footer / panelde gösterilir).
 
 ### 4) İzinler / klasörler
 
@@ -291,8 +368,9 @@ Opsiyonel test hesapları: `database/seed_test_accounts.php`, `database/seed_gui
 
 ### 6) Nesne Market (yayında)
 
-- Panel: **Nesne Market** → `/nesne-market`
-- Admin: kategoriler / ürünler / satış logları
+- Panel: **Nesne Market** → `/nesne-market` (hesapta en az bir karakter gerekir)
+- Admin: kategoriler / ürünler / satış logları / **market kuponları**
+- Oyuncu: Genel Bakış → **Market Kupon Aktif Et**
 - Oyun içi CEF: imzalı URL ile o anki hesap oturumu açılır
 
 ```
@@ -325,8 +403,10 @@ player    → player, guild, banword, horse_name, pcbang_ip, change_empire,
             marriage, item (SAFEBOX), safebox…
 log       → loginlog, command_log, levellog, hack_log…
 DNWeb     → settings, duyuru, ticket, web_sessions, yetkiler, admin log,
-            ip_bans, community_rules, mail, captcha,
-            market_categories, market_items, market_sales_logs…
+            ip_bans, community_rules, account_consents (kurallar + gizlilik),
+            mail, captcha,
+            market_categories, market_items, market_sales_logs,
+            market_coupon_categories, market_coupons…
 ```
 
 Detaylı tablo referansı: `docs/database-reference.md`
@@ -338,14 +418,16 @@ Panel, oyun tablolarını **okur / gerektiğinde yazar**; şema dump’ınız ek
 ## Proje yapısı
 
 ```
-config/config.php       → Uygulama, tema, güvenlik, sunucu / DB, nesne_market
+config/config.php       → Uygulama, tema, güvenlik, sunucu / DB, nesne_market (gitignore)
+config/config.example.php → Örnek config
+config/version.json     → Uygulama sürümü (ör. 3.5.9)
 app/Core/               → Config, Database, Security, Session, Theme, Router, Schema
 app/Controllers/        → HTTP controller’lar (NesneMarket, AdminMarket…)
-app/Services/           → İş mantığı (MarketPurchase, Marriage…)
+app/Services/           → İş mantığı (MarketPurchase, Marriage, Coupon…)
 themes/EasternV1/       → Anasayfa, oyuncu paneli, admin, nesnemarket/
 public/                 → Document root (index.php, router.php)
 routes/web.php          → Rotalar
-database/               → Kurulum / migrate / seed scriptleri
+database/               → Kurulum / migrate / seed (+ tarihli canlı migrate klasörleri)
 storage/                → Session, log, cache, upload
 docs/                   → DB referansı
 ```
@@ -376,10 +458,12 @@ docs/                   → DB referansı
 - [ ] `account` / `common` / `player` / `log` dump yüklü  
 - [ ] `database/dnweb_full_schema.sql` çalıştırıldı (veya Schema otomatik tamamladı)  
 - [ ] Mevcut kurulumda market yoksa: `database/migrate_nesne_market.sql`  
+- [ ] Mevcut kurulumda 2026-08-07 özellikler için: `database/2026-08-07-*` migrate’leri  
 - [ ] `database/account_web_permission.sql` çalıştırıldı  
-- [ ] `config/config.php` DB, `app.url`, `nesne_market.ingame_secret` dolu  
+- [ ] `config/config.php` (örnekten kopya) DB, `app.url`, `nesne_market.ingame_secret` dolu  
+- [ ] `config/version.json` mevcut  
 - [ ] En az bir hesapta `WebPermission = 2`  
 - [ ] `php -S … -t public` veya vhost → `public/`  
-- [ ] `/` açılıyor, kayıt / giriş çalışıyor  
+- [ ] `/` açılıyor, kayıt / giriş / gizlilik onayı çalışıyor  
 - [ ] `/admin` menüleri yetki grubunda görünüyor  
-- [ ] `/nesne-market` açılıyor; admin ürün ekleyip satış testi yapıldı  
+- [ ] `/nesne-market` açılıyor; admin ürün / kupon ekleyip satış testi yapıldı  
