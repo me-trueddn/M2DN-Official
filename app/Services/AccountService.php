@@ -19,7 +19,8 @@ final class AccountService
         string $email,
         string $securityCode,
         bool $acceptRules = false,
-        string $passwordConfirm = ''
+        string $passwordConfirm = '',
+        bool $acceptPrivacy = false
     ): array {
         $errors = [];
 
@@ -49,6 +50,10 @@ final class AccountService
 
         if (!$acceptRules) {
             $errors[] = 'Kayıt için Topluluk Kurallarını kabul etmelisin.';
+        }
+
+        if (!$acceptPrivacy) {
+            $errors[] = 'Kayıt için Gizlilik Sözleşmesi / KVKK metnini kabul etmelisin.';
         }
 
         if ($errors !== []) {
@@ -101,6 +106,7 @@ final class AccountService
         $accountId = (int) $pdo->lastInsertId();
         ActivityLogService::log($accountId, ActivityLogService::ACTION_REGISTER, 'Yeni hesap kaydı', $login);
         AccountConsentService::recordRulesAccepted($accountId);
+        AccountConsentService::recordPrivacyAccepted($accountId);
 
         try {
             MailService::sendTemplate('register', $email, $login, [

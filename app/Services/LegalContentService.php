@@ -39,7 +39,22 @@ final class LegalContentService
         }
         SiteContentService::set('legal', 'privacy_title', $title);
         SiteContentService::set('legal', 'privacy_html', $html);
+        self::bumpPrivacyRevision();
         return ['ok' => true, 'errors' => []];
+    }
+
+    public static function privacyRevision(): int
+    {
+        $raw = SiteContentService::get('legal', 'privacy_revision', '1');
+        $n = (int) $raw;
+        return $n > 0 ? $n : 1;
+    }
+
+    public static function bumpPrivacyRevision(): int
+    {
+        $next = self::privacyRevision() + 1;
+        SiteContentService::set('legal', 'privacy_revision', (string) $next);
+        return $next;
     }
 
     public static function defaultPrivacyHtml(): string

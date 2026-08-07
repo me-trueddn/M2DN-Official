@@ -4879,6 +4879,7 @@ $can = static function (string $flag) use ($permFlags): bool {
         html += '<div class="row"><span class="k">2FA</span><span class="v">' + esc(totpLabel) + '</span></div>';
         html += '<div class="row"><span class="k">Elmas</span><span class="v">' + Number(a.cash || 0).toLocaleString('tr-TR') + '</span></div>';
         html += '<div class="row"><span class="k">Kurallar</span><span class="v">' + esc(a.rules_accepted_label || 'Hayır') + '</span></div>';
+        html += '<div class="row"><span class="k">Gizlilik</span><span class="v">' + esc(a.privacy_accepted_label || 'Hayır') + '</span></div>';
         if (ban) {
           html += '<div class="row"><span class="k">Aktif Ceza</span><span class="v">' + esc(ban.penalty_name) + ' · ' + esc(ban.days_label) + '</span></div>';
           html += '<div class="row"><span class="k">Sebep</span><span class="v">' + esc(ban.reason) + '</span></div>';

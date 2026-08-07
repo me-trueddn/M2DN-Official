@@ -29,6 +29,8 @@ $router->get('/kurallar', [CommunityRulesController::class, 'index']);
 $router->post('/kurallar/kabul', [CommunityRulesController::class, 'accept']);
 $router->post('/kurallar/reddet', [CommunityRulesController::class, 'decline']);
 $router->get('/gizlilik', [PrivacyController::class, 'index']);
+$router->post('/gizlilik/kabul', [PrivacyController::class, 'accept']);
+$router->post('/gizlilik/reddet', [PrivacyController::class, 'decline']);
 $router->get('/panel', [UserPanelController::class, 'index']);
 $router->get('/nesne-market', [NesneMarketController::class, 'index']);
 $router->post('/nesne-market/satin-al', [NesneMarketController::class, 'buy']);

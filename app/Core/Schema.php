@@ -146,13 +146,20 @@ final class Schema
               `rules_accepted` TINYINT(1) NOT NULL DEFAULT 0,
               `rules_accepted_at` DATETIME NULL DEFAULT NULL,
               `rules_revision` INT UNSIGNED NOT NULL DEFAULT 0,
+              `privacy_accepted` TINYINT(1) NOT NULL DEFAULT 0,
+              `privacy_accepted_at` DATETIME NULL DEFAULT NULL,
+              `privacy_revision` INT UNSIGNED NOT NULL DEFAULT 0,
               `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
               `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
               PRIMARY KEY (`account_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
         );
         self::ensureColumn($pdo, 'account_consents', 'rules_revision', 'INT UNSIGNED NOT NULL DEFAULT 0 AFTER `rules_accepted_at`');
+        self::ensureColumn($pdo, 'account_consents', 'privacy_accepted', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER `rules_revision`');
+        self::ensureColumn($pdo, 'account_consents', 'privacy_accepted_at', 'DATETIME NULL DEFAULT NULL AFTER `privacy_accepted`');
+        self::ensureColumn($pdo, 'account_consents', 'privacy_revision', 'INT UNSIGNED NOT NULL DEFAULT 0 AFTER `privacy_accepted_at`');
         self::ensureCommunityRulesRevision($pdo);
+        self::ensurePrivacyRevision($pdo);
 
         $pdo->exec(
             "CREATE TABLE IF NOT EXISTS `online_snapshots` (
@@ -1584,6 +1591,28 @@ final class Schema
             $pdo->exec(
                 'UPDATE account_consents SET rules_revision = 1 WHERE rules_accepted = 1 AND rules_revision = 0'
             );
+        } catch (\Throwable) {
+            // ignore
+        }
+    }
+
+    /** Gizlilik / KVKK revizyon sayacı — yoksa 1. Mevcut hesaplar yeniden onay verir. */
+    private static function ensurePrivacyRevision(PDO $pdo): void
+    {
+        try {
+            $stmt = $pdo->prepare(
+                "SELECT setting_value FROM settings WHERE group_key = 'legal' AND setting_key = 'privacy_revision' LIMIT 1"
+            );
+            $stmt->execute();
+            $val = $stmt->fetchColumn();
+            if ($val !== false && $val !== null && $val !== '') {
+                return;
+            }
+            $pdo->prepare(
+                "INSERT INTO settings (group_key, setting_key, setting_value, updated_at)
+                 VALUES ('legal', 'privacy_revision', '1', NOW())
+                 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()"
+            )->execute();
         } catch (\Throwable) {
             // ignore
         }

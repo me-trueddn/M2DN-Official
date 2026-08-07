@@ -126,8 +126,13 @@ final class Theme
 
         $data['forceRulesAcceptance'] = false;
         $data['forceRulesList'] = [];
+        $data['forcePrivacyAcceptance'] = false;
+        $data['forcePrivacyTitle'] = '';
+        $data['forcePrivacyExcerpt'] = '';
         $isAdminView = str_starts_with($viewKey, 'admin/');
-        $skipRules = str_starts_with($viewKey, 'nesnemarket/');
+        $skipRules = str_starts_with($viewKey, 'nesnemarket/')
+            || $viewKey === 'pages/privacy'
+            || $viewKey === 'pages/rules';
         if (!$isAdminView && !$skipRules && class_exists(\App\Services\AuthService::class)
             && class_exists(\App\Services\AccountConsentService::class)
         ) {
@@ -141,11 +146,19 @@ final class Theme
                     if (\App\Services\AccountConsentService::needsRulesAcceptance($accountId)) {
                         $data['forceRulesAcceptance'] = true;
                         $data['forceRulesList'] = \App\Services\CommunityRulesService::list(true);
+                    } elseif (\App\Services\AccountConsentService::needsPrivacyAcceptance($accountId)) {
+                        $data['forcePrivacyAcceptance'] = true;
+                        $data['forcePrivacyTitle'] = \App\Services\LegalContentService::privacyTitle();
+                        $plain = trim(strip_tags(\App\Services\LegalContentService::privacyHtml()));
+                        $data['forcePrivacyExcerpt'] = mb_strlen($plain) > 420
+                            ? (mb_substr($plain, 0, 420) . '…')
+                            : $plain;
                     }
                 }
             } catch (\Throwable) {
                 $data['forceRulesAcceptance'] = false;
                 $data['forceRulesList'] = [];
+                $data['forcePrivacyAcceptance'] = false;
             }
         }
 
@@ -153,14 +166,21 @@ final class Theme
         ob_start();
         require $file;
         $html = ob_get_clean();
-        if (!empty($data['forceRulesAcceptance']) && is_string($html) && $html !== '') {
+        $injectModal = '';
+        if (!empty($data['forceRulesAcceptance'])) {
             ob_start();
             require self::viewPath('partials/rules_reaccept_modal');
-            $modal = ob_get_clean();
-            if (is_string($modal) && $modal !== '' && stripos($html, '</body>') !== false) {
-                $html = preg_replace('/<\/body>/i', $modal . '</body>', $html, 1) ?? ($html . $modal);
-            } elseif (is_string($modal) && $modal !== '') {
-                $html .= $modal;
+            $injectModal = (string) ob_get_clean();
+        } elseif (!empty($data['forcePrivacyAcceptance'])) {
+            ob_start();
+            require self::viewPath('partials/privacy_reaccept_modal');
+            $injectModal = (string) ob_get_clean();
+        }
+        if ($injectModal !== '' && is_string($html) && $html !== '') {
+            if (stripos($html, '</body>') !== false) {
+                $html = preg_replace('/<\/body>/i', $injectModal . '</body>', $html, 1) ?? ($html . $injectModal);
+            } else {
+                $html .= $injectModal;
             }
         }
         echo $html;

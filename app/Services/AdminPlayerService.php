@@ -228,9 +228,13 @@ final class AdminPlayerService
         ];
 
         $rulesConsent = AccountConsentService::rulesStatus($accountId);
+        $privacyConsent = AccountConsentService::privacyStatus($accountId);
         $account['rules_accepted'] = $rulesConsent['accepted'];
         $account['rules_accepted_at'] = $rulesConsent['accepted_at'];
         $account['rules_accepted_label'] = $rulesConsent['accepted_label'];
+        $account['privacy_accepted'] = $privacyConsent['accepted'];
+        $account['privacy_accepted_at'] = $privacyConsent['accepted_at'];
+        $account['privacy_accepted_label'] = $privacyConsent['accepted_label'];
 
         $dashboard = PlayerService::dashboard($accountId, $serverKey);
         $security = AccountSecurityService::getSettings($accountId);

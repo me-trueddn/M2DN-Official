@@ -28,6 +28,8 @@ final class ActivityLogService
     public const ACTION_UNBAN = 'unban';
     public const ACTION_RULES_ACCEPT = 'rules_accept';
     public const ACTION_RULES_DECLINE = 'rules_decline';
+    public const ACTION_PRIVACY_ACCEPT = 'privacy_accept';
+    public const ACTION_PRIVACY_DECLINE = 'privacy_decline';
     public const ACTION_MARKET_COUPON = 'market_coupon';
 
     private const LABELS = [
@@ -46,6 +48,8 @@ final class ActivityLogService
         self::ACTION_UNBAN => 'Ban kaldırıldı',
         self::ACTION_RULES_ACCEPT => 'Topluluk kuralları kabul edildi',
         self::ACTION_RULES_DECLINE => 'Topluluk kuralları reddedildi',
+        self::ACTION_PRIVACY_ACCEPT => 'Gizlilik / KVKK kabul edildi',
+        self::ACTION_PRIVACY_DECLINE => 'Gizlilik / KVKK reddedildi',
         self::ACTION_MARKET_COUPON => 'Market kuponu aktif edildi',
     ];
 

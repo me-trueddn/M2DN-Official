@@ -1101,6 +1101,10 @@ $footerHref = static function (string $url): string {
         <input type="checkbox" name="accept_rules" value="1" required<?= !empty($registerOld['accept_rules']) ? ' checked' : '' ?>>
         <span><a href="<?= e(url('/kurallar')) ?>" target="_blank" rel="noopener">Topluluk Kurallarını</a> okudum ve kabul ediyorum.</span>
       </label>
+      <label class="rules-accept">
+        <input type="checkbox" name="accept_privacy" value="1" required<?= !empty($registerOld['accept_privacy']) ? ' checked' : '' ?>>
+        <span><a href="<?= e(url('/gizlilik')) ?>" target="_blank" rel="noopener">Gizlilik Sözleşmesi / KVKK</a> metnini okudum ve kabul ediyorum.</span>
+      </label>
       <?php if ($captchaEnabled): ?><?= $captchaWidget ?><?php endif; ?>
       <button type="submit" class="btn btn-primary"><i class="fa-solid fa-user-plus"></i> Hesap Oluştur</button>
     </form>

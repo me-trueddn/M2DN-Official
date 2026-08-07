@@ -34,12 +34,14 @@ final class AuthController
         $email = (string) ($_POST['email'] ?? '');
         $securityCode = (string) ($_POST['securitycode'] ?? '');
         $acceptRules = !empty($_POST['accept_rules']);
+        $acceptPrivacy = !empty($_POST['accept_privacy']);
 
         Session::flash('open_register', true);
         Session::flash('register_old', [
             'login' => $login,
             'email' => $email,
             'accept_rules' => $acceptRules ? '1' : '',
+            'accept_privacy' => $acceptPrivacy ? '1' : '',
         ]);
 
         $captcha = CaptchaService::verifyRequest();
@@ -48,7 +50,15 @@ final class AuthController
             redirect('/');
         }
 
-        $result = AccountService::register($login, $password, $email, $securityCode, $acceptRules, $passwordConfirm);
+        $result = AccountService::register(
+            $login,
+            $password,
+            $email,
+            $securityCode,
+            $acceptRules,
+            $passwordConfirm,
+            $acceptPrivacy
+        );
 
         if (!$result['ok']) {
             Session::flash('register_errors', $result['errors']);
