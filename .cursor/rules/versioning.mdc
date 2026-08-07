@@ -22,6 +22,7 @@ If interactive choice UI is not available, still list exactly those three option
 - **Do not** start the next user request, follow-up task, or unrelated work until they select an option.
 - **Do not** bump the version yourself without their answer.
 - After they choose: update `config/version.json` → `version`, confirm the new version in the reply, then continue.
+- Append a short changelog entry to **`updates.md`** (newest at the top). Do **not** put version notes in `README.md`.
 
 Version is shown in footer, user panel, and admin panel via Theme `$appVersion` (`Config::version()`).
 
