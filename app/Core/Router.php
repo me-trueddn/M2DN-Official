@@ -50,6 +50,14 @@ final class Router
             return;
         }
 
+        // Ready Only: /admin POST işlemleri engellenir (salt görüntüleme)
+        if (strtoupper($method) === 'POST' && str_starts_with($path, '/admin')) {
+            $user = \App\Services\AuthService::user();
+            if ($user !== null && \App\Services\AuthService::canAccessAdmin($user)) {
+                \App\Services\PermissionService::denyIfReadOnly($user);
+            }
+        }
+
         if (is_array($handler)) {
             [$class, $action] = $handler;
             $controller = new $class();

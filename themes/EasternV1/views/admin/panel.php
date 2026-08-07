@@ -368,6 +368,11 @@ $can = static function (string $flag) use ($permFlags): bool {
     margin-bottom:12px;
   }
   .detail-ops .ops-block:last-child{margin-bottom:0;}
+  .detail-ops .ops-block.ops-block-denied{
+    border-color:rgba(197,51,71,.35);
+    background:rgba(143,28,41,.12);
+  }
+  .detail-ops .ops-block.ops-block-denied .ops-title{color:var(--blood-light);}
   .detail-ops .ops-block .ops-title{
     font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;
     color:var(--ash); margin:0 0 10px; font-weight:600;
@@ -4131,9 +4136,10 @@ $can = static function (string $flag) use ($permFlags): bool {
   const notifListUrl = <?= json_encode(url('/bildirimler/json'), JSON_UNESCAPED_UNICODE) ?>;
   const notifReadUrl = <?= json_encode(url('/bildirimler/okundu'), JSON_UNESCAPED_UNICODE) ?>;
   const isSuperAdmin = <?= $authPermission === 2 ? 'true' : 'false' ?>;
-  const canResetSecurityCode = <?= !empty($permFlags['reset_security_code']) ? 'true' : 'false' ?>;
-  const canResetSafebox = <?= !empty($permFlags['reset_safebox_password']) ? 'true' : 'false' ?>;
-  const canMailOps = <?= !empty($permFlags['player_detail']) ? 'true' : 'false' ?>;
+  const isReadOnlyAdmin = <?= \App\Services\PermissionService::isReadOnly(is_array($authUser ?? null) ? $authUser : null) ? 'true' : 'false' ?>;
+  const canResetSecurityCode = <?= !empty($permFlags['reset_security_code']) && !\App\Services\PermissionService::isReadOnly(is_array($authUser ?? null) ? $authUser : null) ? 'true' : 'false' ?>;
+  const canResetSafebox = <?= !empty($permFlags['reset_safebox_password']) && !\App\Services\PermissionService::isReadOnly(is_array($authUser ?? null) ? $authUser : null) ? 'true' : 'false' ?>;
+  const canMailOps = <?= !empty($permFlags['player_detail']) && !\App\Services\PermissionService::isReadOnly(is_array($authUser ?? null) ? $authUser : null) ? 'true' : 'false' ?>;
   const adminIndexUrl = <?= json_encode(url('/admin'), JSON_UNESCAPED_UNICODE) ?>;
   const mailPresetsJs = <?= json_encode($mailPresets, JSON_UNESCAPED_UNICODE) ?>;
   const annModalMap = <?= json_encode(array_reduce($overviewAnnouncements, static function (array $map, array $ann): array {
@@ -4686,10 +4692,20 @@ $can = static function (string $flag) use ($permFlags): bool {
         }
         html += '</div>';
 
-        const canShowOps = a.id && (canMailOps || isSuperAdmin || canResetSecurityCode || canResetSafebox);
-        if (canShowOps) {
+        const targetWebPerm = Number(a.web_permission || 0);
+        const targetIsSuper = targetWebPerm >= 2;
+        const blockedOnTarget = !isSuperAdmin && targetIsSuper;
+        const canShowOpsSection = a.id && (canMailOps || isSuperAdmin || canResetSecurityCode || canResetSafebox || isReadOnlyAdmin || blockedOnTarget);
+        if (canShowOpsSection) {
           html += '<div class="detail-ops"><h4>İşlemler</h4>';
 
+          if (isReadOnlyAdmin) {
+            html += '<div class="ops-block ops-block-denied"><div class="ops-title">Not Perm</div>';
+            html += '<p style="margin:0;font-size:.85rem;color:var(--ash);line-height:1.55;">Ready Only: Bu hesapta işlem yapılamaz. Yalnızca görüntüleme yetkin var.</p></div>';
+          } else if (blockedOnTarget) {
+            html += '<div class="ops-block ops-block-denied"><div class="ops-title">Not Perm</div>';
+            html += '<p style="margin:0;font-size:.85rem;color:var(--ash);line-height:1.55;">İşlem yapılamaz. WebPermission 2 (Süper Admin) hesaplar üzerinde WebPermission 1 ile işlem yapılamaz.</p></div>';
+          } else {
           if (canMailOps) {
             html += '<div class="ops-block"><div class="ops-title">E-posta</div>';
             html += '<form method="post" action="' + esc(emailChangeUrl) + '">';
@@ -4736,6 +4752,7 @@ $can = static function (string $flag) use ($permFlags): bool {
             html += '<div class="form-row"><label>Yeni depo şifresi (1–6 hane)</label><input name="safebox_password" type="text" inputmode="numeric" pattern="\\d{1,6}" maxlength="6" required placeholder="örn. 123456"></div>';
             html += '<button type="submit" class="btn btn-ghost btn-sm">Depo şifresini sıfırla</button>';
             html += '</div></form></div>';
+          }
           }
 
           html += '</div>';

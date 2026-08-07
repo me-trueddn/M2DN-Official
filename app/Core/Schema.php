@@ -665,13 +665,19 @@ final class Schema
                 "INSERT INTO permission_groups (name, web_permission, is_system, created_at, updated_at) VALUES
                   ('Default User', 0, 1, NOW(), NOW()),
                   ('Admin', 1, 1, NOW(), NOW()),
+                  ('Ready Only', 1, 1, NOW(), NOW()),
                   ('Super Admin', 2, 1, NOW(), NOW())"
             );
-            $adminId = (int) $pdo->query('SELECT id FROM permission_groups WHERE web_permission = 1 AND is_system = 1 LIMIT 1')->fetchColumn();
-            $superId = (int) $pdo->query('SELECT id FROM permission_groups WHERE web_permission = 2 AND is_system = 1 LIMIT 1')->fetchColumn();
+            $adminId = (int) $pdo->query("SELECT id FROM permission_groups WHERE name = 'Admin' AND is_system = 1 LIMIT 1")->fetchColumn();
+            $readyId = (int) $pdo->query("SELECT id FROM permission_groups WHERE name = 'Ready Only' AND is_system = 1 LIMIT 1")->fetchColumn();
+            $superId = (int) $pdo->query("SELECT id FROM permission_groups WHERE name = 'Super Admin' AND is_system = 1 LIMIT 1")->fetchColumn();
             $flags = [
                 'ban', 'player_detail', 'reset_security_code', 'reset_safebox_password',
                 'announcements', 'tickets', 'site_settings',
+                'menu_oyuncular', 'menu_siralamalar', 'menu_binek', 'menu_gm', 'menu_ip_ban', 'menu_loncalar', 'menu_lonca_savaslari', 'menu_banlar', 'menu_duyurular', 'menu_destekler', 'menu_sunucu', 'menu_yasakli_kelimeler', 'menu_loglar', 'menu_nesne_market',
+            ];
+            $readyFlags = [
+                'read_only', 'player_detail',
                 'menu_oyuncular', 'menu_siralamalar', 'menu_binek', 'menu_gm', 'menu_ip_ban', 'menu_loncalar', 'menu_lonca_savaslari', 'menu_banlar', 'menu_duyurular', 'menu_destekler', 'menu_sunucu', 'menu_yasakli_kelimeler', 'menu_loglar', 'menu_nesne_market',
             ];
             $stmt = $pdo->prepare(
@@ -685,12 +691,21 @@ final class Schema
                     $stmt->execute([$superId, $f]);
                 }
             }
+            foreach ($readyFlags as $f) {
+                if ($readyId > 0) {
+                    $stmt->execute([$readyId, $f]);
+                }
+            }
         }
 
-        // Mevcut admin gruplarına yeni menü bayraklarını ekle
+        // Mevcut kurulumlarda Ready Only grubunu ekle
+        self::ensureReadyOnlyGroup($pdo);
+
+        // Mevcut admin gruplarına yeni menü bayraklarını ekle (Ready Only hariç)
         try {
             $adminGroups = $pdo->query(
-                'SELECT id FROM permission_groups WHERE web_permission >= 1'
+                "SELECT id FROM permission_groups
+                 WHERE web_permission >= 1 AND name <> 'Ready Only'"
             )->fetchAll(PDO::FETCH_COLUMN) ?: [];
             $insFlag = $pdo->prepare(
                 'INSERT IGNORE INTO permission_group_flags (group_id, flag_key, is_enabled)
@@ -743,6 +758,52 @@ final class Schema
                   ('pdf', 'application/pdf', 1, NOW()),
                   ('txt', 'text/plain', 1, NOW())"
             );
+        }
+    }
+
+    /** Canlı / mevcut DNWeb: Ready Only sistem grubu (WebPerm 1, salt görüntüleme). */
+    private static function ensureReadyOnlyGroup(PDO $pdo): void
+    {
+        try {
+            $exists = (int) $pdo->query(
+                "SELECT COUNT(*) FROM permission_groups WHERE name = 'Ready Only'"
+            )->fetchColumn();
+            if ($exists > 0) {
+                $readyId = (int) $pdo->query(
+                    "SELECT id FROM permission_groups WHERE name = 'Ready Only' LIMIT 1"
+                )->fetchColumn();
+            } else {
+                $pdo->exec(
+                    "INSERT INTO permission_groups (name, web_permission, is_system, created_at, updated_at)
+                     VALUES ('Ready Only', 1, 1, NOW(), NOW())"
+                );
+                $readyId = (int) $pdo->lastInsertId();
+            }
+            if ($readyId <= 0) {
+                return;
+            }
+            $readyFlags = [
+                'read_only', 'player_detail',
+                'menu_oyuncular', 'menu_siralamalar', 'menu_binek', 'menu_gm', 'menu_ip_ban',
+                'menu_loncalar', 'menu_lonca_savaslari', 'menu_banlar', 'menu_duyurular',
+                'menu_destekler', 'menu_sunucu', 'menu_yasakli_kelimeler', 'menu_loglar', 'menu_nesne_market',
+            ];
+            $ins = $pdo->prepare(
+                'INSERT IGNORE INTO permission_group_flags (group_id, flag_key, is_enabled) VALUES (?, ?, 1)'
+            );
+            foreach ($readyFlags as $f) {
+                $ins->execute([$readyId, $f]);
+            }
+            // Yazma bayraklarını Ready Only'dan kaldır (yanlışlıkla eklendiyse)
+            $pdo->prepare(
+                "DELETE FROM permission_group_flags
+                 WHERE group_id = ? AND flag_key IN (
+                   'ban','announcements','tickets','site_settings',
+                   'reset_security_code','reset_safebox_password'
+                 )"
+            )->execute([$readyId]);
+        } catch (\Throwable) {
+            // ignore
         }
     }
 

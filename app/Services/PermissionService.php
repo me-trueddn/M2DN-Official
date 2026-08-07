@@ -32,6 +32,9 @@ final class PermissionService
     public const FLAG_MENU_NESNE_MARKET = 'menu_nesne_market';
     public const FLAG_RESET_SECURITY_CODE = 'reset_security_code';
     public const FLAG_RESET_SAFEBOX = 'reset_safebox_password';
+    /** Ready Only grubu: menüleri görür, hiçbir şeyi değiştiremez. */
+    public const FLAG_READ_ONLY = 'read_only';
+    public const GROUP_READY_ONLY = 'Ready Only';
 
     /** @return array<string, string> */
     public static function flagDefinitions(): array
@@ -41,6 +44,7 @@ final class PermissionService
             self::FLAG_PLAYER_DETAIL => 'Oyuncu detayı görüntüleme',
             self::FLAG_RESET_SECURITY_CODE => 'Güvenlik kodu sıfırlama',
             self::FLAG_RESET_SAFEBOX => 'Depo şifresi sıfırlama',
+            self::FLAG_READ_ONLY => 'Salt okuma (Ready Only — hiçbir değişiklik yok)',
             self::FLAG_ANNOUNCEMENTS => 'Duyuru işlemleri',
             self::FLAG_TICKETS => 'Destek talebi işlemleri',
             self::FLAG_SITE_SETTINGS => 'Ayarlara erişim',
@@ -358,6 +362,67 @@ final class PermissionService
         return !empty($flags[$flag]);
     }
 
+    /** Ready Only / salt okuma: paneli görür, değişiklik yapamaz. */
+    public static function isReadOnly(?array $user): bool
+    {
+        if ($user === null) {
+            return false;
+        }
+        if ((int) ($user['permission'] ?? 0) === AuthService::PERM_SUPER) {
+            return false;
+        }
+        return self::userHasFlag($user, self::FLAG_READ_ONLY);
+    }
+
+    /**
+     * WebPerm 1, WebPerm 2 hedef üzerinde işlem yapamaz.
+     * Süper admin herkese işlem yapabilir.
+     */
+    public static function canOperateOnAccount(array $actor, int $targetAccountId): bool
+    {
+        $actorPerm = AuthService::normalizePermission($actor['permission'] ?? 0);
+        if ($actorPerm === AuthService::PERM_SUPER) {
+            return true;
+        }
+        if ($targetAccountId <= 0) {
+            return false;
+        }
+        try {
+            $stmt = Database::account()->prepare('SELECT WebPermission FROM account WHERE id = ? LIMIT 1');
+            $stmt->execute([$targetAccountId]);
+            $row = $stmt->fetch();
+            if (!$row) {
+                return false;
+            }
+            $targetPerm = AuthService::normalizePermission($row['WebPermission'] ?? null);
+            return $targetPerm <= $actorPerm && $targetPerm < AuthService::PERM_SUPER;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    public static function canOperateOnPermission(array $actor, int $targetWebPermission): bool
+    {
+        $actorPerm = AuthService::normalizePermission($actor['permission'] ?? 0);
+        if ($actorPerm === AuthService::PERM_SUPER) {
+            return true;
+        }
+        $targetPerm = AuthService::normalizePermission($targetWebPermission);
+        return $targetPerm <= $actorPerm && $targetPerm < AuthService::PERM_SUPER;
+    }
+
+    /** Admin POST işlemleri — Ready Only engeli. */
+    public static function denyIfReadOnly(?array $user = null): void
+    {
+        $user = $user ?? AuthService::user();
+        if ($user === null || !self::isReadOnly($user)) {
+            return;
+        }
+        \App\Core\Session::flash('panel_errors', ['Ready Only: Bu hesapta işlem yapılamaz (salt görüntüleme).']);
+        \App\Core\Session::flash('panel_section', 'ozet');
+        redirect('/admin');
+    }
+
     public static function requireFlag(string $flag): array
     {
         $user = AuthService::requireAdmin();
@@ -372,10 +437,14 @@ final class PermissionService
     public static function systemGroupId(int $webPermission): ?int
     {
         try {
+            // web_permission=1 için birden fazla sistem grubu olabilir (Admin + Ready Only) → Admin öncelikli
             $stmt = Database::web()->prepare(
-                'SELECT id FROM permission_groups WHERE web_permission = ? AND is_system = 1 LIMIT 1'
+                'SELECT id FROM permission_groups
+                 WHERE web_permission = ? AND is_system = 1
+                 ORDER BY CASE WHEN name = \'Admin\' THEN 0 WHEN name = ? THEN 2 ELSE 1 END, id ASC
+                 LIMIT 1'
             );
-            $stmt->execute([$webPermission]);
+            $stmt->execute([$webPermission, self::GROUP_READY_ONLY]);
             $id = $stmt->fetchColumn();
             return $id !== false ? (int) $id : null;
         } catch (\Throwable) {

@@ -270,6 +270,9 @@ final class PasswordResetService
         if ($newEmail === '' || !filter_var($newEmail, FILTER_VALIDATE_EMAIL) || mb_strlen($newEmail) > 64) {
             return ['ok' => false, 'errors' => ['Geçerli bir e-posta gir.']];
         }
+        if (!PermissionService::canOperateOnAccount($actor, $accountId)) {
+            return ['ok' => false, 'errors' => ['Bu hesapta işlem yapamazsın (Yetki yetersiz / Not Perm).']];
+        }
         try {
             $pdo = Database::account();
             $stmt = $pdo->prepare('SELECT id, login, email FROM account WHERE id = ? LIMIT 1');
