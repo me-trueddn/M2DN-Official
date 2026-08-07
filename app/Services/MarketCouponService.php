@@ -409,8 +409,8 @@ final class MarketCouponService
             $web->prepare(
                 'INSERT INTO market_sales_logs
                  (account_id, account_login, market_item_id, item_code, item_name, price,
-                  cash_before, cash_after, safebox_pos, player_item_id, ip, entry_type, created_at)
-                 VALUES (?, ?, 0, ?, ?, ?, ?, ?, -1, 0, ?, \'coupon\', NOW())'
+                  cash_before, cash_after, safebox_pos, player_item_id, ip, entry_type, coupon_hash, created_at)
+                 VALUES (?, ?, 0, ?, ?, ?, ?, ?, -1, 0, ?, \'coupon\', ?, NOW())'
             )->execute([
                 $accountId,
                 $accountLogin,
@@ -420,6 +420,7 @@ final class MarketCouponService
                 $cashBefore,
                 $cashAfter,
                 $ip,
+                $hash,
             ]);
 
             $acc->commit();

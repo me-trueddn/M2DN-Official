@@ -199,9 +199,25 @@ final class MarketPurchaseService
             $where = '';
             $params = [];
             if ($q !== '') {
-                $where = ' WHERE account_login LIKE ? OR item_name LIKE ? OR item_code LIKE ?';
-                $like = '%' . $q . '%';
-                $params = [$like, $like, $like];
+                $normalized = MarketCouponService::normalizeCode($q);
+                $hashMatch = MarketCouponService::isValidFormat($normalized)
+                    ? MarketCouponService::hashCode($normalized)
+                    : null;
+                if ($hashMatch !== null) {
+                    $mask = MarketCouponService::maskCode($normalized);
+                    $where = ' WHERE coupon_hash = ?
+                               OR account_login LIKE ?
+                               OR item_name LIKE ?
+                               OR item_code LIKE ?
+                               OR (COALESCE(entry_type, \'\') = \'coupon\' AND item_name LIKE ?)';
+                    $like = '%' . $q . '%';
+                    $maskLike = '%' . $mask . '%';
+                    $params = [$hashMatch, $like, $like, $like, $maskLike];
+                } else {
+                    $where = ' WHERE account_login LIKE ? OR item_name LIKE ? OR item_code LIKE ?';
+                    $like = '%' . $q . '%';
+                    $params = [$like, $like, $like];
+                }
             }
             $countStmt = $web->prepare('SELECT COUNT(*) FROM market_sales_logs' . $where);
             $countStmt->execute($params);

@@ -2886,7 +2886,7 @@ $can = static function (string $flag) use ($permFlags): bool {
         <p style="font-size:.8rem;color:var(--ash);margin-bottom:12px;">Satış ve kupon kullanımları. Kupon satırlarında tür <b>Kupon</b> yazar; fiyat = eklenen Elmas.</p>
         <form class="filters" method="get" action="<?= e(url('/admin')) ?>" style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <input type="hidden" name="section" value="nesne-market-satis-loglari">
-          <input name="market_sale_q" value="<?= e($saleQ) ?>" placeholder="Hesap, item adı, kod veya KUPON…" style="flex:1;min-width:200px;">
+          <input name="market_sale_q" value="<?= e($saleQ) ?>" placeholder="Hesap, item, KUPON veya tam kupon kodu…" style="flex:1;min-width:200px;">
           <button type="submit" class="btn btn-ghost btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Ara</button>
           <?php if ($saleQ !== ''): ?>
             <a class="btn btn-ghost btn-sm" href="<?= e(url('/admin?section=nesne-market-satis-loglari')) ?>">Temizle</a>

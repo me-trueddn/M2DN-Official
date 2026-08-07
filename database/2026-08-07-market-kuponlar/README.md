@@ -8,3 +8,9 @@ mysql -u USER -p DNWeb < database/2026-08-07-market-kuponlar/01_market_coupons.s
 
 Admin: Nesne Market → **Market Kuponları**  
 Oyuncu: Panel Genel Bakış → **Market Kupon Aktif Et**
+
+Ek migrate (satış logunda tam kod araması):
+
+```bash
+mysql -u USER -p DNWeb < database/2026-08-07-market-kuponlar/02_sales_log_coupon_hash.sql
+```

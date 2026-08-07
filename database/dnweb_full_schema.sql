@@ -550,12 +550,14 @@ CREATE TABLE IF NOT EXISTS `market_sales_logs` (
   `player_item_id` INT UNSIGNED NOT NULL DEFAULT 0,
   `ip` VARCHAR(45) NOT NULL DEFAULT '',
   `entry_type` VARCHAR(16) NOT NULL DEFAULT 'purchase',
+  `coupon_hash` CHAR(64) NULL DEFAULT NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_msl_account` (`account_id`, `created_at`),
   KEY `idx_msl_item` (`market_item_id`),
   KEY `idx_msl_created` (`created_at`),
-  KEY `idx_msl_entry` (`entry_type`)
+  KEY `idx_msl_entry` (`entry_type`),
+  KEY `idx_msl_coupon_hash` (`coupon_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
 
 CREATE TABLE IF NOT EXISTS `market_coupon_categories` (

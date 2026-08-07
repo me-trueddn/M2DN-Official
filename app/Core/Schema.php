@@ -1060,15 +1060,23 @@ final class Schema
               `player_item_id` INT UNSIGNED NOT NULL DEFAULT 0,
               `ip` VARCHAR(45) NOT NULL DEFAULT '',
               `entry_type` VARCHAR(16) NOT NULL DEFAULT 'purchase',
+              `coupon_hash` CHAR(64) NULL DEFAULT NULL,
               `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
               PRIMARY KEY (`id`),
               KEY `idx_msl_account` (`account_id`, `created_at`),
               KEY `idx_msl_item` (`market_item_id`),
               KEY `idx_msl_created` (`created_at`),
-              KEY `idx_msl_entry` (`entry_type`)
+              KEY `idx_msl_entry` (`entry_type`),
+              KEY `idx_msl_coupon_hash` (`coupon_hash`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
         );
         self::ensureColumn($pdo, 'market_sales_logs', 'entry_type', "VARCHAR(16) NOT NULL DEFAULT 'purchase' AFTER `ip`");
+        self::ensureColumn($pdo, 'market_sales_logs', 'coupon_hash', 'CHAR(64) NULL DEFAULT NULL AFTER `entry_type`');
+        try {
+            $pdo->exec('CREATE INDEX `idx_msl_coupon_hash` ON `market_sales_logs` (`coupon_hash`)');
+        } catch (\Throwable) {
+            // index already exists
+        }
     }
 
     private static function ensureMarketCoupons(PDO $pdo): void
