@@ -18,7 +18,7 @@ return [
         'name'       => 'M2DN',
         'tagline'    => 'Metin2 Pvp Sunucusu',
         'url'        => 'http://127.0.0.1:8080',
-        'version'    => '3.3.0',
+        'version'    => '3.4.0',
         'timezone'   => 'Europe/Istanbul',
         'locale'     => 'tr',
         'charset'    => 'utf-8',

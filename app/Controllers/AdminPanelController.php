@@ -385,6 +385,11 @@ final class AdminPanelController
             echo json_encode(['ok' => false, 'error' => 'Oyuncu bulunamadı.'], JSON_UNESCAPED_UNICODE);
             return;
         }
+        $security = $detail['security'] ?? [];
+        $secretSet = (string) ($security['totp_secret'] ?? '') !== '';
+        unset($security['totp_secret']);
+        $security['totp_secret_set'] = $secretSet;
+        $detail['security'] = $security;
         echo json_encode(['ok' => true, 'data' => $detail], JSON_UNESCAPED_UNICODE);
     }
 
@@ -541,6 +546,21 @@ final class AdminPanelController
             'permission' => $perm,
         ]);
         $this->flashResult($result, 'Depo şifresi güncellendi.', 'oyuncular');
+        redirect('/admin?section=oyuncular');
+    }
+
+    public function disable2fa(): void
+    {
+        $user = PermissionService::requireFlag(PermissionService::FLAG_DISABLE_2FA);
+        Security::requireCsrf('login');
+        $perm = AuthService::normalizePermission($user['permission'] ?? 0);
+        $accountId = (int) ($_POST['account_id'] ?? 0);
+        $result = AccountSecurityService::adminDisableTotp($accountId, [
+            'account_id' => (int) $user['account_id'],
+            'login' => (string) $user['login'],
+            'permission' => $perm,
+        ]);
+        $this->flashResult($result, '2FA kapatıldı.', 'oyuncular');
         redirect('/admin?section=oyuncular');
     }
 

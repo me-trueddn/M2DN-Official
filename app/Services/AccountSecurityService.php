@@ -363,6 +363,73 @@ final class AccountSecurityService
         return ['ok' => true, 'errors' => []];
     }
 
+    /**
+     * Admin: hesap 2FA (TOTP) kapatır. WebPerm ≥ 1 + disable_2fa bayrağı gerekir (controller).
+     *
+     * @param array{account_id?:int,login?:string,permission?:int} $actor
+     * @return array{ok:bool, errors:list<string>}
+     */
+    public static function adminDisableTotp(int $targetAccountId, array $actor): array
+    {
+        $actorPerm = AuthService::normalizePermission($actor['permission'] ?? AuthService::PERM_USER);
+        if ($actorPerm < AuthService::PERM_ADMIN) {
+            return ['ok' => false, 'errors' => ['2FA kapatmak için admin yetkisi gerekir.']];
+        }
+        if ($targetAccountId <= 0) {
+            return ['ok' => false, 'errors' => ['Geçersiz hesap.']];
+        }
+        if (!PermissionService::canOperateOnAccount($actor, $targetAccountId)) {
+            return ['ok' => false, 'errors' => ['Bu hesap üzerinde 2FA kapatamazsın.']];
+        }
+
+        try {
+            $pdo = Database::account();
+            $stmt = $pdo->prepare('SELECT id, login FROM account WHERE id = ? LIMIT 1');
+            $stmt->execute([$targetAccountId]);
+            $row = $stmt->fetch();
+            if (!$row) {
+                return ['ok' => false, 'errors' => ['Hesap bulunamadı.']];
+            }
+
+            self::ensureRow($targetAccountId);
+            $settings = self::getSettings($targetAccountId);
+            $wasActive = !empty($settings['totp_enabled'])
+                || $settings['totp_secret'] !== ''
+                || !empty($settings['totp_confirmed']);
+            if (!$wasActive) {
+                return ['ok' => false, 'errors' => ['Bu hesapta aktif veya kurulumda 2FA yok.']];
+            }
+
+            Database::web()->prepare(
+                'UPDATE account_security
+                 SET totp_enabled = 0, totp_confirmed = 0, totp_secret = NULL, updated_at = NOW()
+                 WHERE account_id = ?'
+            )->execute([$targetAccountId]);
+
+            $actorId = (int) ($actor['account_id'] ?? 0);
+            $actorLogin = (string) ($actor['login'] ?? '');
+            ActivityLogService::log(
+                $targetAccountId,
+                ActivityLogService::ACTION_2FA_DISABLE,
+                '2FA admin tarafından kapatıldı',
+                (string) $row['login'],
+                $actorId > 0 ? $actorId : null,
+                $actorLogin !== '' ? $actorLogin : null
+            );
+            AdminLogService::write(
+                $actor,
+                '2FA kapatıldı',
+                '#' . $targetAccountId . ' · ' . (string) $row['login'],
+                $targetAccountId,
+                (string) $row['login']
+            );
+
+            return ['ok' => true, 'errors' => []];
+        } catch (\Throwable) {
+            return ['ok' => false, 'errors' => ['2FA kapatılamadı.']];
+        }
+    }
+
     public static function setIpLock(int $accountId, bool $enabled): array
     {
         self::ensureRow($accountId);

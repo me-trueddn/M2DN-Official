@@ -44,5 +44,5 @@ DELETE FROM `permission_group_flags`
 WHERE `group_id` = @ready_id
   AND `flag_key` IN (
     'ban', 'announcements', 'tickets', 'site_settings',
-    'reset_security_code', 'reset_safebox_password'
+    'reset_security_code', 'reset_safebox_password', 'disable_2fa'
   );

@@ -4133,12 +4133,14 @@ $can = static function (string $flag) use ($permFlags): bool {
   const setPasswordUrl = <?= json_encode(url('/admin/oyuncu/sifre'), JSON_UNESCAPED_UNICODE) ?>;
   const setSecurityCodeUrl = <?= json_encode(url('/admin/oyuncu/guvenlik-kodu'), JSON_UNESCAPED_UNICODE) ?>;
   const setSafeboxPasswordUrl = <?= json_encode(url('/admin/oyuncu/depo'), JSON_UNESCAPED_UNICODE) ?>;
+  const disable2faUrl = <?= json_encode(url('/admin/oyuncu/2fa-kapat'), JSON_UNESCAPED_UNICODE) ?>;
   const notifListUrl = <?= json_encode(url('/bildirimler/json'), JSON_UNESCAPED_UNICODE) ?>;
   const notifReadUrl = <?= json_encode(url('/bildirimler/okundu'), JSON_UNESCAPED_UNICODE) ?>;
   const isSuperAdmin = <?= $authPermission === 2 ? 'true' : 'false' ?>;
   const isReadOnlyAdmin = <?= \App\Services\PermissionService::isReadOnly(is_array($authUser ?? null) ? $authUser : null) ? 'true' : 'false' ?>;
   const canResetSecurityCode = <?= !empty($permFlags['reset_security_code']) && !\App\Services\PermissionService::isReadOnly(is_array($authUser ?? null) ? $authUser : null) ? 'true' : 'false' ?>;
   const canResetSafebox = <?= !empty($permFlags['reset_safebox_password']) && !\App\Services\PermissionService::isReadOnly(is_array($authUser ?? null) ? $authUser : null) ? 'true' : 'false' ?>;
+  const canDisable2fa = <?= !empty($permFlags['disable_2fa']) && !\App\Services\PermissionService::isReadOnly(is_array($authUser ?? null) ? $authUser : null) ? 'true' : 'false' ?>;
   const canMailOps = <?= !empty($permFlags['player_detail']) && !\App\Services\PermissionService::isReadOnly(is_array($authUser ?? null) ? $authUser : null) ? 'true' : 'false' ?>;
   const adminIndexUrl = <?= json_encode(url('/admin'), JSON_UNESCAPED_UNICODE) ?>;
   const mailPresetsJs = <?= json_encode($mailPresets, JSON_UNESCAPED_UNICODE) ?>;
@@ -4636,12 +4638,17 @@ $can = static function (string $flag) use ($permFlags): bool {
         const ban = res.data.active_ban;
         const chars = res.data.characters || [];
         const logs = res.data.activity || [];
+        const sec = res.data.security || {};
+        const totpOn = !!(sec.totp_enabled && sec.totp_confirmed);
+        const totpPending = !totpOn && !!sec.totp_secret_set;
+        const totpLabel = totpOn ? 'Aktif' : (totpPending ? 'Kurulumda' : 'Kapalı');
         detailTitle.textContent = a.login || 'Oyuncu';
         let html = '<div class="detail-meta">';
         html += '<div class="row"><span class="k">E-posta</span><span class="v">' + esc(a.email || '—') + '</span></div>';
         html += '<div class="row"><span class="k">IP</span><span class="v">' + esc(a.ip || '—') + '</span></div>';
         html += '<div class="row"><span class="k">Kayıt</span><span class="v">' + esc(a.create_label || '—') + '</span></div>';
         html += '<div class="row"><span class="k">Durum</span><span class="v"><span class="badge ' + esc(a.status_badge || '') + '">' + esc(a.status_label || '—') + '</span></span></div>';
+        html += '<div class="row"><span class="k">2FA</span><span class="v">' + esc(totpLabel) + '</span></div>';
         html += '<div class="row"><span class="k">Elmas</span><span class="v">' + Number(a.cash || 0).toLocaleString('tr-TR') + '</span></div>';
         html += '<div class="row"><span class="k">Kurallar</span><span class="v">' + esc(a.rules_accepted_label || 'Hayır') + '</span></div>';
         if (ban) {
@@ -4695,7 +4702,7 @@ $can = static function (string $flag) use ($permFlags): bool {
         const targetWebPerm = Number(a.web_permission || 0);
         const targetIsSuper = targetWebPerm >= 2;
         const blockedOnTarget = !isSuperAdmin && targetIsSuper;
-        const canShowOpsSection = a.id && (canMailOps || isSuperAdmin || canResetSecurityCode || canResetSafebox || isReadOnlyAdmin || blockedOnTarget);
+        const canShowOpsSection = a.id && (canMailOps || isSuperAdmin || canResetSecurityCode || canResetSafebox || canDisable2fa || isReadOnlyAdmin || blockedOnTarget);
         if (canShowOpsSection) {
           html += '<div class="detail-ops"><h4>İşlemler</h4>';
 
@@ -4752,6 +4759,20 @@ $can = static function (string $flag) use ($permFlags): bool {
             html += '<div class="form-row"><label>Yeni depo şifresi (1–6 hane)</label><input name="safebox_password" type="text" inputmode="numeric" pattern="\\d{1,6}" maxlength="6" required placeholder="örn. 123456"></div>';
             html += '<button type="submit" class="btn btn-ghost btn-sm">Depo şifresini sıfırla</button>';
             html += '</div></form></div>';
+          }
+
+          if (canDisable2fa) {
+            html += '<div class="ops-block"><div class="ops-title">2FA</div>';
+            html += '<p style="margin:0 0 12px;font-size:.85rem;color:var(--ash);line-height:1.55;">Durum: <strong style="color:var(--ink);">' + esc(totpLabel) + '</strong>. Kapatınca TOTP anahtarı silinir; oyuncu yeniden kurmalı.</p>';
+            if (totpOn || totpPending) {
+              html += '<form method="post" action="' + esc(disable2faUrl) + '" onsubmit="return confirm(\'Bu hesabın 2FA doğrulaması kapatılsın mı?\');">';
+              html += '<input type="hidden" name="csrf_token" value="' + esc(csrfToken) + '">';
+              html += '<input type="hidden" name="account_id" value="' + esc(String(a.id)) + '">';
+              html += '<button type="submit" class="btn btn-ghost btn-sm">2FA kapat</button></form>';
+            } else {
+              html += '<p style="margin:0;font-size:.85rem;color:var(--ash);">Kapatılacak 2FA yok.</p>';
+            }
+            html += '</div>';
           }
           }
 

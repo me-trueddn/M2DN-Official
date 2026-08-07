@@ -672,7 +672,7 @@ final class Schema
             $readyId = (int) $pdo->query("SELECT id FROM permission_groups WHERE name = 'Ready Only' AND is_system = 1 LIMIT 1")->fetchColumn();
             $superId = (int) $pdo->query("SELECT id FROM permission_groups WHERE name = 'Super Admin' AND is_system = 1 LIMIT 1")->fetchColumn();
             $flags = [
-                'ban', 'player_detail', 'reset_security_code', 'reset_safebox_password',
+                'ban', 'player_detail', 'reset_security_code', 'reset_safebox_password', 'disable_2fa',
                 'announcements', 'tickets', 'site_settings',
                 'menu_oyuncular', 'menu_siralamalar', 'menu_binek', 'menu_gm', 'menu_ip_ban', 'menu_loncalar', 'menu_lonca_savaslari', 'menu_banlar', 'menu_duyurular', 'menu_destekler', 'menu_sunucu', 'menu_yasakli_kelimeler', 'menu_loglar', 'menu_nesne_market',
             ];
@@ -722,6 +722,7 @@ final class Schema
                 $insFlag->execute([(int) $gid, 'menu_nesne_market']);
                 $insFlag->execute([(int) $gid, 'reset_security_code']);
                 $insFlag->execute([(int) $gid, 'reset_safebox_password']);
+                $insFlag->execute([(int) $gid, 'disable_2fa']);
             }
         } catch (\Throwable) {
             // ignore
@@ -799,7 +800,7 @@ final class Schema
                 "DELETE FROM permission_group_flags
                  WHERE group_id = ? AND flag_key IN (
                    'ban','announcements','tickets','site_settings',
-                   'reset_security_code','reset_safebox_password'
+                   'reset_security_code','reset_safebox_password','disable_2fa'
                  )"
             )->execute([$readyId]);
         } catch (\Throwable) {

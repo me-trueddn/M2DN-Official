@@ -32,6 +32,7 @@ final class PermissionService
     public const FLAG_MENU_NESNE_MARKET = 'menu_nesne_market';
     public const FLAG_RESET_SECURITY_CODE = 'reset_security_code';
     public const FLAG_RESET_SAFEBOX = 'reset_safebox_password';
+    public const FLAG_DISABLE_2FA = 'disable_2fa';
     /** Ready Only grubu: menüleri görür, hiçbir şeyi değiştiremez. */
     public const FLAG_READ_ONLY = 'read_only';
     public const GROUP_READY_ONLY = 'Ready Only';
@@ -44,6 +45,7 @@ final class PermissionService
             self::FLAG_PLAYER_DETAIL => 'Oyuncu detayı görüntüleme',
             self::FLAG_RESET_SECURITY_CODE => 'Güvenlik kodu sıfırlama',
             self::FLAG_RESET_SAFEBOX => 'Depo şifresi sıfırlama',
+            self::FLAG_DISABLE_2FA => 'Hesap 2FA kapatma',
             self::FLAG_READ_ONLY => 'Salt okuma (Ready Only — hiçbir değişiklik yok)',
             self::FLAG_ANNOUNCEMENTS => 'Duyuru işlemleri',
             self::FLAG_TICKETS => 'Destek talebi işlemleri',

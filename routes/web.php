@@ -63,6 +63,7 @@ $router->post('/admin/oyuncu/sifre-link', [AdminPanelController::class, 'sendPas
 $router->post('/admin/oyuncu/sifre', [AdminPanelController::class, 'setPassword']);
 $router->post('/admin/oyuncu/depo', [AdminPanelController::class, 'setSafeboxPassword']);
 $router->post('/admin/oyuncu/guvenlik-kodu', [AdminPanelController::class, 'setSecurityCode']);
+$router->post('/admin/oyuncu/2fa-kapat', [AdminPanelController::class, 'disable2fa']);
 $router->post('/admin/evlilik/bitir', [AdminPanelController::class, 'divorce']);
 $router->post('/admin/banword/ekle', [AdminPanelController::class, 'addBanword']);
 $router->post('/admin/banword/sil', [AdminPanelController::class, 'deleteBanword']);
