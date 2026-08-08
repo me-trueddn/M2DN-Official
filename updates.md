@@ -4,6 +4,15 @@ Sürüm geçmişi. Yeni notlar en üste eklenir.
 
 Sürüm dosyası: `config/version.json`
 
+### 2026-08-08 — Sürüm 3.6.17 · Wiki çoklu alt kategori
+
+| Konu | Açıklama |
+|------|----------|
+| **Ağaç** | Admin listesi ana → alt sırası; bir ana altında sınırsız alt |
+| **Slug** | Ana kategoriler `main-{id}` (URL çakışması yok) |
+| **İçerik** | Alt kategori seçimi ana gruba göre `optgroup` |
+| **SQL** | `07_wiki_main_slug_normalize.sql` |
+
 ### 2026-08-08 — Sürüm 3.6.16 · Wiki sınıf kartı
 
 | Konu | Açıklama |

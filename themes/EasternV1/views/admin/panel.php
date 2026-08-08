@@ -3273,8 +3273,8 @@ $can = static function (string $flag) use ($permFlags): bool {
             <span style="font-size:.8rem;color:var(--ash);"><?= count($wikiCategories) ?> kayıt</span>
           </div>
           <p style="font-size:.8rem;color:var(--ash);margin-bottom:12px;line-height:1.55;">
-            Ana kategoriler (Başlangıç, Karakter, Dünya gibi) üst gruplardır. Normal kategoriler bir ana kategoriye bağlanır.
-            <strong style="color:var(--gold-light);">Başlangıç</strong> radyosu: `/wiki` adresinde açılacak alt sayfayı seçer.
+            Ana kategoriler üst gruptur. <strong style="color:var(--gold-light);">Bir ana kategorinin altında birden fazla alt kategori</strong> olabilir (ör. Karakter → Savaşçı, Ninja, Sura…).
+            Alt kategoriler sayfa URL’si alır (`/wiki/slug.html`). <strong style="color:var(--gold-light);">Başlangıç</strong> radyosu: `/wiki` yönlendirmesi.
             <?php if (!$canWikiEdit): ?>
               <br><span style="color:var(--blood-light);">Bu hesapta wiki kategori düzenleme yetkisi yok (salt görüntüleme).</span>
             <?php endif; ?>
@@ -3306,7 +3306,7 @@ $can = static function (string $flag) use ($permFlags): bool {
                     <?php endif; ?>
                   </td>
                   <td><?= (int) $wc['sort_order'] ?></td>
-                  <td><?= e((string) $wc['name']) ?><?php if (empty($wc['is_main']) && trim((string) ($wc['slug'] ?? '')) !== ''): ?><br><code style="font-size:.7rem;color:var(--ash);">/wiki/<?= e((string) $wc['slug']) ?>.html</code><?php endif; ?><?php if (!empty($wc['is_wiki_home'])): ?> <span class="badge ok" style="margin-left:4px;">/wiki</span><?php endif; ?></td>
+                  <td><?php if (empty($wc['is_main'])): ?><span style="color:var(--ash);margin-right:6px;">↳</span><?php endif; ?><?= e((string) $wc['name']) ?><?php if (empty($wc['is_main']) && trim((string) ($wc['slug'] ?? '')) !== '' && !str_starts_with((string) ($wc['slug'] ?? ''), 'main-')): ?><br><code style="font-size:.7rem;color:var(--ash);">/wiki/<?= e((string) $wc['slug']) ?>.html</code><?php endif; ?><?php if (!empty($wc['is_wiki_home'])): ?> <span class="badge ok" style="margin-left:4px;">/wiki</span><?php endif; ?></td>
                   <td><?= !empty($wc['is_main']) ? '<span class="badge ok">Ana</span>' : '<span class="badge">Normal</span>' ?></td>
                   <td><?= !empty($wc['is_main']) ? '—' : e((string) ($wc['parent_name'] ?? '—')) ?></td>
                   <td><?= !empty($wc['is_active']) ? '<span class="badge ok">Aktif</span>' : '<span class="badge ban">Pasif</span>' ?></td>
@@ -3359,7 +3359,7 @@ $can = static function (string $flag) use ($permFlags): bool {
               <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;cursor:pointer;">
                 <input type="checkbox" name="is_main" id="wikiCatIsMain" value="1" style="width:auto;"> Ana Kategoridir
               </label>
-              <p style="font-size:.75rem;color:var(--ash);margin-top:6px;">İşaretliyse üst grup (Başlangıç / Karakter / Dünya gibi). Değilse aşağıdan ana kategori seçin.</p>
+              <p style="font-size:.75rem;color:var(--ash);margin-top:6px;">İşaretliyse üst grup. Değilse aşağıdan ana kategori seçin — aynı ana altına istediğiniz kadar alt ekleyebilirsiniz.</p>
             </div>
             <div class="form-row" id="wikiCatParentWrap">
               <label>Ana Kategori</label>
@@ -3554,12 +3554,28 @@ $can = static function (string $flag) use ($permFlags): bool {
               <label>Alt kategori</label>
               <select name="category_id" id="wikiPageCategory" required>
                 <option value="">— Seçin —</option>
-                <?php foreach ($wikiChildCategories as $wc): ?>
-                  <option value="<?= (int) $wc['id'] ?>">
-                    <?= e(trim((string) (($wc['parent_name'] ?? '') !== '' ? ($wc['parent_name'] . ' › ' . $wc['name']) : $wc['name']))) ?>
-                  </option>
+                <?php
+                  $wikiChildByParent = [];
+                  foreach ($wikiChildCategories as $wcOpt) {
+                      $pLabel = trim((string) ($wcOpt['parent_name'] ?? ''));
+                      if ($pLabel === '') {
+                          $pLabel = 'Diğer';
+                      }
+                      if (!isset($wikiChildByParent[$pLabel])) {
+                          $wikiChildByParent[$pLabel] = [];
+                      }
+                      $wikiChildByParent[$pLabel][] = $wcOpt;
+                  }
+                ?>
+                <?php foreach ($wikiChildByParent as $pLabel => $childOpts): ?>
+                  <optgroup label="<?= e((string) $pLabel) ?>">
+                    <?php foreach ($childOpts as $wc): ?>
+                      <option value="<?= (int) $wc['id'] ?>"><?= e((string) ($wc['name'] ?? '')) ?></option>
+                    <?php endforeach; ?>
+                  </optgroup>
                 <?php endforeach; ?>
               </select>
+              <p style="font-size:.75rem;color:var(--ash);margin-top:6px;">Her alt kategori için ayrı içerik. Aynı ana grup altında birden fazla alt seçilebilir.</p>
             </div>
             <div class="form-row">
               <label>İçerik tipi</label>

@@ -1070,7 +1070,7 @@ final class Schema
     private static function backfillWikiCategorySlugs(PDO $pdo): void
     {
         try {
-            $rows = $pdo->query('SELECT id, name, slug FROM wiki_categories')->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $rows = $pdo->query('SELECT id, name, slug, is_main FROM wiki_categories')->fetchAll(PDO::FETCH_ASSOC) ?: [];
         } catch (\Throwable) {
             return;
         }
@@ -1083,12 +1083,27 @@ final class Schema
         }
         foreach ($rows as $row) {
             $id = (int) ($row['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            // Ana kategoriler: URL’ye çıkmayan sabit slug (çoklu alt ile çakışmaz)
+            if ((int) ($row['is_main'] ?? 0) === 1) {
+                $mainSlug = 'main-' . $id;
+                if (trim((string) ($row['slug'] ?? '')) !== $mainSlug) {
+                    $pdo->prepare('UPDATE wiki_categories SET slug = ? WHERE id = ?')->execute([$mainSlug, $id]);
+                }
+                $used[$mainSlug] = true;
+                continue;
+            }
             $slug = trim((string) ($row['slug'] ?? ''));
-            $needs = $slug === '' || preg_match('/^cat-\d+$/', $slug) === 1;
+            $needs = $slug === '' || preg_match('/^cat-\d+$/', $slug) === 1 || preg_match('/^main-\d+$/', $slug) === 1;
             if (!$needs) {
                 continue;
             }
             $base = self::slugifyWikiName((string) ($row['name'] ?? ''), $id);
+            if ($base === '' || preg_match('/^main(-\d+)?$/i', $base) === 1) {
+                $base = 'sayfa-' . $id;
+            }
             $candidate = $base;
             $n = 2;
             while (isset($used[$candidate])) {

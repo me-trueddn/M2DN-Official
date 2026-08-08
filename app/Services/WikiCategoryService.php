@@ -28,11 +28,38 @@ final class WikiCategoryService
             if ($activeOnly) {
                 $sql .= ' WHERE c.is_active = 1';
             }
-            $sql .= ' ORDER BY c.is_main DESC, COALESCE(c.parent_id, c.id) ASC, c.sort_order ASC, c.id ASC';
+            $sql .= ' ORDER BY c.sort_order ASC, c.id ASC';
             $rows = Database::web()->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
-            $out = [];
+            $mains = [];
+            $childrenByParent = [];
+            $orphans = [];
             foreach ($rows as $row) {
-                $out[] = self::map($row);
+                $mapped = self::map($row);
+                if (!empty($mapped['is_main'])) {
+                    $mains[] = $mapped;
+                    continue;
+                }
+                $pid = (int) ($mapped['parent_id'] ?? 0);
+                if ($pid > 0) {
+                    if (!isset($childrenByParent[$pid])) {
+                        $childrenByParent[$pid] = [];
+                    }
+                    $childrenByParent[$pid][] = $mapped;
+                } else {
+                    $orphans[] = $mapped;
+                }
+            }
+
+            // Ana → altlar (bir ana altında birden fazla alt) sırası
+            $out = [];
+            foreach ($mains as $main) {
+                $out[] = $main;
+                foreach ($childrenByParent[(int) $main['id']] ?? [] as $child) {
+                    $out[] = $child;
+                }
+            }
+            foreach ($orphans as $orphan) {
+                $out[] = $orphan;
             }
             return $out;
         } catch (\Throwable) {
@@ -202,11 +229,6 @@ final class WikiCategoryService
             return ['ok' => false, 'errors' => ['Kategori adı en fazla 120 karakter olabilir.']];
         }
 
-        $slug = self::slugify($slugIn !== '' ? $slugIn : $name);
-        if ($slug === '') {
-            return ['ok' => false, 'errors' => ['Geçersiz slug.']];
-        }
-
         try {
             $web = Database::web();
 
@@ -230,7 +252,18 @@ final class WikiCategoryService
                 }
             }
 
-            $slug = self::uniqueSlug($web, $slug, $id);
+            $slug = '';
+            if (!$isMain) {
+                $base = self::slugify($slugIn !== '' ? $slugIn : $name);
+                if ($base === '') {
+                    return ['ok' => false, 'errors' => ['Geçersiz slug.']];
+                }
+                // Ana kategori slug'ları (main-*) URL alanına karışmasın
+                if (preg_match('/^main(-\d+)?$/i', $base) === 1) {
+                    $base = 'sayfa-' . $base;
+                }
+                $slug = self::uniqueSlug($web, $base, $id);
+            }
 
             if ($id > 0) {
                 $cur = $web->prepare('SELECT id, is_main FROM wiki_categories WHERE id = ? LIMIT 1');
@@ -247,6 +280,10 @@ final class WikiCategoryService
                     if ((int) $childCnt->fetchColumn() > 0) {
                         return ['ok' => false, 'errors' => ['Alt kategorisi olan ana kategori normale çevrilemez. Önce altları taşıyın veya silin.']];
                     }
+                }
+
+                if ($isMain) {
+                    $slug = 'main-' . $id;
                 }
 
                 $web->prepare(
@@ -269,6 +306,10 @@ final class WikiCategoryService
                 return ['ok' => true, 'errors' => [], 'id' => $id];
             }
 
+            if ($isMain) {
+                $slug = 'main-tmp-' . bin2hex(random_bytes(3));
+            }
+
             $web->prepare(
                 'INSERT INTO wiki_categories (name, slug, is_main, parent_id, sort_order, is_active, is_wiki_home, created_at, updated_at)
                  VALUES (?,?,?,?,?,?,?,NOW(),NOW())'
@@ -282,11 +323,19 @@ final class WikiCategoryService
                 $isHome ? 1 : 0,
             ]);
             $newId = (int) $web->lastInsertId();
+            if ($isMain && $newId > 0) {
+                $web->prepare('UPDATE wiki_categories SET slug = ?, updated_at = NOW() WHERE id = ?')
+                    ->execute(['main-' . $newId, $newId]);
+            }
             if ($isHome && $newId > 0) {
                 self::clearOtherHomes($web, $newId);
             }
             return ['ok' => true, 'errors' => [], 'id' => $newId];
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            $msg = $e->getMessage();
+            if (stripos($msg, 'Duplicate') !== false || stripos($msg, '1062') !== false) {
+                return ['ok' => false, 'errors' => ['Bu slug zaten kullanılıyor. Farklı bir URL slug deneyin.']];
+            }
             return ['ok' => false, 'errors' => ['Kayıt başarısız.']];
         }
     }
