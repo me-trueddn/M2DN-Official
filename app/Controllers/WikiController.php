@@ -9,6 +9,7 @@ use App\Services\AuthService;
 use App\Services\SiteContentService;
 use App\Services\WikiCategoryService;
 use App\Services\WikiPageService;
+use App\Services\WikiTeamService;
 
 final class WikiController
 {
@@ -47,11 +48,17 @@ final class WikiController
 
         $pages = WikiPageService::mapByCategory(true);
         $page = $pages[(int) $category['id']] ?? null;
+        $teamMembers = [];
+        if (is_array($page) && (string) ($page['content_type_slug'] ?? '') === WikiTeamService::SLUG_TAKIMIZ) {
+            $teamMembers = WikiTeamService::listByPage((int) $page['id'], true);
+        }
 
         $this->renderWiki([
             'wikiMode' => 'page',
             'wikiCategory' => $category,
             'wikiPage' => $page,
+            'wikiTeamMembers' => $teamMembers,
+            'wikiTeamGroups' => WikiTeamService::groups(),
             'wikiCurrentSlug' => (string) ($category['slug'] ?? $slug),
         ]);
     }

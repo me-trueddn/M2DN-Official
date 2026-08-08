@@ -67,6 +67,10 @@ final class WikiPageService
         $title = trim((string) ($input['title'] ?? ''));
         $body = (string) ($input['body_html'] ?? '');
         $active = !empty($input['is_active']) ? 1 : 0;
+        /** @var list<array<string,mixed>>|null $teamMembers */
+        $teamMembers = isset($input['team_members']) && is_array($input['team_members'])
+            ? $input['team_members']
+            : null;
 
         if ($categoryId <= 0) {
             return ['ok' => false, 'errors' => ['Kategori seçin.']];
@@ -79,11 +83,6 @@ final class WikiPageService
         }
         if (mb_strlen($title) > 200) {
             return ['ok' => false, 'errors' => ['Başlık en fazla 200 karakter olabilir.']];
-        }
-
-        $body = self::sanitizeHtml($body);
-        if (trim(strip_tags($body)) === '' && !str_contains($body, '<img')) {
-            return ['ok' => false, 'errors' => ['İçerik boş olamaz.']];
         }
 
         try {
@@ -103,6 +102,21 @@ final class WikiPageService
                 return ['ok' => false, 'errors' => ['Geçersiz veya pasif içerik tipi.']];
             }
 
+            $isTeam = ($type['slug'] ?? '') === WikiContentTypeService::SLUG_TAKIMIZ
+                || ($type['slug'] ?? '') === WikiTeamService::SLUG_TAKIMIZ;
+
+            if ($isTeam) {
+                $body = '';
+                if ($teamMembers === null || $teamMembers === []) {
+                    return ['ok' => false, 'errors' => ['Takımımız için en az bir üye ekleyin.']];
+                }
+            } else {
+                $body = self::sanitizeHtml($body);
+                if (trim(strip_tags($body)) === '' && !str_contains($body, '<img')) {
+                    return ['ok' => false, 'errors' => ['İçerik boş olamaz.']];
+                }
+            }
+
             $dup = $web->prepare(
                 'SELECT id FROM wiki_pages WHERE category_id = ? AND id <> ? LIMIT 1'
             );
@@ -117,14 +131,23 @@ final class WikiPageService
                      SET category_id=?, content_type_id=?, title=?, body_html=?, is_active=?, updated_at=NOW()
                      WHERE id=?'
                 )->execute([$categoryId, $typeId, $title, $body, $active, $id]);
-                return ['ok' => true, 'errors' => [], 'id' => $id];
+                $pageId = $id;
+            } else {
+                $web->prepare(
+                    'INSERT INTO wiki_pages (category_id, content_type_id, title, body_html, is_active, created_at, updated_at)
+                     VALUES (?,?,?,?,?,NOW(),NOW())'
+                )->execute([$categoryId, $typeId, $title, $body, $active]);
+                $pageId = (int) $web->lastInsertId();
             }
 
-            $web->prepare(
-                'INSERT INTO wiki_pages (category_id, content_type_id, title, body_html, is_active, created_at, updated_at)
-                 VALUES (?,?,?,?,?,NOW(),NOW())'
-            )->execute([$categoryId, $typeId, $title, $body, $active]);
-            return ['ok' => true, 'errors' => [], 'id' => (int) $web->lastInsertId()];
+            if ($isTeam && $pageId > 0) {
+                $teamResult = WikiTeamService::replaceForPage($pageId, $teamMembers ?? []);
+                if (empty($teamResult['ok'])) {
+                    return ['ok' => false, 'errors' => $teamResult['errors'] ?? ['Takım üyeleri kaydedilemedi.']];
+                }
+            }
+
+            return ['ok' => true, 'errors' => [], 'id' => $pageId];
         } catch (\Throwable) {
             return ['ok' => false, 'errors' => ['Kayıt başarısız.']];
         }

@@ -13,6 +13,7 @@ Admin menü **Wiki → Kategoriler / İçerik Tipleri / İçerikler**.
 | **5** | `05_wiki_category_slug.sql` | Eski tabloda `slug` yoksa ekler (yoksa no-op) |
 | **6** | `06_wiki_home.sql` | Eski tabloda `is_wiki_home` yoksa ekler (yoksa no-op) |
 | **7** | `07_wiki_main_slug_normalize.sql` | Ana kategorileri `main-{id}` slug’a çeker (çoklu alt güvenliği) |
+| **8** | `08_wiki_team.sql` | İçerik tipi **Takımımız** + `wiki_team_members` |
 
 ```bash
 mysql -u USER -p DNWeb < database/2026-08-07-wiki-yonetim/01_wiki_flags.sql
@@ -22,6 +23,7 @@ mysql -u USER -p DNWeb < database/2026-08-07-wiki-yonetim/04_wiki_content.sql
 mysql -u USER -p DNWeb < database/2026-08-07-wiki-yonetim/05_wiki_category_slug.sql
 mysql -u USER -p DNWeb < database/2026-08-07-wiki-yonetim/06_wiki_home.sql
 mysql -u USER -p DNWeb < database/2026-08-07-wiki-yonetim/07_wiki_main_slug_normalize.sql
+mysql -u USER -p DNWeb < database/2026-08-07-wiki-yonetim/08_wiki_team.sql
 ```
 
 Public URL: `/wiki/{slug}.html` (yalnızca alt kategoriler). `/wiki` başlangıç sayfası admin’de **Başlangıç** radyosu ile seçilir.

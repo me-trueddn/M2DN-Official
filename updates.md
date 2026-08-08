@@ -4,6 +4,15 @@ Sürüm geçmişi. Yeni notlar en üste eklenir.
 
 Sürüm dosyası: `config/version.json`
 
+### 2026-08-08 — Sürüm 3.7.0 · Wiki Takımımız içerik tipi
+
+| Konu | Açıklama |
+|------|----------|
+| **Tip** | Seed: `takimiz` / Takımımız |
+| **Admin** | Tip seçilince üye kartı editörü (nick, rol, grup, resim, bio, katılım, sosyal) |
+| **Public** | Filtre sekmeleri + takım kart grid’i |
+| **SQL** | `08_wiki_team.sql` → `wiki_team_members` |
+
 ### 2026-08-08 — Sürüm 3.6.19 · Wiki editör: linkten resim
 
 | Konu | Açıklama |

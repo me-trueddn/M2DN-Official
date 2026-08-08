@@ -361,6 +361,21 @@ final class AdminPanelController
                 || !empty($permFlags[PermissionService::FLAG_WIKI_MANAGE]))
                 ? WikiPageService::list(false)
                 : [],
+            'wikiTeamGroups' => \App\Services\WikiTeamService::groups(),
+            'wikiTeamRoles' => \App\Services\WikiTeamService::roles(),
+            'wikiTeamByPage' => (!empty($permFlags[PermissionService::FLAG_MENU_WIKI])
+                || !empty($permFlags[PermissionService::FLAG_WIKI_MANAGE]))
+                ? (static function (): array {
+                    $map = [];
+                    foreach (WikiPageService::list(false) as $p) {
+                        if ((string) ($p['content_type_slug'] ?? '') !== \App\Services\WikiTeamService::SLUG_TAKIMIZ) {
+                            continue;
+                        }
+                        $map[(int) $p['id']] = \App\Services\WikiTeamService::listByPage((int) $p['id'], false);
+                    }
+                    return $map;
+                })()
+                : [],
             'marketCategories' => (!empty($permFlags[PermissionService::FLAG_MENU_NESNE_MARKET])
                 || !empty($permFlags[PermissionService::FLAG_SITE_SETTINGS]))
                 ? \App\Services\MarketCategoryService::list(false)

@@ -13,6 +13,8 @@
 /** @var array|null $wikiCategory */
 /** @var array|null $wikiPage */
 /** @var string $wikiCurrentSlug */
+/** @var list<array> $wikiTeamMembers */
+/** @var array $wikiTeamGroups */
 
 $appName = isset($appName) && is_string($appName) && $appName !== '' ? $appName : 'M2DN';
 $appVersion = (string) ($appVersion ?? '');
@@ -28,6 +30,8 @@ $wikiMode = isset($wikiMode) && is_string($wikiMode) ? $wikiMode : 'index';
 $wikiCategory = is_array($wikiCategory ?? null) ? $wikiCategory : null;
 $wikiPage = is_array($wikiPage ?? null) ? $wikiPage : null;
 $wikiCurrentSlug = isset($wikiCurrentSlug) && is_string($wikiCurrentSlug) ? $wikiCurrentSlug : '';
+$wikiTeamMembers = isset($wikiTeamMembers) && is_array($wikiTeamMembers) ? $wikiTeamMembers : [];
+$wikiTeamGroups = isset($wikiTeamGroups) && is_array($wikiTeamGroups) ? $wikiTeamGroups : \App\Services\WikiTeamService::groups();
 $siteSocials = is_array($siteSocials ?? null) ? $siteSocials : [];
 $siteFooterLinks = is_array($siteFooterLinks ?? null) ? $siteFooterLinks : [];
 $siteFooter = is_array($siteFooter ?? null) ? $siteFooter : [];
@@ -243,6 +247,69 @@ $footerHref = static function (string $url): string {
     margin:0; font-size:.85rem; color:var(--ash); line-height:1.6; max-width:none;
   }
 
+  /* ---------- WIKI TEAM ---------- */
+  .wiki-team{max-width:920px; margin:0 auto;}
+  .wiki-team-filters{
+    display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:0 0 28px;
+  }
+  .wiki-team-filters button{
+    background:transparent; border:1px solid var(--line); color:var(--ash);
+    padding:10px 16px; font-size:.72rem; letter-spacing:.08em; text-transform:uppercase;
+    font-family:inherit; cursor:pointer; transition:border-color .2s, color .2s, background .2s;
+  }
+  .wiki-team-filters button:hover{color:var(--parchment); border-color:rgba(201,151,74,.45);}
+  .wiki-team-filters button.active{
+    color:var(--gold-light); border-color:var(--gold); background:rgba(201,151,74,.08);
+  }
+  .wiki-team-grid{
+    display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:18px;
+  }
+  .wiki-team-card{
+    border:1px solid rgba(201,151,74,.18); background:var(--obsidian);
+    padding:28px 22px 20px; text-align:center;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  .wiki-team-avatar{
+    width:96px; height:96px; border-radius:50%; padding:3px; margin-bottom:16px;
+    background:linear-gradient(160deg, var(--gold), #a84d7a 70%);
+  }
+  .wiki-team-avatar > span,
+  .wiki-team-avatar > img{
+    display:block; width:100%; height:100%; border-radius:50%; object-fit:cover;
+    background:var(--obsidian-2); border:2px solid var(--obsidian);
+  }
+  .wiki-team-avatar .ph{
+    display:flex; align-items:center; justify-content:center; color:var(--ash); font-size:1.6rem;
+  }
+  .wiki-team-card h3{
+    margin:0 0 10px; font-size:1.15rem; color:var(--parchment); font-family:var(--font-display);
+    text-transform:uppercase; letter-spacing:.04em;
+  }
+  .wiki-team-badge{
+    display:inline-block; padding:5px 10px; font-size:.68rem; letter-spacing:.06em;
+    text-transform:uppercase; color:#f2e8d8; margin-bottom:12px;
+  }
+  .wiki-team-badge.mgmt{background:rgba(143,28,41,.85);}
+  .wiki-team-badge.dev{background:rgba(51,89,74,.9);}
+  .wiki-team-badge.gm{background:rgba(168,120,40,.9);}
+  .wiki-team-badge.support{background:rgba(60,100,120,.9);}
+  .wiki-team-bio{
+    color:var(--ash); font-size:.84rem; line-height:1.65; margin:0 0 16px; max-width:34ch;
+  }
+  .wiki-team-divider{
+    width:100%; height:1px; background:rgba(201,151,74,.12); margin:0 0 12px;
+  }
+  .wiki-team-joined{
+    color:var(--ash); font-size:.72rem; letter-spacing:.06em; text-transform:uppercase; margin:0 0 14px;
+  }
+  .wiki-team-socials{display:flex; gap:8px; justify-content:center; flex-wrap:wrap;}
+  .wiki-team-socials a{
+    width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center;
+    border:1px solid var(--line); color:var(--ash); font-size:.85rem;
+  }
+  .wiki-team-socials a:hover{color:var(--gold-light); border-color:rgba(201,151,74,.45);}
+  .wiki-team-card.is-hidden{display:none;}
+
   footer{padding:70px 0 30px; background:var(--obsidian-2); border-top:1px solid rgba(201,151,74,.12);}
   .footer-top{display:flex; justify-content:space-between; flex-wrap:wrap; gap:40px; padding-bottom:50px; border-bottom:1px solid rgba(201,151,74,.1);}
   .footer-brand p{color:var(--ash); max-width:320px; margin-top:14px; font-size:.9rem; line-height:1.7;}
@@ -277,6 +344,7 @@ $footerHref = static function (string $url): string {
     .nav-actions .nav-cta span.hide-sm{display:none;}
     .wiki-class-row{justify-content:center;}
     .wiki-class-card{flex-basis:100%; width:100%; max-width:320px; height:400px;}
+    .wiki-team-grid{grid-template-columns:1fr;}
   }
 </style>
 </head>
@@ -392,10 +460,66 @@ $footerHref = static function (string $url): string {
         <?php
           $pageBody = is_array($wikiPage) ? (string) ($wikiPage['body_html'] ?? '') : '';
           $typeSlug = is_array($wikiPage) ? (string) ($wikiPage['content_type_slug'] ?? '') : '';
+          $pageTitle = is_array($wikiPage) ? (string) ($wikiPage['title'] ?? '') : '';
         ?>
         <section>
           <p style="margin-bottom:18px;"><a href="<?= e(url('/wiki')) ?>" style="color:var(--gold-light);font-size:.85rem;"><i class="fa-solid fa-arrow-left"></i> Wiki’ye dön</a></p>
-          <?php if ($pageBody !== '' && ($typeSlug === '' || $typeSlug === 'basit-metin')): ?>
+          <?php if ($typeSlug === 'takimiz'): ?>
+            <div class="wiki-team" id="wikiTeam">
+              <?php if ($pageTitle !== ''): ?>
+                <div class="section-title" style="text-align:center;margin-bottom:22px;">
+                  <div class="eyebrow">Ekip</div>
+                  <h2><?= e($pageTitle) ?></h2>
+                </div>
+              <?php endif; ?>
+              <div class="wiki-team-filters" id="wikiTeamFilters">
+                <button type="button" class="active" data-team-filter="all">Tümü</button>
+                <?php foreach ($wikiTeamGroups as $gk => $ginfo): ?>
+                  <button type="button" data-team-filter="<?= e((string) $gk) ?>"><?= e((string) ($ginfo['filter'] ?? $ginfo['label'] ?? $gk)) ?></button>
+                <?php endforeach; ?>
+              </div>
+              <?php if ($wikiTeamMembers === []): ?>
+                <p class="wiki-empty" style="text-align:center;">Henüz takım üyesi yok.</p>
+              <?php else: ?>
+                <div class="wiki-team-grid">
+                  <?php foreach ($wikiTeamMembers as $tm): ?>
+                    <?php
+                      $img = trim((string) ($tm['image_url'] ?? ''));
+                      $badge = (string) ($tm['badge_color'] ?? 'mgmt');
+                      $joined = trim((string) ($tm['joined_label'] ?? ''));
+                      $socials = is_array($tm['socials'] ?? null) ? $tm['socials'] : [];
+                    ?>
+                    <article class="wiki-team-card" data-team-group="<?= e((string) ($tm['group_key'] ?? '')) ?>">
+                      <div class="wiki-team-avatar">
+                        <?php if ($img !== ''): ?>
+                          <img src="<?= e($img) ?>" alt="<?= e((string) ($tm['nick'] ?? '')) ?>" loading="lazy">
+                        <?php else: ?>
+                          <span class="ph"><i class="fa-solid fa-user"></i></span>
+                        <?php endif; ?>
+                      </div>
+                      <h3><?= e((string) ($tm['nick'] ?? '')) ?></h3>
+                      <div class="wiki-team-badge <?= e($badge) ?>"><?= e((string) ($tm['role_label'] ?? '')) ?></div>
+                      <?php if (trim((string) ($tm['bio'] ?? '')) !== ''): ?>
+                        <p class="wiki-team-bio"><?= e((string) $tm['bio']) ?></p>
+                      <?php endif; ?>
+                      <div class="wiki-team-divider"></div>
+                      <?php if ($joined !== ''): ?>
+                        <p class="wiki-team-joined"><?= e($joined) ?></p>
+                      <?php endif; ?>
+                      <?php if ($socials !== []): ?>
+                        <div class="wiki-team-socials">
+                          <?php foreach ($socials as $soc): ?>
+                            <?php if (trim((string) ($soc['url'] ?? '')) === '') continue; ?>
+                            <a href="<?= e((string) $soc['url']) ?>" target="_blank" rel="noopener noreferrer" title="<?= e((string) ($soc['label'] ?? 'Link')) ?>"><i class="fa-solid fa-link"></i></a>
+                          <?php endforeach; ?>
+                        </div>
+                      <?php endif; ?>
+                    </article>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
+            </div>
+          <?php elseif ($pageBody !== '' && ($typeSlug === '' || $typeSlug === 'basit-metin')): ?>
             <div class="wiki-prose"><?= $pageBody ?></div>
           <?php elseif ($pageBody !== ''): ?>
             <p class="wiki-empty">Bu içerik tipi henüz desteklenmiyor.</p>
@@ -431,11 +555,13 @@ $footerHref = static function (string $url): string {
                 <p style="margin:0 0 12px;"><a href="<?= e($mainPageHref) ?>" style="color:var(--gold-light);font-size:.85rem;">Sayfayı aç <i class="fa-solid fa-arrow-right"></i></a></p>
               <?php endif; ?>
             </div>
-            <?php if ($mainBody !== '' && ($mainTypeSlug === '' || $mainTypeSlug === 'basit-metin')): ?>
+            <?php if ($mainTypeSlug === 'takimiz'): ?>
+              <p class="wiki-empty" style="margin-bottom:14px;">Takım sayfası — <a href="<?= e($mainPageHref !== '' ? $mainPageHref : url('/wiki')) ?>" style="color:var(--gold-light);">üyeleri görüntüle</a>.</p>
+            <?php elseif ($mainBody !== '' && ($mainTypeSlug === '' || $mainTypeSlug === 'basit-metin')): ?>
               <div class="wiki-prose" style="margin-bottom:22px;"><?= $mainBody ?></div>
             <?php endif; ?>
             <?php if ($children === []): ?>
-              <?php if ($mainBody === ''): ?>
+              <?php if ($mainTypeSlug !== 'takimiz' && $mainBody === '' && !is_array($mainPage)): ?>
                 <p class="wiki-empty">Bu bölüm için henüz sayfa yok.</p>
               <?php endif; ?>
             <?php else: ?>
@@ -568,6 +694,22 @@ $footerHref = static function (string $url): string {
     );
     if (match) match.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
+
+  (function wikiTeamFilter() {
+    const filters = document.getElementById('wikiTeamFilters');
+    if (!filters) return;
+    const cards = document.querySelectorAll('.wiki-team-card[data-team-group]');
+    filters.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-team-filter]');
+      if (!btn) return;
+      const key = btn.dataset.teamFilter || 'all';
+      filters.querySelectorAll('[data-team-filter]').forEach(b => b.classList.toggle('active', b === btn));
+      cards.forEach(card => {
+        const g = card.getAttribute('data-team-group') || '';
+        card.classList.toggle('is-hidden', key !== 'all' && g !== key);
+      });
+    });
+  })();
 </script>
 </body>
 </html>

@@ -3436,7 +3436,7 @@ $can = static function (string $flag) use ($permFlags): bool {
                       <input type="hidden" name="is_active" value="<?= !empty($wt['is_active']) ? '0' : '1' ?>">
                       <button type="submit" title="Aç/Kapat"><?= !empty($wt['is_active']) ? '<i class="fa-solid fa-toggle-on"></i>' : '<i class="fa-solid fa-toggle-off"></i>' ?></button>
                     </form>
-                    <?php if ((string) ($wt['slug'] ?? '') !== 'basit-metin'): ?>
+                    <?php if ((string) ($wt['slug'] ?? '') !== 'basit-metin' && (string) ($wt['slug'] ?? '') !== 'takimiz'): ?>
                     <form method="post" action="<?= e(url('/admin/wiki/icerik-tipi/sil')) ?>" style="display:inline;" onsubmit="return confirm('İçerik tipi silinsin mi?');">
                       <?= $csrf ?>
                       <input type="hidden" name="id" value="<?= (int) $wt['id'] ?>">
@@ -3507,6 +3507,15 @@ $can = static function (string $flag) use ($permFlags): bool {
                 <tr><td colspan="5" style="color:var(--ash);">İçerik yok.</td></tr>
               <?php else: ?>
                 <?php foreach ($wikiPages as $wp): ?>
+                <?php
+                  $teamMembersForPage = [];
+                  if ((string) ($wp['content_type_slug'] ?? '') === 'takimiz') {
+                      $teamMembersForPage = (isset($wikiTeamByPage) && is_array($wikiTeamByPage))
+                        ? ($wikiTeamByPage[(int) $wp['id']] ?? [])
+                        : [];
+                  }
+                  $teamB64 = base64_encode(json_encode($teamMembersForPage, JSON_UNESCAPED_UNICODE) ?: '[]');
+                ?>
                 <tr>
                   <td><?= e((string) $wp['title']) ?></td>
                   <td><?= e((string) $wp['category_name']) ?></td>
@@ -3520,7 +3529,9 @@ $can = static function (string $flag) use ($permFlags): bool {
                       data-title="<?= e((string) $wp['title']) ?>"
                       data-category="<?= (int) $wp['category_id'] ?>"
                       data-type="<?= (int) $wp['content_type_id'] ?>"
+                      data-type-slug="<?= e((string) ($wp['content_type_slug'] ?? '')) ?>"
                       data-body-b64="<?= e(base64_encode((string) $wp['body_html'])) ?>"
+                      data-team-b64="<?= e($teamB64) ?>"
                       data-active="<?= !empty($wp['is_active']) ? '1' : '0' ?>"
                     ><i class="fa-solid fa-pen"></i></button>
                     <form method="post" action="<?= e(url('/admin/wiki/icerik/toggle')) ?>" style="display:inline;">
@@ -3549,6 +3560,7 @@ $can = static function (string $flag) use ($permFlags): bool {
             <?= $csrf ?>
             <input type="hidden" name="id" id="wikiPageId" value="">
             <input type="hidden" name="body_html" id="wikiPageBody" value="">
+            <input type="hidden" name="team_members_json" id="wikiTeamMembersJson" value="[]">
             <div class="form-row"><label>Başlık</label><input name="title" id="wikiPageTitle" required maxlength="200" placeholder="Oyunu tanıyın"></div>
             <div class="form-row">
               <label>Kategori</label>
@@ -3594,11 +3606,11 @@ $can = static function (string $flag) use ($permFlags): bool {
               <label>İçerik tipi</label>
               <select name="content_type_id" id="wikiPageType" required>
                 <?php foreach ($wikiContentTypesActive as $wt): ?>
-                  <option value="<?= (int) $wt['id'] ?>"<?= (int) $wt['id'] === $defaultTypeId ? ' selected' : '' ?>><?= e((string) $wt['name']) ?></option>
+                  <option value="<?= (int) $wt['id'] ?>" data-slug="<?= e((string) ($wt['slug'] ?? '')) ?>"<?= (int) $wt['id'] === $defaultTypeId ? ' selected' : '' ?>><?= e((string) $wt['name']) ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="form-row">
+            <div class="form-row" id="wikiBasitMetinWrap">
               <label>İçerik</label>
               <div id="wikiEditorWrap">
                 <div class="ann-toolbar" id="wikiToolbar">
@@ -3630,6 +3642,14 @@ $can = static function (string $flag) use ($permFlags): bool {
                 <textarea id="wikiHtmlPanel" spellcheck="false" aria-label="HTML kaynak"></textarea>
               </div>
               <input type="file" id="wikiImageFile" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none;">
+            </div>
+            <div id="wikiTeamWrap" style="display:none;">
+              <div class="form-row" style="margin-bottom:10px;">
+                <label>Takım üyeleri</label>
+                <p style="font-size:.75rem;color:var(--ash);margin:0 0 10px;line-height:1.5;">Nick, tip kartı ve bağlı grup zorunlu. Resim dosya veya URL ile eklenebilir.</p>
+                <div id="wikiTeamList" style="display:flex;flex-direction:column;gap:12px;"></div>
+                <button type="button" class="btn btn-ghost btn-sm" id="wikiTeamAdd" style="margin-top:10px;"><i class="fa-solid fa-plus"></i> Üye ekle</button>
+              </div>
             </div>
             <div class="form-row"><label><input type="checkbox" name="is_active" id="wikiPageActive" value="1" checked> Aktif yayınla</label></div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -5229,10 +5249,162 @@ $can = static function (string $flag) use ($permFlags): bool {
     const bodyInput = document.getElementById('wikiPageBody');
     const form = document.getElementById('wikiPageForm');
     const imageFile = document.getElementById('wikiImageFile');
-    if (!editor || !form) return;
+    const typeSel = document.getElementById('wikiPageType');
+    const basitWrap = document.getElementById('wikiBasitMetinWrap');
+    const teamWrap = document.getElementById('wikiTeamWrap');
+    const teamList = document.getElementById('wikiTeamList');
+    const teamJsonInput = document.getElementById('wikiTeamMembersJson');
+    if (!form) return;
     let htmlMode = false;
     let cardImageTarget = null;
+    let teamImageTarget = null;
     const uploadUrl = <?= json_encode(url('/admin/wiki/icerik/resim'), JSON_UNESCAPED_UNICODE) ?>;
+    const teamGroups = <?= json_encode(\App\Services\WikiTeamService::groups(), JSON_UNESCAPED_UNICODE) ?>;
+    const teamRoles = <?= json_encode(\App\Services\WikiTeamService::roles(), JSON_UNESCAPED_UNICODE) ?>;
+
+    const selectedTypeSlug = () => {
+      const opt = typeSel?.selectedOptions?.[0];
+      return (opt && opt.dataset.slug) ? opt.dataset.slug : '';
+    };
+    const isTeamMode = () => selectedTypeSlug() === 'takimiz';
+
+    const syncEditorMode = () => {
+      const team = isTeamMode();
+      if (basitWrap) basitWrap.style.display = team ? 'none' : '';
+      if (teamWrap) teamWrap.style.display = team ? '' : 'none';
+    };
+
+    const roleOptionsHtml = (selected) => {
+      let html = '';
+      Object.keys(teamRoles).forEach((key) => {
+        const r = teamRoles[key];
+        html += '<option value="' + key + '"' + (key === selected ? ' selected' : '') + '>' + (r.label || key) + '</option>';
+      });
+      return html;
+    };
+    const groupOptionsHtml = (selected) => {
+      let html = '';
+      Object.keys(teamGroups).forEach((key) => {
+        const g = teamGroups[key];
+        html += '<option value="' + key + '"' + (key === selected ? ' selected' : '') + '>' + (g.label || key) + '</option>';
+      });
+      return html;
+    };
+
+    const emptyMember = () => ({
+      nick: '',
+      role_key: Object.keys(teamRoles)[0] || '',
+      group_key: Object.keys(teamGroups)[0] || '',
+      image_url: '',
+      bio: '',
+      joined_label: '',
+      socials: [],
+      sort_order: 0,
+      is_active: 1
+    });
+
+    const renderTeamList = (members) => {
+      if (!teamList) return;
+      const list = Array.isArray(members) && members.length ? members : [emptyMember()];
+      teamList.innerHTML = '';
+      list.forEach((m, idx) => {
+        const roleKey = m.role_key || '';
+        const defaultGroup = (teamRoles[roleKey] && teamRoles[roleKey].group) || '';
+        const groupKey = m.group_key || defaultGroup;
+        const social0 = (m.socials && m.socials[0]) ? m.socials[0] : { label: '', url: '' };
+        const card = document.createElement('div');
+        card.className = 'wiki-team-admin-card';
+        card.dataset.idx = String(idx);
+        card.style.cssText = 'border:1px solid var(--line);padding:12px;background:var(--obsidian-2);';
+        card.innerHTML =
+          '<div class="grid grid-2" style="gap:10px;">' +
+            '<div class="form-row" style="margin:0;"><label>Nick</label><input type="text" data-team="nick" maxlength="120" value="' + String(m.nick || '').replace(/"/g, '&quot;') + '"></div>' +
+            '<div class="form-row" style="margin:0;"><label>Tip kartı</label><select data-team="role_key">' + roleOptionsHtml(roleKey) + '</select></div>' +
+            '<div class="form-row" style="margin:0;"><label>Bağlı olduğu kart</label><select data-team="group_key">' + groupOptionsHtml(groupKey) + '</select></div>' +
+            '<div class="form-row" style="margin:0;"><label>Sıra</label><input type="number" data-team="sort_order" value="' + (m.sort_order != null ? m.sort_order : idx) + '"></div>' +
+          '</div>' +
+          '<div class="form-row" style="margin-top:10px;"><label>Açıklama</label><textarea data-team="bio" rows="2" maxlength="500">' + String(m.bio || '').replace(/</g, '&lt;') + '</textarea></div>' +
+          '<div class="form-row" style="margin-top:10px;"><label>Katılım metni</label><input type="text" data-team="joined_label" maxlength="120" placeholder="KATILIM: KURULUŞ — 2016" value="' + String(m.joined_label || '').replace(/"/g, '&quot;') + '"></div>' +
+          '<div class="form-row" style="margin-top:10px;"><label>Resim URL</label>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+              '<input type="text" data-team="image_url" style="flex:1;min-width:160px;" value="' + String(m.image_url || '').replace(/"/g, '&quot;') + '" placeholder="https://… veya /uploads/wiki/…">' +
+              '<button type="button" class="btn btn-ghost btn-sm" data-team-upload><i class="fa-solid fa-upload"></i></button>' +
+            '</div>' +
+            (m.image_url ? '<div style="margin-top:8px;"><img src="' + String(m.image_url).replace(/"/g, '&quot;') + '" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:50%;border:1px solid var(--line);"></div>' : '') +
+          '</div>' +
+          '<div class="grid grid-2" style="gap:10px;margin-top:10px;">' +
+            '<div class="form-row" style="margin:0;"><label>Sosyal etiket</label><input type="text" data-team="social_label" maxlength="40" value="' + String(social0.label || '').replace(/"/g, '&quot;') + '"></div>' +
+            '<div class="form-row" style="margin:0;"><label>Sosyal URL</label><input type="url" data-team="social_url" value="' + String(social0.url || '').replace(/"/g, '&quot;') + '" placeholder="https://"></div>' +
+          '</div>' +
+          '<div style="margin-top:10px;display:flex;justify-content:flex-end;">' +
+            '<button type="button" class="btn btn-ghost btn-sm danger" data-team-remove><i class="fa-solid fa-trash"></i> Sil</button>' +
+          '</div>';
+        teamList.appendChild(card);
+        const roleSel = card.querySelector('[data-team="role_key"]');
+        const groupSel = card.querySelector('[data-team="group_key"]');
+        roleSel?.addEventListener('change', () => {
+          const rk = roleSel.value;
+          if (teamRoles[rk] && groupSel) groupSel.value = teamRoles[rk].group;
+        });
+      });
+    };
+
+    const collectTeamMembers = () => {
+      if (!teamList) return [];
+      const out = [];
+      teamList.querySelectorAll('.wiki-team-admin-card').forEach((card, idx) => {
+        const val = (sel) => (card.querySelector('[data-team="' + sel + '"]')?.value || '').trim();
+        const roleKey = val('role_key');
+        const socialUrl = val('social_url');
+        const socialLabel = val('social_label');
+        const socials = [];
+        if (socialUrl) socials.push({ label: socialLabel || 'Link', url: socialUrl });
+        out.push({
+          nick: val('nick'),
+          role_key: roleKey,
+          group_key: val('group_key'),
+          image_url: val('image_url'),
+          bio: val('bio'),
+          joined_label: val('joined_label'),
+          socials,
+          sort_order: parseInt(val('sort_order') || String(idx), 10) || idx,
+          is_active: 1
+        });
+      });
+      return out;
+    };
+
+    document.getElementById('wikiTeamAdd')?.addEventListener('click', () => {
+      const cur = collectTeamMembers();
+      cur.push(emptyMember());
+      renderTeamList(cur);
+    });
+    teamList?.addEventListener('click', (e) => {
+      const removeBtn = e.target.closest('[data-team-remove]');
+      if (removeBtn) {
+        const card = removeBtn.closest('.wiki-team-admin-card');
+        card?.remove();
+        if (teamList && !teamList.querySelector('.wiki-team-admin-card')) renderTeamList([]);
+        return;
+      }
+      const upBtn = e.target.closest('[data-team-upload]');
+      if (upBtn) {
+        teamImageTarget = upBtn.closest('.wiki-team-admin-card')?.querySelector('[data-team="image_url"]') || null;
+        imageFile?.click();
+      }
+    });
+    typeSel?.addEventListener('change', syncEditorMode);
+    syncEditorMode();
+    renderTeamList([]);
+
+    if (!editor) {
+      // Takım-only path still needs form submit for team JSON
+      form.addEventListener('submit', () => {
+        if (teamJsonInput) teamJsonInput.value = JSON.stringify(collectTeamMembers());
+      });
+      return;
+    }
+
     const classCardHtml = (glow, icon, title) => (
       '<div class="wiki-class-card" style="--glow-color:' + (glow || '#8f1c29') + '">' +
         '<div class="wiki-class-glow"></div>' +
@@ -5306,6 +5478,7 @@ $can = static function (string $flag) use ($permFlags): bool {
       }
       if (cmd === 'insertImage') {
         cardImageTarget = null;
+        teamImageTarget = null;
         imageFile?.click();
         return;
       }
@@ -5393,6 +5566,16 @@ $can = static function (string $flag) use ($permFlags): bool {
           return;
         }
         const imgTag = '<img src="' + data.url + '" alt="">';
+        if (teamImageTarget) {
+          teamImageTarget.value = data.url;
+          const card = teamImageTarget.closest('.wiki-team-admin-card');
+          teamImageTarget = null;
+          if (card) {
+            const members = collectTeamMembers();
+            renderTeamList(members);
+          }
+          return;
+        }
         if (cardImageTarget && editor.contains(cardImageTarget)) {
           cardImageTarget.classList.remove('is-empty');
           cardImageTarget.innerHTML = imgTag;
@@ -5409,11 +5592,18 @@ $can = static function (string $flag) use ($permFlags): bool {
         alert('Resim yüklenemedi.');
       } finally {
         cardImageTarget = null;
+        teamImageTarget = null;
       }
     });
 
     form.addEventListener('submit', () => {
+      if (isTeamMode()) {
+        if (teamJsonInput) teamJsonInput.value = JSON.stringify(collectTeamMembers());
+        if (bodyInput) bodyInput.value = '';
+        return;
+      }
       if (bodyInput) bodyInput.value = getHtml();
+      if (teamJsonInput) teamJsonInput.value = '[]';
     });
 
     const resetPage = () => {
@@ -5421,11 +5611,13 @@ $can = static function (string $flag) use ($permFlags): bool {
       document.getElementById('wikiPageId').value = '';
       document.getElementById('wikiPageTitle').value = '';
       document.getElementById('wikiPageCategory').value = '';
-      const typeSel = document.getElementById('wikiPageType');
       if (typeSel && typeSel.options.length) typeSel.selectedIndex = 0;
       document.getElementById('wikiPageActive').checked = true;
       setHtml('');
       if (bodyInput) bodyInput.value = '';
+      renderTeamList([]);
+      if (teamJsonInput) teamJsonInput.value = '[]';
+      syncEditorMode();
     };
 
     document.getElementById('wikiPageReset')?.addEventListener('click', resetPage);
@@ -5439,6 +5631,14 @@ $can = static function (string $flag) use ($permFlags): bool {
         document.getElementById('wikiPageType').value = btn.dataset.type || '';
         document.getElementById('wikiPageActive').checked = btn.dataset.active === '1';
         setHtml(decodeB64(btn.dataset.bodyB64 || ''));
+        let teamMembers = [];
+        try {
+          const raw = decodeB64(btn.dataset.teamB64 || '');
+          const parsed = JSON.parse(raw || '[]');
+          if (Array.isArray(parsed)) teamMembers = parsed;
+        } catch (e) {}
+        renderTeamList(teamMembers);
+        syncEditorMode();
         showSection('wiki-icerikler');
       });
     });

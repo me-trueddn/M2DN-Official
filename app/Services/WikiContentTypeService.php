@@ -13,6 +13,7 @@ use PDO;
 final class WikiContentTypeService
 {
     public const SLUG_BASIT_METIN = 'basit-metin';
+    public const SLUG_TAKIMIZ = 'takimiz';
 
     /** @return list<array{id:int,slug:string,name:string,is_active:bool}> */
     public static function list(bool $activeOnly = false): array
@@ -146,7 +147,7 @@ final class WikiContentTypeService
                 return false;
             }
             $row = self::find($id);
-            if ($row && $row['slug'] === self::SLUG_BASIT_METIN) {
+            if ($row && ($row['slug'] === self::SLUG_BASIT_METIN || $row['slug'] === self::SLUG_TAKIMIZ)) {
                 return false;
             }
             $web->prepare('DELETE FROM wiki_content_types WHERE id = ?')->execute([$id]);

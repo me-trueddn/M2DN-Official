@@ -158,6 +158,16 @@ final class AdminWikiController
         $user = $this->gate();
         $section = 'wiki-icerikler';
         $this->requireManage($user, $section);
+
+        $teamMembers = [];
+        $rawTeam = (string) ($_POST['team_members_json'] ?? '');
+        if ($rawTeam !== '') {
+            $decoded = json_decode($rawTeam, true);
+            if (is_array($decoded)) {
+                $teamMembers = $decoded;
+            }
+        }
+
         $result = WikiPageService::save([
             'id' => (int) ($_POST['id'] ?? 0),
             'category_id' => (int) ($_POST['category_id'] ?? 0),
@@ -165,6 +175,7 @@ final class AdminWikiController
             'title' => (string) ($_POST['title'] ?? ''),
             'body_html' => (string) ($_POST['body_html'] ?? ''),
             'is_active' => !empty($_POST['is_active']),
+            'team_members' => $teamMembers,
         ]);
         if (empty($result['ok'])) {
             $this->fail($result['errors'] ?? ['Kayıt başarısız.'], $section);
