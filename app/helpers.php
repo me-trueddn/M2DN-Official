@@ -53,6 +53,12 @@ function absolute_url(string $path = ''): string
     return ($base !== '' ? $base : '') . $rel;
 }
 
+/** Public wiki alt kategori sayfası: /wiki/{slug}.html */
+function wiki_url(string $slug): string
+{
+    return url(\App\Services\WikiCategoryService::pagePath($slug));
+}
+
 function redirect(string $path): never
 {
     header('Location: ' . url($path));

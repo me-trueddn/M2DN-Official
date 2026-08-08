@@ -249,6 +249,10 @@ mysql -u root -p DNWeb < database/2026-08-07-market-kuponlar/01_market_coupons.s
 mysql -u root -p DNWeb < database/2026-08-07-market-kuponlar/02_sales_log_coupon_hash.sql
 mysql -u root -p DNWeb < database/2026-08-07-gizlilik-onay/01_privacy_consent.sql
 mysql -u root -p DNWeb < database/2026-08-07-wiki-yonetim/01_wiki_flags.sql
+mysql -u root -p DNWeb < database/2026-08-07-wiki-yonetim/02_drop_wiki_content.sql
+mysql -u root -p DNWeb < database/2026-08-07-wiki-yonetim/03_wiki_categories.sql
+mysql -u root -p DNWeb < database/2026-08-07-wiki-yonetim/04_wiki_content.sql
+mysql -u root -p DNWeb < database/2026-08-07-wiki-yonetim/05_wiki_category_slug.sql
 mysql -u root -p DNWeb < database/2026-08-07-coklu-yetki-grubu/01_multi_staff_groups.sql
 ```
 
@@ -265,7 +269,7 @@ Her klasörde kısa `README.md` vardır. Alternatif: siteyi bir kez açmak (`Sch
 | `2026-08-07-disable-2fa/` | `disable_2fa` bayrağı |
 | `2026-08-07-market-kuponlar/` | Market kupon tabloları + satış log `coupon_hash` |
 | `2026-08-07-gizlilik-onay/` | Gizlilik onayı kolonları (`account_consents`) |
-| `2026-08-07-wiki-yonetim/` | Wiki menü / yönetim bayrakları |
+| `2026-08-07-wiki-yonetim/` | Wiki menü bayrakları + kategoriler + içerik tipleri / sayfalar |
 | `2026-08-07-coklu-yetki-grubu/` | Çoklu yetki grubu (`account_staff_groups` composite PK) |
 | `player_marriage_reference.sql` | `player.marriage` referans CREATE (oyun dump’ında yoksa) |
 | `account_web_permission.sql` | `account.WebPermission` kolonu |

@@ -277,8 +277,29 @@ $can = static function (string $flag) use ($permFlags): bool {
   .sidebar-brand small{display:block; font-family:var(--font-body); font-weight:600; font-size:.6rem; letter-spacing:.16em; color:var(--blood-light); text-transform:uppercase; margin-top:2px;}
   .sidebar-brand:hover{opacity:.92;}
 
-  .nav-group-label{font-size:.68rem; text-transform:uppercase; letter-spacing:.12em; color:var(--ash); padding:16px 12px 8px;}
-  .nav-item{display:flex; align-items:center; gap:12px; padding:11px 12px; color:var(--ash); font-size:.9rem; font-weight:500; border-left:2px solid transparent; transition:background .2s, color .2s, border-color .2s;}
+  .wiki-home-radio{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; margin:0 auto;
+    border:1px solid rgba(201,151,74,.45); background:rgba(201,151,74,.06);
+    cursor:pointer; position:relative;
+  }
+  .wiki-home-radio input{
+    position:absolute; inset:0; opacity:0; cursor:pointer; margin:0; width:100%; height:100%;
+  }
+  .wiki-home-radio span{
+    width:10px; height:10px; border-radius:50%; background:transparent;
+    box-shadow:inset 0 0 0 1px rgba(201,151,74,.35);
+  }
+  .wiki-home-radio:has(input:checked){
+    border-color:var(--gold); background:rgba(143,28,41,.22);
+  }
+  .wiki-home-radio:has(input:checked) span{
+    background:var(--gold-light); box-shadow:none;
+  }
+  .wiki-home-radio:hover{border-color:var(--gold-light);}
+  .wiki-home-muted{color:var(--ash); font-size:.75rem;}
+
+  .nav-item{display:flex; align-items:center; gap:12px; padding:11px 12px; color:var(--ash); font-size:.9rem; font-weight:500; border-left:2px solid transparent; transition:background .2s, color .2s, border-color .2s; cursor:pointer; user-select:none;}
   .nav-item i{width:18px; text-align:center; font-size:.95rem;}
   .nav-item:hover{background:rgba(201,151,74,.06); color:var(--parchment);}
   .nav-item.active{background:linear-gradient(90deg, rgba(143,28,41,.16), transparent); color:var(--gold-light); border-left-color:var(--gold);}
@@ -677,6 +698,59 @@ $can = static function (string $flag) use ($permFlags): bool {
   #annEditor table{width:100%; border-collapse:collapse; margin:.5em 0;}
   #annEditor th,#annEditor td{border:1px solid var(--line); padding:6px 8px;}
   #annEditor a{color:var(--gold-light);}
+  #wikiEditorWrap{border:1px solid var(--line); background:var(--obsidian);}
+  #wikiEditor{
+    min-height:280px; max-height:520px; overflow:auto; padding:14px 16px;
+    color:var(--parchment); font-size:.9rem; line-height:1.65; outline:none; background:var(--obsidian);
+  }
+  #wikiEditor:empty:before{content:attr(data-placeholder); color:var(--ash);}
+  #wikiEditor table{width:100%; border-collapse:collapse; margin:.5em 0;}
+  #wikiEditor th,#wikiEditor td{border:1px solid var(--line); padding:6px 8px;}
+  #wikiEditor a{color:var(--gold-light);}
+  #wikiEditor img{max-width:100%; height:auto; margin:.6em 0;}
+  #wikiEditor .wiki-class-row{
+    display:flex !important; flex-direction:row !important; flex-wrap:wrap;
+    align-items:flex-start; justify-content:center; gap:18px; margin:1.1em auto; width:100%;
+  }
+  #wikiEditor .wiki-class-card{
+    position:relative; box-sizing:border-box;
+    flex:0 0 240px; width:240px; height:380px;
+    padding:22px 18px 18px;
+    display:flex; flex-direction:column; justify-content:flex-end;
+    overflow:hidden; border:1px solid rgba(201,151,74,.2); background:var(--obsidian);
+  }
+  #wikiEditor .wiki-class-glow{
+    position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(circle at 50% 18%, var(--glow-color, var(--blood)), transparent 65%);
+    opacity:.55;
+  }
+  #wikiEditor .wiki-class-visual{
+    position:absolute; left:0; right:0; top:0; height:56%;
+    display:flex; align-items:flex-end; justify-content:center;
+    z-index:1; overflow:hidden; cursor:pointer;
+  }
+  #wikiEditor .wiki-class-visual img{
+    max-height:100%; max-width:78%; width:auto; height:auto; margin:0; border:0;
+    object-fit:contain; object-position:center bottom; display:block;
+    filter:drop-shadow(0 6px 14px rgba(0,0,0,.4));
+  }
+  #wikiEditor .wiki-class-visual.is-empty{
+    align-items:center; justify-content:center; color:var(--ash); font-size:.7rem; text-align:center;
+    background:rgba(0,0,0,.18); border-bottom:1px dashed rgba(201,151,74,.22);
+  }
+  #wikiEditor .wiki-class-body{position:relative; z-index:2;}
+  #wikiEditor .wiki-class-icon{
+    display:block; font-size:1.15rem; color:var(--gold-light); margin-bottom:8px; font-style:normal;
+  }
+  #wikiEditor .wiki-class-card h3{
+    margin:0 0 8px; font-size:1.15rem; color:var(--parchment); font-family:var(--font-display);
+    text-transform:uppercase; letter-spacing:.03em; font-weight:600;
+  }
+  #wikiEditor .wiki-class-card p{margin:0; font-size:.78rem; color:var(--ash); line-height:1.55;}
+  #wikiHtmlPanel{display:none; width:100%; min-height:280px; max-height:520px; font-family:ui-monospace,monospace; font-size:.78rem; padding:14px; background:var(--obsidian); color:var(--parchment); border:0; border-top:1px solid var(--line); resize:vertical;}
+  #wikiEditor.html-mode{display:none;}
+  #wikiEditorWrap.html-open #wikiHtmlPanel{display:block;}
+
   #annHtmlPanel{display:none; width:100%; min-height:200px; border:none; border-top:1px solid var(--line);
     background:#120e08; color:var(--parchment); padding:12px; font-family:ui-monospace,Consolas,monospace; font-size:.8rem; resize:vertical;}
   #annHtmlPanel.open{display:block;}
@@ -812,7 +886,9 @@ $can = static function (string $flag) use ($permFlags): bool {
 
     <?php if ($can('menu_wiki') || $can('wiki_manage')): ?>
     <div class="nav-group-label">Wiki</div>
-    <a class="nav-item<?= $panelSection === 'wiki-yonetim' ? ' active' : '' ?>" data-target="wiki-yonetim"><i class="fa-solid fa-book-open"></i> Wiki Yönetimi</a>
+    <a class="nav-item<?= $panelSection === 'wiki-kategoriler' ? ' active' : '' ?>" data-target="wiki-kategoriler"><i class="fa-solid fa-layer-group"></i> Kategoriler</a>
+    <a class="nav-item<?= $panelSection === 'wiki-icerik-tipleri' ? ' active' : '' ?>" data-target="wiki-icerik-tipleri"><i class="fa-solid fa-shapes"></i> İçerik Tipleri</a>
+    <a class="nav-item<?= $panelSection === 'wiki-icerikler' ? ' active' : '' ?>" data-target="wiki-icerikler"><i class="fa-solid fa-file-pen"></i> İçerikler</a>
     <?php endif; ?>
 
     <?php if ($can('site_settings')): ?>
@@ -3183,276 +3259,358 @@ $can = static function (string $flag) use ($permFlags): bool {
       </div>
     </section>
 
-    <!-- ===================== WIKI YÖNETİMİ ===================== -->
-    <section class="section<?= $panelSection === 'wiki-yonetim' ? ' active' : '' ?>" id="wiki-yonetim">
+    <!-- ===================== WIKI KATEGORİLER ===================== -->
+    <section class="section<?= $panelSection === 'wiki-kategoriler' ? ' active' : '' ?>" id="wiki-kategoriler">
       <?php
-        $wikiContent = isset($wikiContent) && is_array($wikiContent) ? $wikiContent : \App\Services\WikiService::content();
-        $wHead = is_array($wikiContent['head'] ?? null) ? $wikiContent['head'] : [];
-        $wIntro = is_array($wikiContent['intro'] ?? null) ? $wikiContent['intro'] : [];
-        $wIntroCards = is_array($wIntro['cards'] ?? null) ? $wIntro['cards'] : [];
-        $wClassSec = is_array($wikiContent['classes_section'] ?? null) ? $wikiContent['classes_section'] : [];
-        $wClasses = is_array($wikiContent['classes'] ?? null) ? $wikiContent['classes'] : [];
-        $wMapSec = is_array($wikiContent['maps_section'] ?? null) ? $wikiContent['maps_section'] : [];
-        $wMaps = is_array($wikiContent['maps'] ?? null) ? $wikiContent['maps'] : [];
-        $wMonSec = is_array($wikiContent['monsters_section'] ?? null) ? $wikiContent['monsters_section'] : [];
-        $wMonsters = is_array($wikiContent['monsters'] ?? null) ? $wikiContent['monsters'] : [];
-        $wMetSec = is_array($wikiContent['metins_section'] ?? null) ? $wikiContent['metins_section'] : [];
-        $wMetins = is_array($wikiContent['metins'] ?? null) ? $wikiContent['metins'] : [];
-        $wUpSec = is_array($wikiContent['upgrade_section'] ?? null) ? $wikiContent['upgrade_section'] : [];
-        $wUpgrade = is_array($wikiContent['upgrade'] ?? null) ? $wikiContent['upgrade'] : [];
-        $wClan = is_array($wikiContent['clan'] ?? null) ? $wikiContent['clan'] : [];
-        $wFaqSec = is_array($wikiContent['faq_section'] ?? null) ? $wikiContent['faq_section'] : [];
-        $wFaq = is_array($wikiContent['faq'] ?? null) ? $wikiContent['faq'] : [];
+        $wikiCategories = isset($wikiCategories) && is_array($wikiCategories) ? $wikiCategories : [];
+        $wikiMainCategories = isset($wikiMainCategories) && is_array($wikiMainCategories) ? $wikiMainCategories : [];
         $canWikiEdit = $can('wiki_manage') && !\App\Services\PermissionService::isReadOnly(is_array($authUser ?? null) ? $authUser : null);
-        $wikiIconSeq = 0;
-        $wikiIconField = static function (string $name, string $value, bool $editable, string $label = 'İkon') use (&$wikiIconSeq): void {
-            $wikiIconSeq++;
-            $uid = 'wikiIcon' . $wikiIconSeq;
-            $value = trim($value);
-            if ($value === '') {
-                $value = 'fa-solid fa-star';
-            }
-            ?>
-            <div class="form-row wiki-icon-pick" data-wiki-icon-pick>
-              <label><?= e($label) ?></label>
-              <div class="icon-pick-row">
-                <span class="icon-pick-preview" id="<?= e($uid) ?>Preview" title="Önizleme"><i class="<?= e($value) ?>"></i></span>
-                <input
-                  name="<?= e($name) ?>"
-                  id="<?= e($uid) ?>Input"
-                  class="wiki-icon-input"
-                  value="<?= e($value) ?>"
-                  maxlength="80"
-                  placeholder="fa-solid fa-..."
-                  autocomplete="off"
-                  <?= $editable ? '' : ' readonly' ?>
-                >
-              </div>
-              <?php if ($editable): ?>
-                <label class="icon-pick-toggle" style="margin-top:10px;">
-                  <input type="checkbox" class="wiki-icon-toggle" id="<?= e($uid) ?>Toggle" style="width:auto;"> İkonları göster ve seç
-                </label>
-                <input type="search" id="<?= e($uid) ?>Search" class="icon-pick-search wiki-icon-search" placeholder="İkon ara (örn. dragon, khanda)…" autocomplete="off">
-                <div class="icon-pick-grid wiki-icon-grid" id="<?= e($uid) ?>Grid" aria-label="İkon seçici"></div>
-              <?php endif; ?>
-            </div>
-            <?php
-        };
       ?>
-      <div class="card" style="max-width:1100px;">
-        <div class="card-head">
-          <h3>Wiki Yönetimi</h3>
-          <a href="<?= e(url('/wiki')) ?>" target="_blank" style="font-size:.8rem;color:var(--gold-light);">Public sayfayı aç</a>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h3>Kategoriler</h3>
+            <span style="font-size:.8rem;color:var(--ash);"><?= count($wikiCategories) ?> kayıt</span>
+          </div>
+          <p style="font-size:.8rem;color:var(--ash);margin-bottom:12px;line-height:1.55;">
+            Ana kategoriler (Başlangıç, Karakter, Dünya gibi) üst gruplardır. Normal kategoriler bir ana kategoriye bağlanır.
+            <strong style="color:var(--gold-light);">Başlangıç</strong> radyosu: `/wiki` adresinde açılacak alt sayfayı seçer.
+            <?php if (!$canWikiEdit): ?>
+              <br><span style="color:var(--blood-light);">Bu hesapta wiki kategori düzenleme yetkisi yok (salt görüntüleme).</span>
+            <?php endif; ?>
+          </p>
+          <table>
+            <thead><tr><th title="Wiki ana sayfası (/wiki)">Başlangıç</th><th>Sıra</th><th>Ad</th><th>Tür</th><th>Ana kategori</th><th>Durum</th><th></th></tr></thead>
+            <tbody>
+              <?php if ($wikiCategories === []): ?>
+                <tr><td colspan="7" style="color:var(--ash);">Kategori yok.</td></tr>
+              <?php else: ?>
+                <?php foreach ($wikiCategories as $wc): ?>
+                <tr>
+                  <td style="text-align:center;">
+                    <?php if (empty($wc['is_main'])): ?>
+                      <?php if ($canWikiEdit): ?>
+                      <form method="post" action="<?= e(url('/admin/wiki/kategori/ana-sayfa')) ?>" class="wiki-home-form" style="display:inline;">
+                        <?= $csrf ?>
+                        <input type="hidden" name="id" value="<?= (int) $wc['id'] ?>">
+                        <label class="wiki-home-radio" title="Wiki ana sayfası yap">
+                          <input type="radio" name="wiki_home_pick" value="<?= (int) $wc['id'] ?>"<?= !empty($wc['is_wiki_home']) ? ' checked' : '' ?> onchange="this.form.submit()">
+                          <span></span>
+                        </label>
+                      </form>
+                      <?php else: ?>
+                        <?= !empty($wc['is_wiki_home']) ? '<span class="badge ok">Ana</span>' : '<span class="wiki-home-muted">—</span>' ?>
+                      <?php endif; ?>
+                    <?php else: ?>
+                      <span class="wiki-home-muted">—</span>
+                    <?php endif; ?>
+                  </td>
+                  <td><?= (int) $wc['sort_order'] ?></td>
+                  <td><?= e((string) $wc['name']) ?><?php if (empty($wc['is_main']) && trim((string) ($wc['slug'] ?? '')) !== ''): ?><br><code style="font-size:.7rem;color:var(--ash);">/wiki/<?= e((string) $wc['slug']) ?>.html</code><?php endif; ?><?php if (!empty($wc['is_wiki_home'])): ?> <span class="badge ok" style="margin-left:4px;">/wiki</span><?php endif; ?></td>
+                  <td><?= !empty($wc['is_main']) ? '<span class="badge ok">Ana</span>' : '<span class="badge">Normal</span>' ?></td>
+                  <td><?= !empty($wc['is_main']) ? '—' : e((string) ($wc['parent_name'] ?? '—')) ?></td>
+                  <td><?= !empty($wc['is_active']) ? '<span class="badge ok">Aktif</span>' : '<span class="badge ban">Pasif</span>' ?></td>
+                  <td class="actions-cell">
+                    <?php if ($canWikiEdit): ?>
+                    <button type="button" title="Düzenle"
+                      data-edit-wiki-cat
+                      data-id="<?= (int) $wc['id'] ?>"
+                      data-name="<?= e((string) $wc['name']) ?>"
+                      data-slug="<?= e((string) ($wc['slug'] ?? '')) ?>"
+                      data-main="<?= !empty($wc['is_main']) ? '1' : '0' ?>"
+                      data-parent="<?= (int) ($wc['parent_id'] ?? 0) ?>"
+                      data-sort="<?= (int) $wc['sort_order'] ?>"
+                      data-active="<?= !empty($wc['is_active']) ? '1' : '0' ?>"
+                      data-home="<?= !empty($wc['is_wiki_home']) ? '1' : '0' ?>"
+                    ><i class="fa-solid fa-pen"></i></button>
+                    <form method="post" action="<?= e(url('/admin/wiki/kategori/toggle')) ?>" style="display:inline;">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $wc['id'] ?>">
+                      <input type="hidden" name="is_active" value="<?= !empty($wc['is_active']) ? '0' : '1' ?>">
+                      <button type="submit" title="Aç/Kapat"><?= !empty($wc['is_active']) ? '<i class="fa-solid fa-toggle-on"></i>' : '<i class="fa-solid fa-toggle-off"></i>' ?></button>
+                    </form>
+                    <form method="post" action="<?= e(url('/admin/wiki/kategori/sil')) ?>" style="display:inline;" onsubmit="return confirm('Kategori silinsin mi?');">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $wc['id'] ?>">
+                      <button type="submit" class="danger" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                    <?php else: ?>
+                      <span style="color:var(--ash);">—</span>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
         </div>
-        <p style="font-size:.82rem;color:var(--ash);margin-bottom:14px;line-height:1.55;">
-          Public: <code>/wiki</code> · Yetki: <strong>Menü: Wiki Yönetimi</strong> + düzenleme için <strong>Wiki içeriği düzenleme</strong>.
-          <?php if (!$canWikiEdit): ?>
-            <br><span style="color:var(--blood-light);">Bu hesapta wiki kaydetme yetkisi yok (salt görüntüleme).</span>
-          <?php endif; ?>
-        </p>
-
-        <form method="post" action="<?= e(url('/admin/wiki/kaydet')) ?>" id="wikiManageForm"<?= $canWikiEdit ? '' : ' onsubmit="return false;"' ?>>
-          <?= $csrf ?>
-
-          <h4 style="margin:8px 0 12px;color:var(--gold-light);font-size:.9rem;">Sayfa başlığı</h4>
-          <div class="grid grid-2">
-            <div class="form-row"><label>Eyebrow</label><input name="head_eyebrow" value="<?= e((string) ($wHead['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-            <div class="form-row"><label>Arama placeholder</label><input name="head_search" value="<?= e((string) ($wHead['search_placeholder'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-          </div>
-          <div class="form-row"><label>Başlık</label><input name="head_title" value="<?= e((string) ($wHead['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-          <div class="form-row"><label>Açıklama</label><textarea name="head_lead" rows="2"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($wHead['lead'] ?? '')) ?></textarea></div>
-
-          <h4 style="margin:22px 0 12px;color:var(--gold-light);font-size:.9rem;">Giriş &amp; temel bilgiler</h4>
-          <div class="grid grid-2">
-            <div class="form-row"><label>Eyebrow</label><input name="intro_eyebrow" value="<?= e((string) ($wIntro['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-            <div class="form-row"><label>Başlık</label><input name="intro_title" value="<?= e((string) ($wIntro['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-          </div>
-          <div class="form-row"><label>Metin</label><textarea name="intro_text" rows="3"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($wIntro['text'] ?? '')) ?></textarea></div>
-          <div class="form-row"><label><input type="checkbox" name="intro_use_live_rates" value="1"<?= !empty($wIntro['use_live_rates']) ? ' checked' : '' ?><?= $canWikiEdit ? '' : ' disabled' ?>> İlk kartta canlı EXP/Drop/Yang oranlarını kullan</label></div>
-          <?php foreach ($wIntroCards as $ci => $card): ?>
-            <div style="margin-bottom:10px;padding:12px;border:1px solid var(--line);">
-              <?php $wikiIconField('intro_card_icon[]', (string) ($card['icon'] ?? 'fa-solid fa-circle-info'), $canWikiEdit, 'Kart ikonu'); ?>
-              <div class="grid grid-2">
-                <div class="form-row"><label>Kart başlık</label><input name="intro_card_title[]" value="<?= e((string) ($card['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-                <div class="form-row"><label>Kart metin</label><input name="intro_card_text[]" value="<?= e((string) ($card['text'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-              </div>
-            </div>
-          <?php endforeach; ?>
+        <div class="card">
+          <div class="card-head"><h3 id="wikiCatFormTitle">Yeni Kategori</h3></div>
           <?php if ($canWikiEdit): ?>
-            <div style="margin-bottom:10px;padding:12px;border:1px dashed var(--line);opacity:.9;">
-              <?php $wikiIconField('intro_card_icon[]', 'fa-solid fa-plus', true, 'Yeni kart ikonu'); ?>
-              <div class="grid grid-2">
-                <div class="form-row"><label>Yeni kart başlık</label><input name="intro_card_title[]" placeholder="Boş bırakılırsa eklenmez"></div>
-                <div class="form-row"><label>Yeni kart metin</label><input name="intro_card_text[]"></div>
-              </div>
-            </div>
-          <?php endif; ?>
-
-          <h4 style="margin:22px 0 12px;color:var(--gold-light);font-size:.9rem;">Sınıflar</h4>
-          <div class="grid grid-2">
-            <div class="form-row"><label>Eyebrow</label><input name="classes_eyebrow" value="<?= e((string) ($wClassSec['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-            <div class="form-row"><label>Başlık</label><input name="classes_title" value="<?= e((string) ($wClassSec['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-          </div>
-          <div class="form-row"><label>Açıklama</label><textarea name="classes_text" rows="2"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($wClassSec['text'] ?? '')) ?></textarea></div>
-          <?php foreach ($wClasses as $ci => $cl): $stats = is_array($cl['stats'] ?? null) ? $cl['stats'] : []; ?>
-            <div style="margin-bottom:12px;padding:12px;border:1px solid var(--line);">
-              <?php $wikiIconField('class_icon[' . (int) $ci . ']', (string) ($cl['icon'] ?? 'fa-solid fa-khanda'), $canWikiEdit, 'Sınıf ikonu'); ?>
-              <div class="grid grid-2">
-                <div class="form-row"><label>Ad</label><input name="class_name[<?= (int) $ci ?>]" value="<?= e((string) ($cl['name'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-                <div class="form-row"><label>Alt</label><input name="class_sub[<?= (int) $ci ?>]" value="<?= e((string) ($cl['sub'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-              </div>
-              <div class="form-row"><label>Metin</label><input name="class_text[<?= (int) $ci ?>]" value="<?= e((string) ($cl['text'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-              <div class="grid grid-3">
-                <?php for ($s = 0; $s < 3; $s++): $st = $stats[$s] ?? ['label' => '', 'pct' => 0]; ?>
-                  <div class="form-row">
-                    <label>Stat <?= $s + 1 ?></label>
-                    <input name="class_stat_label[<?= (int) $ci ?>][<?= $s ?>]" value="<?= e((string) ($st['label'] ?? '')) ?>" placeholder="Etiket" style="margin-bottom:4px;"<?= $canWikiEdit ? '' : ' readonly' ?>>
-                    <input type="number" min="0" max="100" name="class_stat_pct[<?= (int) $ci ?>][<?= $s ?>]" value="<?= (int) ($st['pct'] ?? 0) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>>
-                  </div>
-                <?php endfor; ?>
-              </div>
-            </div>
-          <?php endforeach; ?>
-
-          <h4 style="margin:22px 0 12px;color:var(--gold-light);font-size:.9rem;">Haritalar</h4>
-          <div class="grid grid-2">
-            <div class="form-row"><label>Eyebrow</label><input name="maps_eyebrow" value="<?= e((string) ($wMapSec['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-            <div class="form-row"><label>Başlık</label><input name="maps_title" value="<?= e((string) ($wMapSec['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-          </div>
-          <div class="form-row"><label>Açıklama</label><textarea name="maps_text" rows="2"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($wMapSec['text'] ?? '')) ?></textarea></div>
-          <?php foreach ($wMaps as $mi => $mp): ?>
-            <div class="grid grid-2" style="margin-bottom:8px;padding:10px;border:1px solid var(--line);">
-              <div class="form-row"><label>Tag</label><input name="map_tag[]" value="<?= e((string) ($mp['tag'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-              <div class="form-row"><label>Tag sınıfı</label>
-                <select name="map_tag_class[]"<?= $canWikiEdit ? '' : ' disabled' ?>>
-                  <?php foreach (['pve' => 'PvE', 'pvp' => 'PvP', 'metin' => 'Metin'] as $tc => $tl): ?>
-                    <option value="<?= e($tc) ?>"<?= (($mp['tag_class'] ?? '') === $tc) ? ' selected' : '' ?>><?= e($tl) ?></option>
-                  <?php endforeach; ?>
-                </select>
-                <?php if (!$canWikiEdit): ?><input type="hidden" name="map_tag_class[]" value="<?= e((string) ($mp['tag_class'] ?? 'pve')) ?>"><?php endif; ?>
-              </div>
-              <div class="form-row"><label>Ad</label><input name="map_title[]" value="<?= e((string) ($mp['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-              <div class="form-row"><label>Seviye</label><input name="map_level[]" value="<?= e((string) ($mp['level'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-              <div class="form-row" style="grid-column:1/-1;"><label>Metin</label><input name="map_text[]" value="<?= e((string) ($mp['text'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-            </div>
-          <?php endforeach; ?>
-
-          <h4 style="margin:22px 0 12px;color:var(--gold-light);font-size:.9rem;">Canavarlar</h4>
-          <div class="grid grid-2">
-            <div class="form-row"><label>Eyebrow</label><input name="monsters_eyebrow" value="<?= e((string) ($wMonSec['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-            <div class="form-row"><label>Başlık</label><input name="monsters_title" value="<?= e((string) ($wMonSec['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-          </div>
-          <div class="form-row"><label>Açıklama</label><textarea name="monsters_text" rows="2"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($wMonSec['text'] ?? '')) ?></textarea></div>
-          <?php foreach ($wMonsters as $mo): ?>
-            <div style="margin-bottom:8px;padding:10px;border:1px solid var(--line);">
-              <?php $wikiIconField('monster_icon[]', (string) ($mo['icon'] ?? 'fa-solid fa-paw'), $canWikiEdit, 'Canavar ikonu'); ?>
-              <div class="grid grid-3">
-                <div class="form-row"><label>Ad</label><input name="monster_name[]" value="<?= e((string) ($mo['name'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-                <div class="form-row"><label>Rozet</label><input name="monster_badge[]" value="<?= e((string) ($mo['boss_badge'] ?? '')) ?>" placeholder="Boss / boş"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-                <div class="form-row"><label>Seviye</label><input name="monster_level[]" value="<?= e((string) ($mo['level'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-                <div class="form-row"><label>Harita</label><input name="monster_map[]" value="<?= e((string) ($mo['map'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-                <div class="form-row"><label>Can %</label><input type="number" min="0" max="100" name="monster_hp[]" value="<?= (int) ($mo['hp_pct'] ?? 50) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-              </div>
-              <div class="form-row"><label>Düşenler (virgülle)</label><input name="monster_drops[]" value="<?= e(implode(', ', is_array($mo['drops'] ?? null) ? $mo['drops'] : [])) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-            </div>
-          <?php endforeach; ?>
-
-          <h4 style="margin:22px 0 12px;color:var(--gold-light);font-size:.9rem;">Metin taşları</h4>
-          <div class="grid grid-2">
-            <div class="form-row"><label>Eyebrow</label><input name="metins_eyebrow" value="<?= e((string) ($wMetSec['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-            <div class="form-row"><label>Başlık</label><input name="metins_title" value="<?= e((string) ($wMetSec['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-          </div>
-          <div class="form-row"><label>Açıklama</label><textarea name="metins_text" rows="2"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($wMetSec['text'] ?? '')) ?></textarea></div>
-          <?php foreach ($wMetins as $me): ?>
-            <div class="grid grid-2" style="margin-bottom:8px;padding:10px;border:1px solid var(--line);">
-              <div class="form-row"><label>Stil</label>
-                <select name="metin_style[]"<?= $canWikiEdit ? '' : ' disabled' ?>>
-                  <?php foreach (['red' => 'Kızıl', 'black' => 'Kara', 'gold' => 'Altın'] as $ms => $ml): ?>
-                    <option value="<?= e($ms) ?>"<?= (($me['style'] ?? '') === $ms) ? ' selected' : '' ?>><?= e($ml) ?></option>
-                  <?php endforeach; ?>
-                </select>
-                <?php if (!$canWikiEdit): ?><input type="hidden" name="metin_style[]" value="<?= e((string) ($me['style'] ?? 'red')) ?>"><?php endif; ?>
-              </div>
-              <div class="form-row"><label>Glyph</label><input name="metin_glyph[]" value="<?= e((string) ($me['glyph'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-              <div class="form-row"><label>Başlık</label><input name="metin_title[]" value="<?= e((string) ($me['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-              <div class="form-row"><label>Metin</label><input name="metin_text[]" value="<?= e((string) ($me['text'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-            </div>
-          <?php endforeach; ?>
-
-          <h4 style="margin:22px 0 12px;color:var(--gold-light);font-size:.9rem;">Eşya yükseltme</h4>
-          <div class="grid grid-2">
-            <div class="form-row"><label>Eyebrow</label><input name="upgrade_eyebrow" value="<?= e((string) ($wUpSec['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-            <div class="form-row"><label>Başlık</label><input name="upgrade_title" value="<?= e((string) ($wUpSec['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-          </div>
-          <div class="form-row"><label>Açıklama</label><textarea name="upgrade_text" rows="2"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($wUpSec['text'] ?? '')) ?></textarea></div>
-          <?php foreach ($wUpgrade as $up): ?>
-            <div class="grid grid-2" style="margin-bottom:8px;padding:10px;border:1px solid var(--line);">
-              <div class="form-row"><label>Seviye</label><input name="upgrade_level[]" value="<?= e((string) ($up['level'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-              <div class="form-row"><label>Oran</label><input name="upgrade_rate[]" value="<?= e((string) ($up['rate'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-              <div class="form-row"><label>Oran rengi</label>
-                <select name="upgrade_rate_class[]"<?= $canWikiEdit ? '' : ' disabled' ?>>
-                  <?php foreach (['rate-high' => 'Yüksek', 'rate-mid' => 'Orta', 'rate-low' => 'Düşük'] as $rc => $rl): ?>
-                    <option value="<?= e($rc) ?>"<?= (($up['rate_class'] ?? '') === $rc) ? ' selected' : '' ?>><?= e($rl) ?></option>
-                  <?php endforeach; ?>
-                </select>
-                <?php if (!$canWikiEdit): ?><input type="hidden" name="upgrade_rate_class[]" value="<?= e((string) ($up['rate_class'] ?? 'rate-mid')) ?>"><?php endif; ?>
-              </div>
-              <div class="form-row"><label>Materyal</label><input name="upgrade_material[]" value="<?= e((string) ($up['material'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-              <div class="form-row" style="grid-column:1/-1;"><label>Kırılma riski</label><input name="upgrade_risk[]" value="<?= e((string) ($up['risk'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-            </div>
-          <?php endforeach; ?>
-
-          <h4 style="margin:22px 0 12px;color:var(--gold-light);font-size:.9rem;">Lonca</h4>
-          <div class="grid grid-2">
-            <div class="form-row"><label>Eyebrow</label><input name="clan_eyebrow" value="<?= e((string) ($wClan['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-            <div class="form-row"><label>Başlık</label><input name="clan_title" value="<?= e((string) ($wClan['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-          </div>
-          <div class="form-row"><label>Metin</label><textarea name="clan_text" rows="2"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($wClan['text'] ?? '')) ?></textarea></div>
-          <?php foreach ((is_array($wClan['stats'] ?? null) ? $wClan['stats'] : []) as $st): ?>
-            <div class="grid grid-2" style="margin-bottom:6px;">
-              <div class="form-row"><label>Değer</label><input name="clan_stat_value[]" value="<?= e((string) ($st['value'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-              <div class="form-row"><label>Etiket</label><input name="clan_stat_label[]" value="<?= e((string) ($st['label'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-            </div>
-          <?php endforeach; ?>
-          <?php foreach ((is_array($wClan['benefits'] ?? null) ? $wClan['benefits'] : []) as $ben): ?>
-            <div class="form-row"><label>Avantaj</label><input name="clan_benefit[]" value="<?= e((string) $ben) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-          <?php endforeach; ?>
-          <?php if ($canWikiEdit): ?>
-            <div class="form-row"><label>Yeni avantaj</label><input name="clan_benefit[]" placeholder="Boş bırakılırsa eklenmez"></div>
-          <?php endif; ?>
-
-          <h4 style="margin:22px 0 12px;color:var(--gold-light);font-size:.9rem;">SSS</h4>
-          <div class="grid grid-2">
-            <div class="form-row"><label>Eyebrow</label><input name="faq_eyebrow" value="<?= e((string) ($wFaqSec['eyebrow'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-            <div class="form-row"><label>Başlık</label><input name="faq_title" value="<?= e((string) ($wFaqSec['title'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-          </div>
-          <?php foreach ($wFaq as $fi => $fq): ?>
-            <div style="margin-bottom:10px;padding:10px;border:1px solid var(--line);">
-              <div class="form-row"><label>Soru</label><input name="faq_q[]" value="<?= e((string) ($fq['q'] ?? '')) ?>"<?= $canWikiEdit ? '' : ' readonly' ?>></div>
-              <div class="form-row"><label>Cevap</label><textarea name="faq_a[]" rows="2"<?= $canWikiEdit ? '' : ' readonly' ?>><?= e((string) ($fq['a'] ?? '')) ?></textarea></div>
-            </div>
-          <?php endforeach; ?>
-          <?php if ($canWikiEdit): ?>
-            <div style="margin-bottom:10px;padding:10px;border:1px dashed var(--line);">
-              <div class="form-row"><label>Yeni soru</label><input name="faq_q[]" placeholder="Boş bırakılırsa eklenmez"></div>
-              <div class="form-row"><label>Yeni cevap</label><textarea name="faq_a[]" rows="2"></textarea></div>
-            </div>
-          <?php endif; ?>
-
-          <?php if ($canWikiEdit): ?>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;">
-              <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-floppy-disk"></i> Kaydet</button>
-              <a class="btn btn-ghost btn-sm" href="<?= e(url('/wiki')) ?>" target="_blank">Önizle</a>
-            </div>
-          <?php endif; ?>
-        </form>
-
-        <?php if ($canWikiEdit): ?>
-          <form method="post" action="<?= e(url('/admin/wiki/sifirla')) ?>" style="margin-top:14px;" onsubmit="return confirm('Wiki içeriği varsayılanlara döndürülsün mü? Mevcut kayıtlar silinir.');">
+          <form method="post" action="<?= e(url('/admin/wiki/kategori/kaydet')) ?>" id="wikiCatForm">
             <?= $csrf ?>
-            <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--blood-light);"><i class="fa-solid fa-rotate-left"></i> Varsayılana sıfırla</button>
+            <input type="hidden" name="id" id="wikiCatId" value="">
+            <div class="form-row"><label>Kategori Adı</label><input name="name" id="wikiCatName" required maxlength="120" placeholder="Örn. Başlangıç"></div>
+            <div class="form-row" id="wikiCatSlugWrap">
+              <label>URL slug (alt kategori; boşsa addan)</label>
+              <input name="slug" id="wikiCatSlug" maxlength="80" placeholder="ornek-sayfa → /wiki/ornek-sayfa.html">
+            </div>
+            <div class="form-row">
+              <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;cursor:pointer;">
+                <input type="checkbox" name="is_main" id="wikiCatIsMain" value="1" style="width:auto;"> Ana Kategoridir
+              </label>
+              <p style="font-size:.75rem;color:var(--ash);margin-top:6px;">İşaretliyse üst grup (Başlangıç / Karakter / Dünya gibi). Değilse aşağıdan ana kategori seçin.</p>
+            </div>
+            <div class="form-row" id="wikiCatParentWrap">
+              <label>Ana Kategori</label>
+              <select name="parent_id" id="wikiCatParent">
+                <option value="">— Seçin —</option>
+                <?php foreach ($wikiMainCategories as $wm): ?>
+                  <option value="<?= (int) $wm['id'] ?>"><?= e((string) $wm['name']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="form-row" id="wikiCatHomeWrap">
+              <label style="display:flex;align-items:center;gap:10px;text-transform:none;letter-spacing:0;cursor:pointer;">
+                <span class="wiki-home-radio" style="flex-shrink:0;">
+                  <input type="checkbox" name="is_wiki_home" id="wikiCatIsHome" value="1">
+                  <span></span>
+                </span>
+                Wiki ana sayfası (`/wiki`)
+              </label>
+              <p style="font-size:.75rem;color:var(--ash);margin-top:6px;">İşaretliyse `http://…/wiki` bu alt sayfaya yönlendirilir. Listede de <strong>Başlangıç</strong> radyosu ile seçebilirsiniz.</p>
+            </div>
+            <div class="grid grid-2">
+              <div class="form-row"><label>Sıra</label><input type="number" name="sort_order" id="wikiCatSort" value="0" min="0"></div>
+              <div class="form-row"><label><input type="checkbox" name="is_active" id="wikiCatActive" value="1" checked> Aktif</label></div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="wikiCatReset">Temizle</button>
+            </div>
           </form>
-        <?php endif; ?>
+          <?php else: ?>
+            <p style="font-size:.82rem;color:var(--ash);">Kategori eklemek için <strong>Wiki kategorileri düzenleme</strong> yetkisi gerekir.</p>
+          <?php endif; ?>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ===================== WIKI İÇERİK TİPLERİ ===================== -->
+    <section class="section<?= $panelSection === 'wiki-icerik-tipleri' ? ' active' : '' ?>" id="wiki-icerik-tipleri">
+      <?php
+        $wikiContentTypes = isset($wikiContentTypes) && is_array($wikiContentTypes) ? $wikiContentTypes : [];
+        $canWikiEdit = $can('wiki_manage') && !\App\Services\PermissionService::isReadOnly(is_array($authUser ?? null) ? $authUser : null);
+      ?>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h3>İçerik Tipleri</h3>
+            <span style="font-size:.8rem;color:var(--ash);"><?= count($wikiContentTypes) ?> kayıt</span>
+          </div>
+          <p style="font-size:.8rem;color:var(--ash);margin-bottom:12px;">Alt menü içerikleri bir tipe bağlanır. Şu an public render: <strong>Basit metin</strong>.</p>
+          <table>
+            <thead><tr><th>Ad</th><th>Slug</th><th>Durum</th><th></th></tr></thead>
+            <tbody>
+              <?php if ($wikiContentTypes === []): ?>
+                <tr><td colspan="4" style="color:var(--ash);">Tip yok.</td></tr>
+              <?php else: ?>
+                <?php foreach ($wikiContentTypes as $wt): ?>
+                <tr>
+                  <td><?= e((string) $wt['name']) ?></td>
+                  <td><code><?= e((string) $wt['slug']) ?></code></td>
+                  <td><?= !empty($wt['is_active']) ? '<span class="badge ok">Aktif</span>' : '<span class="badge ban">Pasif</span>' ?></td>
+                  <td class="actions-cell">
+                    <?php if ($canWikiEdit): ?>
+                    <button type="button" title="Düzenle"
+                      data-edit-wiki-ctype
+                      data-id="<?= (int) $wt['id'] ?>"
+                      data-name="<?= e((string) $wt['name']) ?>"
+                      data-slug="<?= e((string) $wt['slug']) ?>"
+                      data-active="<?= !empty($wt['is_active']) ? '1' : '0' ?>"
+                    ><i class="fa-solid fa-pen"></i></button>
+                    <form method="post" action="<?= e(url('/admin/wiki/icerik-tipi/toggle')) ?>" style="display:inline;">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $wt['id'] ?>">
+                      <input type="hidden" name="is_active" value="<?= !empty($wt['is_active']) ? '0' : '1' ?>">
+                      <button type="submit" title="Aç/Kapat"><?= !empty($wt['is_active']) ? '<i class="fa-solid fa-toggle-on"></i>' : '<i class="fa-solid fa-toggle-off"></i>' ?></button>
+                    </form>
+                    <?php if ((string) ($wt['slug'] ?? '') !== 'basit-metin'): ?>
+                    <form method="post" action="<?= e(url('/admin/wiki/icerik-tipi/sil')) ?>" style="display:inline;" onsubmit="return confirm('İçerik tipi silinsin mi?');">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $wt['id'] ?>">
+                      <button type="submit" class="danger" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                    <?php endif; ?>
+                    <?php else: ?>—<?php endif; ?>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3 id="wikiCtypeFormTitle">Yeni İçerik Tipi</h3></div>
+          <?php if ($canWikiEdit): ?>
+          <form method="post" action="<?= e(url('/admin/wiki/icerik-tipi/kaydet')) ?>" id="wikiCtypeForm">
+            <?= $csrf ?>
+            <input type="hidden" name="id" id="wikiCtypeId" value="">
+            <div class="form-row"><label>Ad</label><input name="name" id="wikiCtypeName" required maxlength="120" placeholder="Örn. Basit metin"></div>
+            <div class="form-row"><label>Slug (boşsa addan)</label><input name="slug" id="wikiCtypeSlug" maxlength="40" placeholder="basit-metin"></div>
+            <div class="form-row"><label><input type="checkbox" name="is_active" id="wikiCtypeActive" value="1" checked> Aktif</label></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="wikiCtypeReset">Temizle</button>
+            </div>
+          </form>
+          <?php else: ?>
+            <p style="font-size:.82rem;color:var(--ash);">Düzenleme yetkisi yok.</p>
+          <?php endif; ?>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== WIKI İÇERİKLER ===================== -->
+    <section class="section<?= $panelSection === 'wiki-icerikler' ? ' active' : '' ?>" id="wiki-icerikler">
+      <?php
+        $wikiPages = isset($wikiPages) && is_array($wikiPages) ? $wikiPages : [];
+        $wikiChildCategories = isset($wikiChildCategories) && is_array($wikiChildCategories) ? $wikiChildCategories : [];
+        $wikiContentTypesActive = array_values(array_filter(
+          isset($wikiContentTypes) && is_array($wikiContentTypes) ? $wikiContentTypes : [],
+          static fn($t) => !empty($t['is_active'])
+        ));
+        $canWikiEdit = $can('wiki_manage') && !\App\Services\PermissionService::isReadOnly(is_array($authUser ?? null) ? $authUser : null);
+        $defaultTypeId = 0;
+        foreach ($wikiContentTypesActive as $t) {
+          if ((string) ($t['slug'] ?? '') === 'basit-metin') {
+            $defaultTypeId = (int) $t['id'];
+            break;
+          }
+        }
+        if ($defaultTypeId === 0 && $wikiContentTypesActive !== []) {
+          $defaultTypeId = (int) ($wikiContentTypesActive[0]['id'] ?? 0);
+        }
+      ?>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h3>İçerikler</h3>
+            <span style="font-size:.8rem;color:var(--ash);"><?= count($wikiPages) ?> kayıt</span>
+          </div>
+          <p style="font-size:.8rem;color:var(--ash);margin-bottom:12px;">Her alt kategoriye bir içerik bağlanır; menü seçilen tipe bürünür.</p>
+          <table>
+            <thead><tr><th>Başlık</th><th>Kategori</th><th>Tip</th><th>Durum</th><th></th></tr></thead>
+            <tbody>
+              <?php if ($wikiPages === []): ?>
+                <tr><td colspan="5" style="color:var(--ash);">İçerik yok.</td></tr>
+              <?php else: ?>
+                <?php foreach ($wikiPages as $wp): ?>
+                <tr>
+                  <td><?= e((string) $wp['title']) ?></td>
+                  <td><?= e((string) $wp['category_name']) ?></td>
+                  <td><?= e((string) $wp['content_type_name']) ?></td>
+                  <td><?= !empty($wp['is_active']) ? '<span class="badge ok">Aktif</span>' : '<span class="badge ban">Pasif</span>' ?></td>
+                  <td class="actions-cell">
+                    <?php if ($canWikiEdit): ?>
+                    <button type="button" title="Düzenle"
+                      data-edit-wiki-page
+                      data-id="<?= (int) $wp['id'] ?>"
+                      data-title="<?= e((string) $wp['title']) ?>"
+                      data-category="<?= (int) $wp['category_id'] ?>"
+                      data-type="<?= (int) $wp['content_type_id'] ?>"
+                      data-body-b64="<?= e(base64_encode((string) $wp['body_html'])) ?>"
+                      data-active="<?= !empty($wp['is_active']) ? '1' : '0' ?>"
+                    ><i class="fa-solid fa-pen"></i></button>
+                    <form method="post" action="<?= e(url('/admin/wiki/icerik/toggle')) ?>" style="display:inline;">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $wp['id'] ?>">
+                      <input type="hidden" name="is_active" value="<?= !empty($wp['is_active']) ? '0' : '1' ?>">
+                      <button type="submit" title="Aç/Kapat"><?= !empty($wp['is_active']) ? '<i class="fa-solid fa-toggle-on"></i>' : '<i class="fa-solid fa-toggle-off"></i>' ?></button>
+                    </form>
+                    <form method="post" action="<?= e(url('/admin/wiki/icerik/sil')) ?>" style="display:inline;" onsubmit="return confirm('İçerik silinsin mi?');">
+                      <?= $csrf ?>
+                      <input type="hidden" name="id" value="<?= (int) $wp['id'] ?>">
+                      <button type="submit" class="danger" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                    <?php else: ?>—<?php endif; ?>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3 id="wikiPageFormTitle">Yeni İçerik</h3></div>
+          <?php if ($canWikiEdit): ?>
+          <form method="post" action="<?= e(url('/admin/wiki/icerik/kaydet')) ?>" id="wikiPageForm">
+            <?= $csrf ?>
+            <input type="hidden" name="id" id="wikiPageId" value="">
+            <input type="hidden" name="body_html" id="wikiPageBody" value="">
+            <div class="form-row"><label>Başlık</label><input name="title" id="wikiPageTitle" required maxlength="200" placeholder="Oyunu tanıyın"></div>
+            <div class="form-row">
+              <label>Alt kategori</label>
+              <select name="category_id" id="wikiPageCategory" required>
+                <option value="">— Seçin —</option>
+                <?php foreach ($wikiChildCategories as $wc): ?>
+                  <option value="<?= (int) $wc['id'] ?>">
+                    <?= e(trim((string) (($wc['parent_name'] ?? '') !== '' ? ($wc['parent_name'] . ' › ' . $wc['name']) : $wc['name']))) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>İçerik tipi</label>
+              <select name="content_type_id" id="wikiPageType" required>
+                <?php foreach ($wikiContentTypesActive as $wt): ?>
+                  <option value="<?= (int) $wt['id'] ?>"<?= (int) $wt['id'] === $defaultTypeId ? ' selected' : '' ?>><?= e((string) $wt['name']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>İçerik</label>
+              <div id="wikiEditorWrap">
+                <div class="ann-toolbar" id="wikiToolbar">
+                  <button type="button" data-wiki-cmd="bold" title="Kalın"><b>B</b></button>
+                  <button type="button" data-wiki-cmd="italic" title="İtalik"><i>I</i></button>
+                  <button type="button" data-wiki-cmd="underline" title="Altı çizili"><u>U</u></button>
+                  <button type="button" data-wiki-cmd="strikeThrough" title="Üstü çizili"><s>S</s></button>
+                  <span class="sep"></span>
+                  <button type="button" data-wiki-cmd="justifyLeft" title="Sola"><i class="fa-solid fa-align-left"></i></button>
+                  <button type="button" data-wiki-cmd="justifyCenter" title="Ortala"><i class="fa-solid fa-align-center"></i></button>
+                  <button type="button" data-wiki-cmd="justifyRight" title="Sağa"><i class="fa-solid fa-align-right"></i></button>
+                  <span class="sep"></span>
+                  <button type="button" data-wiki-cmd="insertUnorderedList" title="Liste"><i class="fa-solid fa-list-ul"></i></button>
+                  <button type="button" data-wiki-cmd="insertOrderedList" title="Numaralı"><i class="fa-solid fa-list-ol"></i></button>
+                  <span class="sep"></span>
+                  <button type="button" data-wiki-cmd="createLink" title="Link"><i class="fa-solid fa-link"></i></button>
+                  <button type="button" data-wiki-cmd="unlink" title="Linki kaldır"><i class="fa-solid fa-link-slash"></i></button>
+                  <button type="button" data-wiki-cmd="insertTable" title="Tablo"><i class="fa-solid fa-table"></i></button>
+                  <button type="button" data-wiki-cmd="insertImage" title="Resim ekle"><i class="fa-solid fa-image"></i></button>
+                  <button type="button" data-wiki-cmd="insertClassCard" title="2 sabit sınıf kartı yan yana"><i class="fa-solid fa-id-card"></i> Kart ×2</button>
+                  <span class="sep"></span>
+                  <button type="button" data-wiki-cmd="formatBlock" data-value="h2" title="Başlık">H2</button>
+                  <button type="button" data-wiki-cmd="formatBlock" data-value="p" title="Paragraf">P</button>
+                  <button type="button" data-wiki-cmd="removeFormat" title="Biçimi temizle"><i class="fa-solid fa-eraser"></i></button>
+                  <button type="button" data-wiki-cmd="toggleHtml" title="HTML kaynak" id="wikiToggleHtml"><i class="fa-solid fa-code"></i></button>
+                </div>
+                <div id="wikiEditor" contenteditable="true" data-placeholder="Wiki metnini yazın; resim ekleyebilirsiniz…"></div>
+                <textarea id="wikiHtmlPanel" spellcheck="false" aria-label="HTML kaynak"></textarea>
+              </div>
+              <input type="file" id="wikiImageFile" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none;">
+            </div>
+            <div class="form-row"><label><input type="checkbox" name="is_active" id="wikiPageActive" value="1" checked> Aktif yayınla</label></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="wikiPageReset">Temizle</button>
+            </div>
+          </form>
+          <?php else: ?>
+            <p style="font-size:.82rem;color:var(--ash);">Düzenleme yetkisi yok.</p>
+          <?php endif; ?>
+        </div>
       </div>
     </section>
 
@@ -4962,6 +5120,277 @@ $can = static function (string $flag) use ($permFlags): bool {
     if (typeof window.syncMarketCatIconPicker === 'function') window.syncMarketCatIconPicker();
   });
 
+  const syncWikiCatParent = () => {
+    const isMain = document.getElementById('wikiCatIsMain')?.checked;
+    const wrap = document.getElementById('wikiCatParentWrap');
+    const sel = document.getElementById('wikiCatParent');
+    const slugWrap = document.getElementById('wikiCatSlugWrap');
+    const homeWrap = document.getElementById('wikiCatHomeWrap');
+    const homeRadio = document.getElementById('wikiCatIsHome');
+    if (!wrap) return;
+    wrap.style.display = isMain ? 'none' : '';
+    if (slugWrap) slugWrap.style.display = isMain ? 'none' : '';
+    if (homeWrap) homeWrap.style.display = isMain ? 'none' : '';
+    if (isMain && homeRadio) homeRadio.checked = false;
+    if (sel) {
+      sel.required = !isMain;
+      if (isMain) sel.value = '';
+    }
+  };
+  document.getElementById('wikiCatIsMain')?.addEventListener('change', syncWikiCatParent);
+  syncWikiCatParent();
+
+  document.querySelectorAll('[data-edit-wiki-cat]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('wikiCatFormTitle').textContent = 'Kategori Düzenle';
+      document.getElementById('wikiCatId').value = btn.dataset.id || '';
+      document.getElementById('wikiCatName').value = btn.dataset.name || '';
+      const slugEl = document.getElementById('wikiCatSlug');
+      if (slugEl) slugEl.value = btn.dataset.slug || '';
+      document.getElementById('wikiCatIsMain').checked = btn.dataset.main === '1';
+      document.getElementById('wikiCatParent').value = btn.dataset.parent || '';
+      document.getElementById('wikiCatSort').value = btn.dataset.sort || '0';
+      document.getElementById('wikiCatActive').checked = btn.dataset.active === '1';
+      const homeRadio = document.getElementById('wikiCatIsHome');
+      if (homeRadio) homeRadio.checked = btn.dataset.home === '1';
+      syncWikiCatParent();
+      showSection('wiki-kategoriler');
+    });
+  });
+  document.getElementById('wikiCatReset')?.addEventListener('click', () => {
+    document.getElementById('wikiCatFormTitle').textContent = 'Yeni Kategori';
+    document.getElementById('wikiCatId').value = '';
+    document.getElementById('wikiCatName').value = '';
+    const slugEl = document.getElementById('wikiCatSlug');
+    if (slugEl) slugEl.value = '';
+    document.getElementById('wikiCatIsMain').checked = false;
+    document.getElementById('wikiCatParent').value = '';
+    document.getElementById('wikiCatSort').value = '0';
+    document.getElementById('wikiCatActive').checked = true;
+    const homeRadio = document.getElementById('wikiCatIsHome');
+    if (homeRadio) homeRadio.checked = false;
+    syncWikiCatParent();
+  });
+
+  // Wiki içerik tipi
+  document.querySelectorAll('[data-edit-wiki-ctype]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('wikiCtypeFormTitle').textContent = 'İçerik Tipi Düzenle';
+      document.getElementById('wikiCtypeId').value = btn.dataset.id || '';
+      document.getElementById('wikiCtypeName').value = btn.dataset.name || '';
+      document.getElementById('wikiCtypeSlug').value = btn.dataset.slug || '';
+      document.getElementById('wikiCtypeActive').checked = btn.dataset.active === '1';
+      showSection('wiki-icerik-tipleri');
+    });
+  });
+  document.getElementById('wikiCtypeReset')?.addEventListener('click', () => {
+    document.getElementById('wikiCtypeFormTitle').textContent = 'Yeni İçerik Tipi';
+    document.getElementById('wikiCtypeId').value = '';
+    document.getElementById('wikiCtypeName').value = '';
+    document.getElementById('wikiCtypeSlug').value = '';
+    document.getElementById('wikiCtypeActive').checked = true;
+  });
+
+  // Wiki içerik editörü
+  (function wikiPageEditor() {
+    const editor = document.getElementById('wikiEditor');
+    const htmlPanel = document.getElementById('wikiHtmlPanel');
+    const wrap = document.getElementById('wikiEditorWrap');
+    const bodyInput = document.getElementById('wikiPageBody');
+    const form = document.getElementById('wikiPageForm');
+    const imageFile = document.getElementById('wikiImageFile');
+    if (!editor || !form) return;
+    let htmlMode = false;
+    let cardImageTarget = null;
+    const uploadUrl = <?= json_encode(url('/admin/wiki/icerik/resim'), JSON_UNESCAPED_UNICODE) ?>;
+    const classCardHtml = (glow, icon, title) => (
+      '<div class="wiki-class-card" style="--glow-color:' + (glow || '#8f1c29') + '">' +
+        '<div class="wiki-class-glow"></div>' +
+        '<div class="wiki-class-visual is-empty">Resim için tıkla</div>' +
+        '<div class="wiki-class-body">' +
+          '<i class="' + (icon || 'fa-solid fa-khanda') + ' wiki-class-icon" contenteditable="false"></i>' +
+          '<h3>' + (title || 'BAŞLIK') + '</h3>' +
+          '<p>Kısa açıklama yazın…</p>' +
+        '</div>' +
+      '</div>'
+    );
+
+    const insertClassCard = () => {
+      editor.focus();
+      // Anasayfa sınıfları gibi: sabit boyut, yan yana 2 kart
+      const pair = '<div class="wiki-class-row">' +
+        classCardHtml('#8f1c29', 'fa-solid fa-khanda', 'SAVAŞÇI') +
+        classCardHtml('#33594a', 'fa-solid fa-wind', 'NİNJA') +
+        '</div><p><br></p>';
+      if (htmlMode) {
+        if (htmlPanel) htmlPanel.value += '\n' + pair + '\n';
+        return;
+      }
+      document.execCommand('insertHTML', false, pair);
+    };
+
+    const syncHtmlFromEditor = () => { if (htmlPanel) htmlPanel.value = editor.innerHTML; };
+    const syncEditorFromHtml = () => { if (htmlPanel) editor.innerHTML = htmlPanel.value; };
+    const getHtml = () => (htmlMode && htmlPanel) ? (htmlPanel.value || '') : (editor.innerHTML || '');
+    const setHtml = (html) => {
+      const safe = html || '';
+      editor.innerHTML = safe;
+      if (htmlPanel) htmlPanel.value = safe;
+      if (htmlMode) {
+        htmlMode = false;
+        editor.classList.remove('html-mode');
+        wrap?.classList.remove('html-open');
+      }
+    };
+    const decodeB64 = (b64) => {
+      try {
+        const bin = atob(b64 || '');
+        const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+        return new TextDecoder('utf-8').decode(bytes);
+      } catch (e) {
+        return '';
+      }
+    };
+
+    const wikiExec = (cmd, value) => {
+      if (htmlMode && cmd !== 'toggleHtml') return;
+      editor.focus();
+      if (cmd === 'createLink') {
+        const url = window.prompt('Link URL', 'https://');
+        if (!url) return;
+        document.execCommand('createLink', false, url);
+        return;
+      }
+      if (cmd === 'insertTable') {
+        const rows = Math.min(10, Math.max(1, parseInt(window.prompt('Satır sayısı', '3') || '3', 10) || 3));
+        const cols = Math.min(10, Math.max(1, parseInt(window.prompt('Sütun sayısı', '3') || '3', 10) || 3));
+        let html = '<table><tbody>';
+        for (let r = 0; r < rows; r++) {
+          html += '<tr>';
+          for (let c = 0; c < cols; c++) html += '<td>&nbsp;</td>';
+          html += '</tr>';
+        }
+        html += '</tbody></table><p><br></p>';
+        document.execCommand('insertHTML', false, html);
+        return;
+      }
+      if (cmd === 'insertImage') {
+        cardImageTarget = null;
+        imageFile?.click();
+        return;
+      }
+      if (cmd === 'insertClassCard') {
+        insertClassCard();
+        return;
+      }
+      if (cmd === 'formatBlock') {
+        document.execCommand('formatBlock', false, value || 'p');
+        return;
+      }
+      if (cmd === 'toggleHtml') {
+        if (!htmlMode) {
+          syncHtmlFromEditor();
+          htmlMode = true;
+          editor.classList.add('html-mode');
+          wrap?.classList.add('html-open');
+          htmlPanel?.focus();
+        } else {
+          syncEditorFromHtml();
+          htmlMode = false;
+          editor.classList.remove('html-mode');
+          wrap?.classList.remove('html-open');
+          editor.focus();
+        }
+        return;
+      }
+      document.execCommand(cmd, false, value || null);
+    };
+
+    document.getElementById('wikiToolbar')?.addEventListener('mousedown', (e) => {
+      if (e.target.closest('button,[data-wiki-cmd]')) e.preventDefault();
+    });
+    document.getElementById('wikiToolbar')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-wiki-cmd]');
+      if (!btn) return;
+      e.preventDefault();
+      wikiExec(btn.dataset.wikiCmd, btn.dataset.value);
+    });
+
+    editor.addEventListener('click', (e) => {
+      const slot = e.target.closest('.wiki-class-visual');
+      if (!slot || !editor.contains(slot)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      cardImageTarget = slot;
+      imageFile?.click();
+    });
+
+    imageFile?.addEventListener('change', async () => {
+      const file = imageFile.files && imageFile.files[0];
+      imageFile.value = '';
+      if (!file) return;
+      const fd = new FormData();
+      fd.append('image', file);
+      fd.append('csrf_token', csrfToken);
+      try {
+        const res = await fetch(uploadUrl, { method: 'POST', body: fd, credentials: 'same-origin' });
+        const data = await res.json();
+        if (!data || !data.ok || !data.url) {
+          alert((data && data.errors && data.errors[0]) || 'Resim yüklenemedi.');
+          return;
+        }
+        const imgTag = '<img src="' + data.url + '" alt="">';
+        if (cardImageTarget && editor.contains(cardImageTarget)) {
+          cardImageTarget.classList.remove('is-empty');
+          cardImageTarget.innerHTML = imgTag;
+          cardImageTarget = null;
+          return;
+        }
+        editor.focus();
+        if (htmlMode) {
+          htmlPanel.value += '\n' + imgTag + '\n';
+        } else {
+          document.execCommand('insertHTML', false, '<p>' + imgTag + '</p>');
+        }
+      } catch (err) {
+        alert('Resim yüklenemedi.');
+      } finally {
+        cardImageTarget = null;
+      }
+    });
+
+    form.addEventListener('submit', () => {
+      if (bodyInput) bodyInput.value = getHtml();
+    });
+
+    const resetPage = () => {
+      document.getElementById('wikiPageFormTitle').textContent = 'Yeni İçerik';
+      document.getElementById('wikiPageId').value = '';
+      document.getElementById('wikiPageTitle').value = '';
+      document.getElementById('wikiPageCategory').value = '';
+      const typeSel = document.getElementById('wikiPageType');
+      if (typeSel && typeSel.options.length) typeSel.selectedIndex = 0;
+      document.getElementById('wikiPageActive').checked = true;
+      setHtml('');
+      if (bodyInput) bodyInput.value = '';
+    };
+
+    document.getElementById('wikiPageReset')?.addEventListener('click', resetPage);
+
+    document.querySelectorAll('[data-edit-wiki-page]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('wikiPageFormTitle').textContent = 'İçerik Düzenle';
+        document.getElementById('wikiPageId').value = btn.dataset.id || '';
+        document.getElementById('wikiPageTitle').value = btn.dataset.title || '';
+        document.getElementById('wikiPageCategory').value = btn.dataset.category || '';
+        document.getElementById('wikiPageType').value = btn.dataset.type || '';
+        document.getElementById('wikiPageActive').checked = btn.dataset.active === '1';
+        setHtml(decodeB64(btn.dataset.bodyB64 || ''));
+        showSection('wiki-icerikler');
+      });
+    });
+  })();
+
   (function marketItemAdmin() {
     const nextSort = <?= (int) ($marketItemNextSort ?? 1) ?>;
     const discActive = document.getElementById('marketItemDiscountActive');
@@ -5164,15 +5593,6 @@ $can = static function (string $flag) use ($permFlags): bool {
       };
     })();
 
-    // Wiki Yönetimi — tüm ikon alanları
-    document.querySelectorAll('[data-wiki-icon-pick]').forEach((wrap) => {
-      const input = wrap.querySelector('.wiki-icon-input');
-      const preview = wrap.querySelector('.icon-pick-preview');
-      const toggle = wrap.querySelector('.wiki-icon-toggle');
-      const grid = wrap.querySelector('.wiki-icon-grid');
-      const search = wrap.querySelector('.wiki-icon-search');
-      bindPicker(input, preview, toggle, grid, search, 'fa-solid fa-star');
-    });
   })();
 
   document.querySelectorAll('[data-toggle]').forEach(t => {

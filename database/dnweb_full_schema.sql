@@ -494,6 +494,65 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   KEY `idx_notif_recipient` (`recipient_account_id`, `is_read`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
 
+CREATE TABLE IF NOT EXISTS `wiki_categories` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(120) NOT NULL,
+  `slug` VARCHAR(80) NOT NULL DEFAULT '',
+  `is_main` TINYINT(1) NOT NULL DEFAULT 0,
+  `parent_id` INT UNSIGNED NULL DEFAULT NULL,
+  `sort_order` INT NOT NULL DEFAULT 0,
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+  `is_wiki_home` TINYINT(1) NOT NULL DEFAULT 0,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_wiki_cat_slug` (`slug`),
+  KEY `idx_wiki_cat_parent` (`parent_id`),
+  KEY `idx_wiki_cat_sort` (`sort_order`, `is_active`, `is_main`),
+  CONSTRAINT `fk_wiki_cat_parent`
+    FOREIGN KEY (`parent_id`) REFERENCES `wiki_categories` (`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
+
+CREATE TABLE IF NOT EXISTS `wiki_content_types` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `slug` VARCHAR(40) NOT NULL,
+  `name` VARCHAR(120) NOT NULL,
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_wiki_ctype_slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
+
+INSERT INTO `wiki_content_types` (`slug`, `name`, `is_active`, `created_at`, `updated_at`)
+SELECT 'basit-metin', 'Basit metin', 1, NOW(), NOW()
+FROM DUAL
+WHERE NOT EXISTS (
+  SELECT 1 FROM `wiki_content_types` WHERE `slug` = 'basit-metin'
+);
+
+CREATE TABLE IF NOT EXISTS `wiki_pages` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `category_id` INT UNSIGNED NOT NULL,
+  `content_type_id` INT UNSIGNED NOT NULL,
+  `title` VARCHAR(200) NOT NULL DEFAULT '',
+  `body_html` MEDIUMTEXT NOT NULL,
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_wiki_page_category` (`category_id`),
+  KEY `idx_wiki_page_type` (`content_type_id`),
+  KEY `idx_wiki_page_active` (`is_active`),
+  CONSTRAINT `fk_wiki_page_category`
+    FOREIGN KEY (`category_id`) REFERENCES `wiki_categories` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_wiki_page_type`
+    FOREIGN KEY (`content_type_id`) REFERENCES `wiki_content_types` (`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
+
 CREATE TABLE IF NOT EXISTS `market_categories` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `slug` VARCHAR(40) NOT NULL,

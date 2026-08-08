@@ -4,6 +4,48 @@ Sürüm geçmişi. Yeni notlar en üste eklenir.
 
 Sürüm dosyası: `config/version.json`
 
+### 2026-08-08 — Sürüm 3.6.16 · Wiki sınıf kartı
+
+| Konu | Açıklama |
+|------|----------|
+| **Editör** | **Kart ×2** — yan yana 2 sınıf kartı (resim + başlık + açıklama) |
+| **Çerçeve** | Resim alanında altın temalı çerçeve |
+| **Sanitize** | Wiki HTML’de `class` / kart yapısı korunur |
+
+### 2026-08-08 — Sürüm 3.6.15 · Wiki başlangıç + Intelephense
+
+| Konu | Açıklama |
+|------|----------|
+| **Başlangıç** | Alt kategoride radio / form ile `/wiki` ana sayfa seçimi |
+| **Redirect** | Seçiliyse `/wiki` → `/wiki/{slug}.html` |
+| **Fix** | `wiki.php` — `$wikiCategory` / `$wikiPage` `@var` (Intelephense P1008) |
+
+### 2026-08-08 — Sürüm 3.6.14 · Wiki sayfa URL’leri
+
+| Konu | Açıklama |
+|------|----------|
+| **URL** | Alt kategori sayfaları: `/wiki/{slug}.html` (yalnızca o içerik) |
+| **Index** | `/wiki` — kategori kartları + TOC; tıklanınca ayrı sayfa |
+| **Slug** | `wiki_categories.slug` + admin form alanı |
+
+### 2026-08-08 — Sürüm 3.6.13 · Wiki içerik tipleri + Basit metin
+
+| Konu | Açıklama |
+|------|----------|
+| **İçerik tipleri** | Admin Wiki → İçerik Tipleri (seed: Basit metin) |
+| **İçerikler** | Alt kategoriye bağlı sayfa; zengin HTML editör + resim yükleme (`/uploads/wiki/`) |
+| **Public `/wiki`** | Ana kategoriler her zaman görünür; alt sayfa içeriği render |
+| **SQL** | `04_wiki_content.sql` |
+
+### 2026-08-08 — Sürüm 3.6.12 · Wiki kategoriler + panel cursor
+
+| Konu | Açıklama |
+|------|----------|
+| **Wiki** | Admin **Wiki → Kategoriler** (ana / alt); eski içerik editörü kaldırıldı |
+| **Public `/wiki`** | TOC ve içerik `wiki_categories` tablosundan; ana kategori TOC’ta tekrarlanmaz |
+| **SQL** | `02_drop_wiki_content.sql`, `03_wiki_categories.sql` |
+| **Panel** | Admin / kullanıcı menü `.nav-item` üzerinde `cursor:pointer` (yazı seçme imleci düzeltildi) |
+
 ### 2026-08-07 — Sürüm 3.6.11 · Ban / ticket mail düzeltmesi
 
 | Konu | Açıklama |

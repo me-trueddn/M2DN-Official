@@ -246,6 +246,9 @@ final class Schema
         self::ensureMarketItems($pdo);
         self::ensureMarketSalesLogs($pdo);
         self::ensureMarketCoupons($pdo);
+        self::ensureWikiCategories($pdo);
+        self::ensureWikiContentTypes($pdo);
+        self::ensureWikiPages($pdo);
 
         $seed = $pdo->prepare(
             "INSERT INTO `settings` (`group_key`, `setting_key`, `setting_value`) VALUES
@@ -1030,6 +1033,157 @@ final class Schema
               PRIMARY KEY (`id`),
               UNIQUE KEY `uk_ip_bans_ip` (`ip`),
               KEY `idx_ip_bans_pcbang` (`pcbang_ip_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+    }
+
+    private static function ensureWikiCategories(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `wiki_categories` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `name` VARCHAR(120) NOT NULL,
+              `slug` VARCHAR(80) NOT NULL DEFAULT '',
+              `is_main` TINYINT(1) NOT NULL DEFAULT 0,
+              `parent_id` INT UNSIGNED NULL DEFAULT NULL,
+              `sort_order` INT NOT NULL DEFAULT 0,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `is_wiki_home` TINYINT(1) NOT NULL DEFAULT 0,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `uq_wiki_cat_slug` (`slug`),
+              KEY `idx_wiki_cat_parent` (`parent_id`),
+              KEY `idx_wiki_cat_sort` (`sort_order`, `is_active`, `is_main`),
+              CONSTRAINT `fk_wiki_cat_parent`
+                FOREIGN KEY (`parent_id`) REFERENCES `wiki_categories` (`id`)
+                ON DELETE RESTRICT ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+
+        self::ensureColumn($pdo, 'wiki_categories', 'slug', "VARCHAR(80) NOT NULL DEFAULT '' AFTER `name`");
+        self::ensureColumn($pdo, 'wiki_categories', 'is_wiki_home', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_active`');
+        self::backfillWikiCategorySlugs($pdo);
+        self::ensureWikiCategorySlugIndex($pdo);
+    }
+
+    private static function backfillWikiCategorySlugs(PDO $pdo): void
+    {
+        try {
+            $rows = $pdo->query('SELECT id, name, slug FROM wiki_categories')->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (\Throwable) {
+            return;
+        }
+        $used = [];
+        foreach ($rows as $row) {
+            $slug = trim((string) ($row['slug'] ?? ''));
+            if ($slug !== '' && $slug !== 'cat-' . (int) ($row['id'] ?? 0)) {
+                $used[$slug] = true;
+            }
+        }
+        foreach ($rows as $row) {
+            $id = (int) ($row['id'] ?? 0);
+            $slug = trim((string) ($row['slug'] ?? ''));
+            $needs = $slug === '' || preg_match('/^cat-\d+$/', $slug) === 1;
+            if (!$needs) {
+                continue;
+            }
+            $base = self::slugifyWikiName((string) ($row['name'] ?? ''), $id);
+            $candidate = $base;
+            $n = 2;
+            while (isset($used[$candidate])) {
+                $candidate = $base . '-' . $n;
+                $n++;
+            }
+            $used[$candidate] = true;
+            $pdo->prepare('UPDATE wiki_categories SET slug = ? WHERE id = ?')->execute([$candidate, $id]);
+        }
+    }
+
+    private static function ensureWikiCategorySlugIndex(PDO $pdo): void
+    {
+        $webDb = (string) (Config::get('web_database.database') ?? 'DNWeb');
+        if ($webDb === '' || !preg_match('/^[A-Za-z0-9_]+$/', $webDb)) {
+            $webDb = 'DNWeb';
+        }
+        try {
+            $cnt = (int) $pdo->query(
+                "SELECT COUNT(*) FROM information_schema.STATISTICS
+                 WHERE TABLE_SCHEMA = " . $pdo->quote($webDb) . "
+                   AND TABLE_NAME = 'wiki_categories'
+                   AND INDEX_NAME = 'uq_wiki_cat_slug'"
+            )->fetchColumn();
+            if ($cnt === 0) {
+                $pdo->exec('ALTER TABLE `wiki_categories` ADD UNIQUE KEY `uq_wiki_cat_slug` (`slug`)');
+            }
+        } catch (\Throwable) {
+            // ignore
+        }
+    }
+
+    private static function slugifyWikiName(string $name, int $fallbackId = 0): string
+    {
+        $value = mb_strtolower(trim($name), 'UTF-8');
+        $map = ['ı' => 'i', 'ğ' => 'g', 'ü' => 'u', 'ş' => 's', 'ö' => 'o', 'ç' => 'c', 'İ' => 'i'];
+        $value = strtr($value, $map);
+        $value = preg_replace('/[^a-z0-9]+/i', '-', $value) ?? '';
+        $value = trim($value, '-');
+        if ($value === '') {
+            $value = 'cat-' . max(1, $fallbackId);
+        }
+        if (mb_strlen($value) > 80) {
+            $value = rtrim(mb_substr($value, 0, 80), '-');
+        }
+        return $value;
+    }
+
+    private static function ensureWikiContentTypes(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `wiki_content_types` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `slug` VARCHAR(40) NOT NULL,
+              `name` VARCHAR(120) NOT NULL,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `uq_wiki_ctype_slug` (`slug`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+        );
+
+        $exists = $pdo->prepare('SELECT id FROM wiki_content_types WHERE slug = ? LIMIT 1');
+        $exists->execute(['basit-metin']);
+        if (!$exists->fetchColumn()) {
+            $pdo->prepare(
+                'INSERT INTO wiki_content_types (slug, name, is_active, created_at, updated_at)
+                 VALUES (?, ?, 1, NOW(), NOW())'
+            )->execute(['basit-metin', 'Basit metin']);
+        }
+    }
+
+    private static function ensureWikiPages(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS `wiki_pages` (
+              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+              `category_id` INT UNSIGNED NOT NULL,
+              `content_type_id` INT UNSIGNED NOT NULL,
+              `title` VARCHAR(200) NOT NULL DEFAULT '',
+              `body_html` MEDIUMTEXT NOT NULL,
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `uq_wiki_page_category` (`category_id`),
+              KEY `idx_wiki_page_type` (`content_type_id`),
+              KEY `idx_wiki_page_active` (`is_active`),
+              CONSTRAINT `fk_wiki_page_category`
+                FOREIGN KEY (`category_id`) REFERENCES `wiki_categories` (`id`)
+                ON DELETE CASCADE ON UPDATE CASCADE,
+              CONSTRAINT `fk_wiki_page_type`
+                FOREIGN KEY (`content_type_id`) REFERENCES `wiki_content_types` (`id`)
+                ON DELETE RESTRICT ON UPDATE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
         );
     }

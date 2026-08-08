@@ -31,7 +31,9 @@ use App\Services\PermissionService;
 use App\Services\PasswordResetService;
 use App\Services\SiteContentService;
 use App\Services\TicketService;
-use App\Services\WikiService;
+use App\Services\WikiCategoryService;
+use App\Services\WikiContentTypeService;
+use App\Services\WikiPageService;
 
 final class AdminPanelController
 {
@@ -124,8 +126,11 @@ final class AdminPanelController
             'ceza-ayarlari', 'patch-linkleri', 'ozellikler-ayarlari', 'siniflar-ayarlari',
             'oranlar-ayarlari', 'siradaki-bolum', 'galeri-ayarlari', 'footer-ayarlari',
             'logo-ayarlari', 'mail-ayarlari', 'yetki-gruplari', 'ticket-ayarlari', 'duyuru-turleri',
-            'kurallar-ayarlari', 'captcha-ayarlari', 'gizlilik-ayarlari', 'nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari', 'nesne-market-kuponlar', 'wiki-yonetim',
+            'kurallar-ayarlari', 'captcha-ayarlari', 'gizlilik-ayarlari', 'nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari', 'nesne-market-kuponlar', 'wiki-kategoriler', 'wiki-icerik-tipleri', 'wiki-icerikler',
         ];
+        if ($section === 'wiki-yonetim') {
+            $section = 'wiki-kategoriler';
+        }
         if (!in_array($section, $allowed, true)) {
             $section = 'ozet';
         }
@@ -170,7 +175,9 @@ final class AdminPanelController
             'nesne-market-urunler' => PermissionService::FLAG_MENU_NESNE_MARKET,
             'nesne-market-satis-loglari' => PermissionService::FLAG_MENU_NESNE_MARKET,
             'nesne-market-kuponlar' => PermissionService::FLAG_MENU_NESNE_MARKET,
-            'wiki-yonetim' => PermissionService::FLAG_MENU_WIKI,
+            'wiki-kategoriler' => PermissionService::FLAG_MENU_WIKI,
+            'wiki-icerik-tipleri' => PermissionService::FLAG_MENU_WIKI,
+            'wiki-icerikler' => PermissionService::FLAG_MENU_WIKI,
         ];
         if ($section === 'duyurular'
             && empty($permFlags[PermissionService::FLAG_MENU_DUYURULAR])
@@ -184,14 +191,14 @@ final class AdminPanelController
         ) {
             Session::flash('panel_errors', ['Nesne Market yetkin yok.']);
             $section = 'ozet';
-        } elseif ($section === 'wiki-yonetim'
+        } elseif (in_array($section, ['wiki-kategoriler', 'wiki-icerik-tipleri', 'wiki-icerikler'], true)
             && empty($permFlags[PermissionService::FLAG_MENU_WIKI])
             && empty($permFlags[PermissionService::FLAG_WIKI_MANAGE])
         ) {
-            Session::flash('panel_errors', ['Wiki Yönetimi yetkin yok.']);
+            Session::flash('panel_errors', ['Wiki yetkin yok.']);
             $section = 'ozet';
         } elseif (isset($menuGate[$section]) && $section !== 'duyurular'
-            && !in_array($section, ['nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari', 'nesne-market-kuponlar', 'wiki-yonetim'], true)
+            && !in_array($section, ['nesne-market-kategoriler', 'nesne-market-urunler', 'nesne-market-satis-loglari', 'nesne-market-kuponlar', 'wiki-kategoriler', 'wiki-icerik-tipleri', 'wiki-icerikler'], true)
             && empty($permFlags[$menuGate[$section]])
         ) {
             Session::flash('panel_errors', ['Bu menüye erişim yetkin yok.']);
@@ -334,7 +341,26 @@ final class AdminPanelController
             'captchaConfig' => CaptchaService::config(),
             'privacyTitle' => LegalContentService::privacyTitle(),
             'privacyHtml' => LegalContentService::privacyHtml(),
-            'wikiContent' => WikiService::content(),
+            'wikiCategories' => (!empty($permFlags[PermissionService::FLAG_MENU_WIKI])
+                || !empty($permFlags[PermissionService::FLAG_WIKI_MANAGE]))
+                ? WikiCategoryService::list(false)
+                : [],
+            'wikiMainCategories' => (!empty($permFlags[PermissionService::FLAG_MENU_WIKI])
+                || !empty($permFlags[PermissionService::FLAG_WIKI_MANAGE]))
+                ? WikiCategoryService::listMains(false)
+                : [],
+            'wikiChildCategories' => (!empty($permFlags[PermissionService::FLAG_MENU_WIKI])
+                || !empty($permFlags[PermissionService::FLAG_WIKI_MANAGE]))
+                ? WikiCategoryService::listChildren(false)
+                : [],
+            'wikiContentTypes' => (!empty($permFlags[PermissionService::FLAG_MENU_WIKI])
+                || !empty($permFlags[PermissionService::FLAG_WIKI_MANAGE]))
+                ? WikiContentTypeService::list(false)
+                : [],
+            'wikiPages' => (!empty($permFlags[PermissionService::FLAG_MENU_WIKI])
+                || !empty($permFlags[PermissionService::FLAG_WIKI_MANAGE]))
+                ? WikiPageService::list(false)
+                : [],
             'marketCategories' => (!empty($permFlags[PermissionService::FLAG_MENU_NESNE_MARKET])
                 || !empty($permFlags[PermissionService::FLAG_SITE_SETTINGS]))
                 ? \App\Services\MarketCategoryService::list(false)

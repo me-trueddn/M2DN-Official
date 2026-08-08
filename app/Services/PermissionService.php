@@ -53,7 +53,7 @@ final class PermissionService
             self::FLAG_ANNOUNCEMENTS => 'Duyuru işlemleri',
             self::FLAG_TICKETS => 'Destek talebi işlemleri',
             self::FLAG_SITE_SETTINGS => 'Ayarlara erişim',
-            self::FLAG_WIKI_MANAGE => 'Wiki içeriği düzenleme',
+            self::FLAG_WIKI_MANAGE => 'Wiki kategorileri düzenleme',
             self::FLAG_MENU_OYUNCULAR => 'Menü: Oyuncu Yönetimi',
             self::FLAG_MENU_SIRALAMALAR => 'Menü: Oyuncu Sıralaması',
             self::FLAG_MENU_BINEK => 'Menü: Binek Yönetimi',
@@ -68,7 +68,7 @@ final class PermissionService
             self::FLAG_MENU_YASAKLI_KELIMELER => 'Menü: Yasaklı Kelimeler',
             self::FLAG_MENU_LOGLAR => 'Menü: Loglar',
             self::FLAG_MENU_NESNE_MARKET => 'Menü: Nesne Market',
-            self::FLAG_MENU_WIKI => 'Menü: Wiki Yönetimi',
+            self::FLAG_MENU_WIKI => 'Menü: Wiki',
         ];
     }
 

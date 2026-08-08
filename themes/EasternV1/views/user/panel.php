@@ -183,6 +183,7 @@ if ($primary && !empty($primary['last_play']) && $primary['last_play'] !== '0000
     display:flex; align-items:center; gap:12px; padding:11px 12px;
     color:var(--ash); font-size:.9rem; font-weight:500; border-left:2px solid transparent;
     transition:background .2s, color .2s, border-color .2s;
+    cursor:pointer; user-select:none;
   }
   .nav-item i{width:18px; text-align:center; font-size:.95rem;}
   .nav-item:hover{background:rgba(201,151,74,.06); color:var(--parchment);}

@@ -1,5 +1,5 @@
 -- M2DN canlı migrate — 2026-08-07
--- Admin: Wiki Yönetimi menü + düzenleme bayrakları
+-- 01/06 — Admin: Wiki Yönetimi menü + düzenleme bayrakları
 -- Çalıştırma:
 --   mysql -u USER -p DNWeb < database/2026-08-07-wiki-yonetim/01_wiki_flags.sql
 -- Not: Schema::ensure() site açılışında da Admin/Super gruplara ekler; Ready Only yalnızca görür, wiki_manage almaz.
