@@ -3476,7 +3476,7 @@ $can = static function (string $flag) use ($permFlags): bool {
     <section class="section<?= $panelSection === 'wiki-icerikler' ? ' active' : '' ?>" id="wiki-icerikler">
       <?php
         $wikiPages = isset($wikiPages) && is_array($wikiPages) ? $wikiPages : [];
-        $wikiChildCategories = isset($wikiChildCategories) && is_array($wikiChildCategories) ? $wikiChildCategories : [];
+        $wikiCategories = isset($wikiCategories) && is_array($wikiCategories) ? $wikiCategories : [];
         $wikiContentTypesActive = array_values(array_filter(
           isset($wikiContentTypes) && is_array($wikiContentTypes) ? $wikiContentTypes : [],
           static fn($t) => !empty($t['is_active'])
@@ -3551,31 +3551,44 @@ $can = static function (string $flag) use ($permFlags): bool {
             <input type="hidden" name="body_html" id="wikiPageBody" value="">
             <div class="form-row"><label>Başlık</label><input name="title" id="wikiPageTitle" required maxlength="200" placeholder="Oyunu tanıyın"></div>
             <div class="form-row">
-              <label>Alt kategori</label>
+              <label>Kategori</label>
               <select name="category_id" id="wikiPageCategory" required>
                 <option value="">— Seçin —</option>
                 <?php
-                  $wikiChildByParent = [];
-                  foreach ($wikiChildCategories as $wcOpt) {
-                      $pLabel = trim((string) ($wcOpt['parent_name'] ?? ''));
-                      if ($pLabel === '') {
-                          $pLabel = 'Diğer';
+                  $wikiContentCatOpts = isset($wikiCategories) && is_array($wikiCategories) ? $wikiCategories : [];
+                  $wikiMainsForContent = [];
+                  $wikiChildrenForContent = [];
+                  foreach ($wikiContentCatOpts as $wcOpt) {
+                      if (!empty($wcOpt['is_main'])) {
+                          $wikiMainsForContent[] = $wcOpt;
+                      } else {
+                          $pLabel = trim((string) ($wcOpt['parent_name'] ?? ''));
+                          if ($pLabel === '') {
+                              $pLabel = 'Diğer';
+                          }
+                          if (!isset($wikiChildrenForContent[$pLabel])) {
+                              $wikiChildrenForContent[$pLabel] = [];
+                          }
+                          $wikiChildrenForContent[$pLabel][] = $wcOpt;
                       }
-                      if (!isset($wikiChildByParent[$pLabel])) {
-                          $wikiChildByParent[$pLabel] = [];
-                      }
-                      $wikiChildByParent[$pLabel][] = $wcOpt;
                   }
                 ?>
-                <?php foreach ($wikiChildByParent as $pLabel => $childOpts): ?>
-                  <optgroup label="<?= e((string) $pLabel) ?>">
+                <?php if ($wikiMainsForContent !== []): ?>
+                  <optgroup label="Ana kategoriler">
+                    <?php foreach ($wikiMainsForContent as $wm): ?>
+                      <option value="<?= (int) $wm['id'] ?>"><?= e((string) ($wm['name'] ?? '')) ?></option>
+                    <?php endforeach; ?>
+                  </optgroup>
+                <?php endif; ?>
+                <?php foreach ($wikiChildrenForContent as $pLabel => $childOpts): ?>
+                  <optgroup label="<?= e((string) $pLabel) ?> — alt">
                     <?php foreach ($childOpts as $wc): ?>
                       <option value="<?= (int) $wc['id'] ?>"><?= e((string) ($wc['name'] ?? '')) ?></option>
                     <?php endforeach; ?>
                   </optgroup>
                 <?php endforeach; ?>
               </select>
-              <p style="font-size:.75rem;color:var(--ash);margin-top:6px;">Her alt kategori için ayrı içerik. Aynı ana grup altında birden fazla alt seçilebilir.</p>
+              <p style="font-size:.75rem;color:var(--ash);margin-top:6px;">Ana veya alt kategori seçebilirsiniz. Her kategoriye bir içerik bağlanır.</p>
             </div>
             <div class="form-row">
               <label>İçerik tipi</label>

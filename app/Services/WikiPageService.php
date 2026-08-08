@@ -69,7 +69,7 @@ final class WikiPageService
         $active = !empty($input['is_active']) ? 1 : 0;
 
         if ($categoryId <= 0) {
-            return ['ok' => false, 'errors' => ['Alt kategori seçin.']];
+            return ['ok' => false, 'errors' => ['Kategori seçin.']];
         }
         if ($typeId <= 0) {
             return ['ok' => false, 'errors' => ['İçerik tipi seçin.']];
@@ -97,9 +97,6 @@ final class WikiPageService
             if (!$crow) {
                 return ['ok' => false, 'errors' => ['Kategori bulunamadı.']];
             }
-            if ((int) ($crow['is_main'] ?? 0) === 1) {
-                return ['ok' => false, 'errors' => ['İçerik yalnızca alt kategoriye bağlanabilir.']];
-            }
 
             $type = WikiContentTypeService::find($typeId);
             if (!$type || !$type['is_active']) {
@@ -111,7 +108,7 @@ final class WikiPageService
             );
             $dup->execute([$categoryId, $id]);
             if ($dup->fetchColumn()) {
-                return ['ok' => false, 'errors' => ['Bu alt kategoride zaten bir içerik var.']];
+                return ['ok' => false, 'errors' => ['Bu kategoride zaten bir içerik var.']];
             }
 
             if ($id > 0) {

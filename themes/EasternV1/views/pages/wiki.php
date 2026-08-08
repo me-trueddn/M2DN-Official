@@ -417,14 +417,27 @@ $footerHref = static function (string $url): string {
             $mainId = (int) ($main['id'] ?? 0);
             $mainAnchor = \App\Services\WikiCategoryService::anchorId($mainId);
             $children = is_array($main['children'] ?? null) ? $main['children'] : [];
+            $mainPage = $wikiPagesByCategory[$mainId] ?? null;
+            $mainBody = is_array($mainPage) ? (string) ($mainPage['body_html'] ?? '') : '';
+            $mainTypeSlug = is_array($mainPage) ? (string) ($mainPage['content_type_slug'] ?? '') : '';
+            $mainSlug = (string) ($main['slug'] ?? '');
+            $mainPageHref = ($mainSlug !== '' && is_array($mainPage)) ? wiki_url($mainSlug) : '';
           ?>
           <section id="<?= e($mainAnchor) ?>">
             <div class="section-title">
               <div class="eyebrow">Kategori</div>
               <h2><?= e((string) ($main['name'] ?? '')) ?></h2>
+              <?php if ($mainPageHref !== ''): ?>
+                <p style="margin:0 0 12px;"><a href="<?= e($mainPageHref) ?>" style="color:var(--gold-light);font-size:.85rem;">Sayfayı aç <i class="fa-solid fa-arrow-right"></i></a></p>
+              <?php endif; ?>
             </div>
+            <?php if ($mainBody !== '' && ($mainTypeSlug === '' || $mainTypeSlug === 'basit-metin')): ?>
+              <div class="wiki-prose" style="margin-bottom:22px;"><?= $mainBody ?></div>
+            <?php endif; ?>
             <?php if ($children === []): ?>
-              <p class="wiki-empty">Bu bölüm için henüz alt sayfa yok.</p>
+              <?php if ($mainBody === ''): ?>
+                <p class="wiki-empty">Bu bölüm için henüz sayfa yok.</p>
+              <?php endif; ?>
             <?php else: ?>
               <div class="wiki-child-grid">
                 <?php foreach ($children as $child): ?>

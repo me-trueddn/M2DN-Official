@@ -4,6 +4,13 @@ Sürüm geçmişi. Yeni notlar en üste eklenir.
 
 Sürüm dosyası: `config/version.json`
 
+### 2026-08-08 — Sürüm 3.6.18 · Wiki içerik: ana kategori seçimi
+
+| Konu | Açıklama |
+|------|----------|
+| **İçerikler** | Kategori seçiminde ana + alt kategoriler |
+| **Public** | Ana kategoriye bağlı içerik gösterilir / açılır |
+
 ### 2026-08-08 — Sürüm 3.6.17 · Wiki çoklu alt kategori
 
 | Konu | Açıklama |

@@ -39,7 +39,7 @@ final class WikiController
         }
 
         $category = WikiCategoryService::findBySlug($slug, true);
-        if ($category === null || !empty($category['is_main'])) {
+        if ($category === null) {
             http_response_code(404);
             echo '404 — Wiki sayfası bulunamadı.';
             return;
