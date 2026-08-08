@@ -1213,28 +1213,44 @@ final class Schema
 
     private static function ensureWikiTeamMembers(PDO $pdo): void
     {
-        $pdo->exec(
-            "CREATE TABLE IF NOT EXISTS `wiki_team_members` (
-              `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-              `wiki_page_id` INT UNSIGNED NOT NULL,
-              `nick` VARCHAR(120) NOT NULL,
-              `group_key` VARCHAR(40) NOT NULL,
-              `role_key` VARCHAR(60) NOT NULL,
-              `image_url` VARCHAR(500) NOT NULL DEFAULT '',
-              `bio` VARCHAR(500) NOT NULL DEFAULT '',
-              `joined_label` VARCHAR(120) NOT NULL DEFAULT '',
-              `socials_json` TEXT NULL,
-              `sort_order` INT NOT NULL DEFAULT 0,
-              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
-              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-              PRIMARY KEY (`id`),
-              KEY `idx_wiki_team_page` (`wiki_page_id`, `sort_order`, `is_active`),
-              CONSTRAINT `fk_wiki_team_page`
-                FOREIGN KEY (`wiki_page_id`) REFERENCES `wiki_pages` (`id`)
-                ON DELETE CASCADE ON UPDATE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
-        );
+        // FK yok: CREATE + FK wiki_pages üzerinde metadata lock alıp tüm siteyi 504 yapabiliyor.
+        $prevTimeout = null;
+        try {
+            $prevTimeout = $pdo->query('SELECT @@session.lock_wait_timeout')->fetchColumn();
+            $pdo->exec('SET SESSION lock_wait_timeout = 3');
+        } catch (Throwable) {
+        }
+
+        try {
+            $pdo->exec(
+                "CREATE TABLE IF NOT EXISTS `wiki_team_members` (
+                  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                  `wiki_page_id` INT UNSIGNED NOT NULL,
+                  `nick` VARCHAR(120) NOT NULL,
+                  `group_key` VARCHAR(40) NOT NULL,
+                  `role_key` VARCHAR(60) NOT NULL,
+                  `image_url` VARCHAR(500) NOT NULL DEFAULT '',
+                  `bio` VARCHAR(500) NOT NULL DEFAULT '',
+                  `joined_label` VARCHAR(120) NOT NULL DEFAULT '',
+                  `socials_json` TEXT NULL,
+                  `sort_order` INT NOT NULL DEFAULT 0,
+                  `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+                  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  KEY `idx_wiki_team_page` (`wiki_page_id`, `sort_order`, `is_active`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci"
+            );
+        } catch (Throwable $e) {
+            error_log('M2DN ensureWikiTeamMembers: ' . $e->getMessage());
+        }
+
+        if ($prevTimeout !== null && $prevTimeout !== false) {
+            try {
+                $pdo->exec('SET SESSION lock_wait_timeout = ' . (int) $prevTimeout);
+            } catch (Throwable) {
+            }
+        }
     }
 
     private static function ensureMarketCategories(PDO $pdo): void

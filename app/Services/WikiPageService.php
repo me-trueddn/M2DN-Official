@@ -159,7 +159,12 @@ final class WikiPageService
             return false;
         }
         try {
-            Database::web()->prepare('DELETE FROM wiki_pages WHERE id = ?')->execute([$id]);
+            $pdo = Database::web();
+            try {
+                $pdo->prepare('DELETE FROM wiki_team_members WHERE wiki_page_id = ?')->execute([$id]);
+            } catch (\Throwable) {
+            }
+            $pdo->prepare('DELETE FROM wiki_pages WHERE id = ?')->execute([$id]);
             return true;
         } catch (\Throwable) {
             return false;
