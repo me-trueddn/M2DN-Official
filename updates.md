@@ -4,6 +4,12 @@ Sürüm geçmişi. Yeni notlar en üste eklenir.
 
 Sürüm dosyası: `config/version.json`
 
+### 2026-08-08 — Sürüm 3.6.19 · Wiki editör: linkten resim
+
+| Konu | Açıklama |
+|------|----------|
+| **Editör** | Linkten resim ekle (http/https veya `/uploads/wiki/`) |
+
 ### 2026-08-08 — Sürüm 3.6.18 · Wiki içerik: ana kategori seçimi
 
 | Konu | Açıklama |

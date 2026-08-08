@@ -3617,7 +3617,8 @@ $can = static function (string $flag) use ($permFlags): bool {
                   <button type="button" data-wiki-cmd="createLink" title="Link"><i class="fa-solid fa-link"></i></button>
                   <button type="button" data-wiki-cmd="unlink" title="Linki kaldır"><i class="fa-solid fa-link-slash"></i></button>
                   <button type="button" data-wiki-cmd="insertTable" title="Tablo"><i class="fa-solid fa-table"></i></button>
-                  <button type="button" data-wiki-cmd="insertImage" title="Resim ekle"><i class="fa-solid fa-image"></i></button>
+                  <button type="button" data-wiki-cmd="insertImage" title="Dosyadan resim yükle"><i class="fa-solid fa-image"></i></button>
+                  <button type="button" data-wiki-cmd="insertImageUrl" title="Linkten resim ekle"><i class="fa-solid fa-link"></i><i class="fa-solid fa-image" style="margin-left:2px;font-size:.75em;"></i></button>
                   <button type="button" data-wiki-cmd="insertClassCard" title="2 sabit sınıf kartı yan yana"><i class="fa-solid fa-id-card"></i> Kart ×2</button>
                   <span class="sep"></span>
                   <button type="button" data-wiki-cmd="formatBlock" data-value="h2" title="Başlık">H2</button>
@@ -5306,6 +5307,29 @@ $can = static function (string $flag) use ($permFlags): bool {
       if (cmd === 'insertImage') {
         cardImageTarget = null;
         imageFile?.click();
+        return;
+      }
+      if (cmd === 'insertImageUrl') {
+        const raw = window.prompt('Resim URL (https://… veya /uploads/wiki/…)', 'https://');
+        if (raw === null) return;
+        const url = String(raw).trim();
+        if (!url) return;
+        const ok = /^https?:\/\//i.test(url) || url.startsWith('/uploads/wiki/');
+        if (!ok) {
+          alert('Yalnızca http(s) veya /uploads/wiki/ adresleri kabul edilir.');
+          return;
+        }
+        const safe = url.replace(/"/g, '&quot;');
+        const imgTag = '<img src="' + safe + '" alt="">';
+        if (htmlMode) {
+          if (htmlPanel) htmlPanel.value += '\n' + imgTag + '\n';
+        } else if (cardImageTarget && editor.contains(cardImageTarget)) {
+          cardImageTarget.classList.remove('is-empty');
+          cardImageTarget.innerHTML = imgTag;
+          cardImageTarget = null;
+        } else {
+          document.execCommand('insertHTML', false, '<p>' + imgTag + '</p>');
+        }
         return;
       }
       if (cmd === 'insertClassCard') {
